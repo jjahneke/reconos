@@ -45,7 +45,7 @@ proc help {} {
 
 
 # Set the directory where the IP integrator cores live
-set reconos_ip_dir "/home/meise/git/reconos_zynq/reconos/demos/sort_demo_vivado_test/build.hw/pcores"
+set reconos_ip_dir $::env(RECONOS)/demos/sort_demo/build.hw/pcores
 
 # How many hardware threads do you want?
 set num_hwts 2

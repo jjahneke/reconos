@@ -369,5 +369,5 @@ exit
 
 
 # how to include the reconos repository
-set_property  ip_repo_paths  /home/meise/git/reconos_hls/demos/sort_demo/build.hw/pcores [current_project]
+set_property  ip_repo_paths  $::env(RECONOS)/demos/sort_demo/build.hw/pcores [current_project]
 update_ip_catalog

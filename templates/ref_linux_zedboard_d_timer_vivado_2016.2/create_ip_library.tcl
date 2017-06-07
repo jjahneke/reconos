@@ -220,7 +220,6 @@ proc add_clock_interface { path_to_ip bus_name clock_signal_name } {
 	ipx::create_xgui_files [ipx::current_core]
 	ipx::update_checksums [ipx::current_core]
 	ipx::save_core [ipx::current_core]
-	ipx::close_core
 }
 
 proc import_pcore { repo_path ip_name {libs ""} } {
@@ -365,9 +364,3 @@ close_project
 file delete -force $temp_dir
 
 exit
-
-
-
-# how to include the reconos repository
-set_property  ip_repo_paths  $::env(RECONOS)/demos/sort_demo/build.hw/pcores [current_project]
-update_ip_catalog

@@ -45,7 +45,8 @@ proc help {} {
 
 
 # Set the directory where the IP integrator cores live
-set reconos_ip_dir $::env(RECONOS)/demos/sort_demo/build.hw/pcores
+#set reconos_ip_dir $::env(RECONOS)/demos/sort_demo/build.hw/pcores
+set reconos_ip_dir [pwd]/pcores
 
 # How many hardware threads do you want?
 set num_hwts 2

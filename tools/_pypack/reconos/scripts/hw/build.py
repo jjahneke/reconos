@@ -27,6 +27,8 @@ def build_cmd(args):
 def build(args, hwdir):
 	if args.prj.impinfo.xil[0] == "ise":
 		build_ise(args, hwdir)
+	elif args.prj.impinfo.xil[0] == "vivado":
+		build_vivado(args, hwdir)
 	else:
 		log.error("Xilinx tool not supported")
 
@@ -44,6 +46,24 @@ def build_ise(args, hwdir):
 	  source /opt/Xilinx/""" + prj.impinfo.xil[1] + """/ISE_DS/settings64.sh;
 	  echo -e "run hwclean\nrun bits\nexit\n" | xps -nw system""",
 	  shell=True)
+
+	print()
+	shutil2.chdir(prj.dir)
+	
+def build_vivado(args, hwdir):
+	prj = args.prj
+	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
+
+	try:
+		shutil2.chdir(hwdir)
+	except:
+		log.error("hardware directory '" + hwdir + "' not found")
+		return
+	
+	subprocess.call("""
+					source /opt/Xilinx/Vivado/{0}/settings64.sh;
+					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1]),
+					shell=True)
 
 	print()
 	shutil2.chdir(prj.dir)

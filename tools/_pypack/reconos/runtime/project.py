@@ -150,6 +150,7 @@ class ImpInfo:
 		self.part = ""
 		self.design = ""
 		self.xil = ""
+		self.hls = ""
 
 		self.os = ""
 		self.cflags = ""
@@ -223,6 +224,7 @@ class Project:
 			return
 
 		self._parse_project(cfg)
+		self._check_project()
 
 	#
 	# Internal method parsing the project from the project file.
@@ -236,6 +238,10 @@ class Project:
 		self.impinfo.design = cfg.get("General", "ReferenceDesign")
 		self.impinfo.os = cfg.get("General", "TargetOS")
 		self.impinfo.xil = cfg.get("General", "TargetXil").split(",")
+		if cfg.has_option("General", "TargetHls"):
+			self.impinfo.hls = cfg.get("General", "TargetHls").split(",")
+		else:
+			self.impinfo.hls = ""
 		if cfg.has_option("General", "CFlags"):
 			self.impinfo.cflags = cfg.get("General", "CFlags")
 		else:
@@ -364,3 +370,21 @@ class Project:
 			thread = Thread(name, slots, hw, sw, res)
 			for s in slots: s.threads.append(thread)
 			self.threads.append(thread)
+			
+	#
+	# Internal method checking the configuration for validity.
+	#
+	#   cfg - configparser referencing the project file
+	#		
+	def _check_project(self):
+		#
+		# Check if HLS tool is specified when a thread has HLS sources
+		#
+		hlsNeeded = False
+		for t in self.threads:
+			if t.hwsource=="hls":
+				hlsNeeded = True
+		if (hlsNeeded == True) and (self.impinfo.hls==""):
+			log.error("Thread has HLS sources, but no HLS tool is specified. Please specify TargetHls variable in General section in build.cfg")
+			exit(1)
+		

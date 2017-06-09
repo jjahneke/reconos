@@ -177,7 +177,7 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 				  source /opt/Xilinx/Vivado/{1}/settings64.sh;
 				  cd {0};
 				  vivado_hls -f script_csynth.tcl;
-				  vivado -mode batch -notrace -nojournal -nolog -source script_vivado_edn.tcl;""".format(tmp.name, prj.impinfo.xil[1]),
+				  vivado -mode batch -notrace -nojournal -nolog -source script_vivado_edn.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
 				  shell=True)
 
 				dictionary = {}
@@ -197,7 +197,7 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 			subprocess.call("""
 			  source /opt/Xilinx/Vivado/{1}/settings64.sh;
 			  cd {0};
-			  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.xil[1]),
+			  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
 			  shell=True)
 
 			dictionary = {}

@@ -30,7 +30,7 @@ def build(args, hwdir):
 	elif args.prj.impinfo.xil[0] == "vivado":
 		build_vivado(args, hwdir)
 	else:
-		log.error("Xilinx tool not supported")
+		log.error("Tool not supported")
 
 def build_ise(args, hwdir):
 	prj = args.prj

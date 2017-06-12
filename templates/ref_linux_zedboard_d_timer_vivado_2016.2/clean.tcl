@@ -46,11 +46,14 @@ proc get_cpu_core_count {} {
     }
 }
 
-proc reconos_built_bitstream {} {
-    # create bitstream
+proc reconos_clean_project {} {
     open_project myReconOS.xpr
-    launch_runs impl_1 -to_step write_bitstream -jobs [ expr [get_cpu_core_count] / 2 + 1]
-    wait_on_run impl_1
+    
+    # Some TCL commands to reduce 
+    reset_project
+    config_ip_cache -clear_local_cache
+    config_ip_cache -clear_output_repo
+
     close_project
 }
 
@@ -59,5 +62,5 @@ proc reconos_built_bitstream {} {
 # MAIN
 #
 
-reconos_built_bitstream
+reconos_clean_project
 exit

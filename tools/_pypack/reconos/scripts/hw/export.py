@@ -67,13 +67,13 @@ def export_hw(args, hwdir, link):
 	elif args.prj.impinfo.xil[0] == "vivado":
 		export_hw_vivado(args, hwdir, link)
 	else:
-		log.error("Xilinx tool not supported")
+		log.error("Tool not supported")
 
 def export_hw_thread(args, hwdir, link, thread):
 	if (args.prj.impinfo.xil[0] == "ise") or (args.prj.impinfo.xil[0] == "vivado"):
 		export_hw_thread_ise_vivado(args, hwdir, link, thread)
 	else:
-		log.error("Xilinx tool not supported")
+		log.error("Tool not supported")
 
 def export_hw_ise(args, hwdir, link):
 	''' 

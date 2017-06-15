@@ -97,4 +97,14 @@ struct reconos_thread *reconos_thread_create_swt_<<Name>>();
 void reconos_thread_destroy_<<Name>>(struct reconos_thread *rt);
 <<end generate>>
 
+<<generate for CLOCKS>>
+/*
+ * Sets the frequency for the iven clock. Returns the actual clock which
+ * were able to configure for the clock.
+ *
+ *   f - the wanted frequency in kHz
+ */
+int reconos_clock_<<NameLower>>_set(int f);
+<<end generate>>
+
 #endif /* RECONOS_APP_H */

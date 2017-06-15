@@ -36,6 +36,7 @@ int RECONOS_NUM_HWTS = 0;
 
 static struct hwslot *_hwslots;
 static int _proc_control;
+static int _clock;
 static pthread_t _pgf_handler;
 static struct sigaction _dt_signal;
 static int _thread_id;
@@ -50,6 +51,20 @@ void reconos_resource_init(struct reconos_resource *rr,
                            int type, void *ptr) {
 	rr->type = type;
 	rr->ptr = ptr;
+}
+
+
+/* == ReconOS clock ==================================================== */
+
+/*
+ * @see header
+ */
+int reconos_clock_set(int clk, int m, int f)
+{
+	int divider = 100000 * m / f;
+	reconos_clock_set_divider(_clock, clk, divider);
+
+	return 100000 * m / divider;
 }
 
 
@@ -372,6 +387,11 @@ void reconos_init() {
 	_proc_control = reconos_proc_control_open();
 	if (_proc_control < 0) {
 		panic("[reconos-core] ERROR: unable to open proc control\n");
+	}
+
+	_clock = reconos_clock_open();
+	if (_clock < 0) {
+		panic("[reconos-core] ERROR: unable to open clock\n");
 	}
 
 	RECONOS_NUM_HWTS = reconos_proc_control_get_num_hwts(_proc_control);

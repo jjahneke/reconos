@@ -52,7 +52,7 @@ extern void reconos_proc_control_close(int fd);
 
 /* == Proc control related functions ==================================== */
 
-extern int reconos_clock_open(int num);
+extern int reconos_clock_open();
 extern void reconos_clock_set_divider(int fd, int clk, int divd);
 extern void reconos_clock_close(int fd);
 

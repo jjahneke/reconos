@@ -35,7 +35,6 @@
 #define OSIF_INTC_DEV "/dev/reconos-osif-intc"
 
 unsigned int NUM_HWTS = 0;
-unsigned int NUM_CLKMGS = 1;
 
 
 /* == OSIF related functions ============================================ */
@@ -245,8 +244,6 @@ void reconos_proc_control_close(int fd) {
 #define CLOCK_REG_COUNT_BIT   0x00400000
 
 struct clock_dev {
-	unsigned int index;
-
 	volatile uint32_t *ptr;
 };
 
@@ -256,22 +253,19 @@ static inline void clock_write(struct clock_dev *dev, int clk, uint32_t reg) {
 	dev->ptr[clk] = reg;
 }
 
-int reconos_clock_open(int num) {
-	debug("[reconos-clock-%d] "
-	      "opening ...\n", num);
+int reconos_clock_open() {
+	debug("[reconos-clock] "
+	      "opening ...\n");
 
-	if (num < 0 || num >= NUM_CLKMGS)
-		return -1;
-	else
-		return num;
+	return 0;
 }
 
 void reconos_clock_set_divider(int fd, int clk, int divd) {
-	struct clock_dev *dev = &clock_dev[fd];
+	struct clock_dev *dev = clock_dev;
 	uint32_t reg = 0;
 
-	debug("[reconos-clock-%d] "
-	      "writing divider %d of clock %d ...\n", fd, divd, clk);
+	debug("[reconos-clock] "
+	      "writing divider %d of clock %d ...\n", divd, clk);
 
 	if (divd < 1 || divd > 126) {
 		whine("[reconos-clock-%d] "
@@ -295,8 +289,8 @@ void reconos_clock_set_divider(int fd, int clk, int divd) {
 }
 
 void reconos_clock_close(int fd) {
-	debug("[reconos-clock-%d] "
-	      "closing ...\n", fd);
+	debug("[reconos-clock] "
+	      "closing ...\n");
 }
 
 
@@ -445,15 +439,12 @@ void reconos_drv_init() {
 
 
 	// allocate and initialize clock devices
-	clock_dev = (struct clock_dev*)malloc(NUM_CLKMGS * sizeof(struct clock_dev));
+	clock_dev = (struct clock_dev*)malloc(sizeof(struct clock_dev));
 	if (!clock_dev)
 		panic("[reconos-clock] "
 		      "failed to allocate memory\n");
 
-	for (i = 0; i < NUM_CLKMGS; i++) {
-		clock_dev[i].index = i;
-		clock_dev[i].ptr = (uint32_t *)(mem + i * CLOCK_MEM_SIZE);
-	}
+	clock_dev->ptr = (uint32_t *)mem;
 }
 
 #endif

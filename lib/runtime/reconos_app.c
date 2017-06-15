@@ -113,7 +113,6 @@ void *swt_idle(void *data) {
 }
 
 <<generate for THREADS>>
-
 struct reconos_resource *resources_<<Name>>[] = {<<Resources>>};
 
 /*
@@ -157,11 +156,20 @@ struct reconos_thread *reconos_thread_create_swt_<<Name>>() {
 	return rt;
 }
 
-
 /*
  * @see header
  */
 void reconos_thread_destroy_<<Name>>(struct reconos_thread *rt) {
 	// not implemented yet
+}
+<<end generate>>
+
+<<generate for CLOCKS>>
+/*
+ * @see header
+ */
+int reconos_clock_<<NameLower>>_set(int f)
+{
+	return reconos_clock_set(<<Id>>, <<M>>, f);
 }
 <<end generate>>

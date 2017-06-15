@@ -50,7 +50,6 @@ def get_dict(prj):
 		d["ActFreqKHz"] = param[2] / 1000
 		d["M"] = param[0]
 		d["O"] = param[1]
-
 		dictionary["CLOCKS"].append(d)
 	
 	return dictionary

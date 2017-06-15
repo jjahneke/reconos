@@ -66,6 +66,18 @@ void reconos_resource_init(struct reconos_resource *rr,
                            int type, void *ptr);
 
 
+/* == ReconOS clock ==================================================== */
+
+/*
+ * Sets the divider for the given clock.
+ *
+ *   clk - the id of the clock
+ *   m   - the internal multiplicator of the clock
+ *   f   - the wanted frequency in kHz
+ */
+int reconos_clock_set(int clk, int m, int f);
+
+
 /* == ReconOS thread =================================================== */
 
 /*

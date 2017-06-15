@@ -56,6 +56,16 @@ def export_sw(args, swdir, link):
 		d["Args"] = ", ".join(r.args)
 		d["Id"] = r.id
 		dictionary["RESOURCES"].append(d)
+	dictionary["CLOCKS"] = []
+	for c in prj.clocks:
+		d = {}
+		d["NameLower"] = c.name.lower();
+		d["Id"] = c.id
+		param = c.get_pllparam(800000000, 1600000000, 100000000)
+		d["M"] = param[0]
+		d["O"] = param[1]
+		dictionary["CLOCKS"].append(d)
+
 	srcs = shutil2.join(prj.dir, "src", "application")
 	dictionary["SOURCES"] = [srcs]
 

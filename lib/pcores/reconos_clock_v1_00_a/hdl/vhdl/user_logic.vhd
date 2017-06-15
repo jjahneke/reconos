@@ -113,7 +113,7 @@ architecture imp of user_logic is
 	signal pll<<Id>>_drdy, pll<<Id>>_rst : std_logic;
 	signal pll<<Id>>_locked              : std_logic;
 
-	signal pll<<Id>>_clk, pll<<Id>>_clkbuf : std_logic;
+	signal pll<<Id>>_clk, pll<<Id>>_clkfb, pll<<Id>>_clkbuf : std_logic;
 	<<end generate>>
 begin
 
@@ -134,7 +134,8 @@ begin
 			CLKIN2   => '0',
 			CLKINSEL => '1',
 
-			CLKFBIN  => pll<<Id>>_clkbuf,
+			CLKFBOUT => pll<<Id>>_clkfb,
+			CLKFBIN  => pll<<Id>>_clkfb,
 
 			CLKOUT0 => pll<<Id>>_clk,
 
@@ -150,10 +151,11 @@ begin
 			RST    => pll<<Id>>_rst
 		);
 
-	bufg_pll<<Id>> : BUFG
+	bufg_pll<<Id>> : BUFGCE
 		port map (
 		I => pll<<Id>>_clk,
-		O => pll<<Id>>_clkbuf
+		O => pll<<Id>>_clkbuf,
+		CE => pll<<Id>>_locked
 	);
 	<<end generate>>
 
@@ -219,35 +221,46 @@ begin
 
 
 	req <=
-	  <<generate for CLOCKS>>
-	  BUS2IP_CS(<<_i>>) or
-	  <<end generate>>
-	  '0';
+		<<generate for CLOCKS>>
+		BUS2IP_CS(<<_i>>) or
+		<<end generate>>
+		'0';
 
-	pll_daddr <= x"08";
+	pll_daddr <=
+		x"08" when state = STATE_READ0 else
+		x"08" when state = STATE_READRDY0 else
+		x"08" when state = STATE_WRITE0 else
+		x"08" when state = STATE_WRITERDY0 else
+		x"09" when state = STATE_READ1 else
+		x"09" when state = STATE_READRDY1 else
+		x"09" when state = STATE_WRITE1 else
+		x"09" when state = STATE_WRITERDY1 else
+		x"00";
 
 	pll_den <=
-	  '1' when state = STATE_READ0 else
-	  '1' when state = STATE_WRITE0 else
-	  '1' when state = STATE_READ1 else
-	  '1' when state = STATE_WRITE1 else
-	  '0';
+		'1' when state = STATE_READ0 else
+		'1' when state = STATE_WRITE0 else
+		'1' when state = STATE_READ1 else
+		'1' when state = STATE_WRITE1 else
+		'0';
 
 	pll_dwe <=
-	  '1' when state = STATE_WRITE0 else
-	  '1' when state = STATE_WRITE1 else
-	  '0';
+		'1' when state = STATE_WRITE0 else
+		'1' when state = STATE_WRITERDY0 else
+		'1' when state = STATE_WRITE1 else
+		'1' when state = STATE_WRITERDY1 else
+		'0';
 
 	pll_rst <=
-	  '0' when state = STATE_WAIT else
-	  '1';
+		'0' when state = STATE_WAIT else
+		'1';
 
 	pll_di <=
-	  BUS2IP_Data(15 downto 13) & pll_do(12) & BUS2IP_Data(11 downto 0) when state = STATE_WRITE0 else
-	  BUS2IP_Data(15 downto 13) & pll_do(12) & BUS2IP_Data(11 downto 0) when state = STATE_WRITERDY0 else
-	  pll_do(15 downto 8) & BUS2IP_Data(23 downto 16) when state = STATE_WRITE1 else
-	  pll_do(15 downto 8) & BUS2IP_Data(23 downto 16) when state = STATE_WRITERDY1 else
-	  (others => '0');
+		BUS2IP_Data(15 downto 13) & pll_do(12) & BUS2IP_Data(11 downto 0) when state = STATE_WRITE0 else
+		BUS2IP_Data(15 downto 13) & pll_do(12) & BUS2IP_Data(11 downto 0) when state = STATE_WRITERDY0 else
+		pll_do(15 downto 8) & BUS2IP_Data(23 downto 16) when state = STATE_WRITE1 else
+		pll_do(15 downto 8) & BUS2IP_Data(23 downto 16) when state = STATE_WRITERDY1 else
+		(others => '0');
 
 	<<generate for CLOCKS>>
 	pll<<Id>>_rst <= pll_rst when BUS2IP_CS(C_NUM_CLOCKS - <<_i>> - 1) = '1' else '0';
@@ -262,16 +275,16 @@ begin
 	<<end generate>>
 
 	pll_drdy <=
-	  <<generate for CLOCKS>>
-	  (pll<<Id>>_drdy and BUS2IP_CS(C_NUM_CLOCKS - <<_i>> - 1)) or
-	  <<end generate>>
-	  '0';
+		<<generate for CLOCKS>>
+		(pll<<Id>>_drdy and BUS2IP_CS(C_NUM_CLOCKS - <<_i>> - 1)) or
+		<<end generate>>
+		'0';
 
 	pll_do <=
-	  <<generate for CLOCKS>>
-	  (pll<<Id>>_do and (pll<<Id>>_do'Range => BUS2IP_CS(C_NUM_CLOCKS - <<_i>> - 1))) or
-	  <<end generate>>
-	  (15 downto 0 => '0');
+		<<generate for CLOCKS>>
+		(pll<<Id>>_do and (pll<<Id>>_do'Range => BUS2IP_CS(C_NUM_CLOCKS - <<_i>> - 1))) or
+		<<end generate>>
+		(15 downto 0 => '0');
 
 
 	-- == Assignment of ouput ports =======================================

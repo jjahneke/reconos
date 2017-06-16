@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 #
 def main():
 	prj = project.Project()
-	prjfiles = shutil2.listfiles(".", ext="cfg", rel=True)
+	prjfiles = shutil2.listfiles(".", ext="cfg$", rel=True)
 	if not prjfiles:
 		log.error("Project file not found")
 		sys.exit(1)

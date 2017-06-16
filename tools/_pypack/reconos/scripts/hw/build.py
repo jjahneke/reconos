@@ -43,6 +43,7 @@ def _build_ise(prj, hwdir):
 	
 	subprocess.call("""
 	  source /opt/Xilinx/""" + prj.impinfo.xil[1] + """/ISE_DS/settings64.sh;
+	  cd """ + hwdir + """ &&
 	  echo -e "run hwclean\nrun bits\nexit\n" | xps -nw system""",
 	  shell=True)
 

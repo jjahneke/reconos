@@ -54,7 +54,7 @@ def _build_ise(prj, hwdir):
 			while True:
 				word = b.read(4)
 				if not word:
-					break;
+					break
 				r.write(word[::-1])
 
 	shutil2.chdir(prj.dir)
@@ -78,7 +78,7 @@ def _build_vivado(prj, hwdir):
 			while True:
 				word = b.read(4)
 				if not word:
-					break;
+					break
 				r.write(word[::-1])
 	print()
 

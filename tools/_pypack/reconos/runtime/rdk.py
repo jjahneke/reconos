@@ -89,7 +89,7 @@ def main():
 			return comp[state] if state < len(comp) else None
 
 		readline.parse_and_bind("tab: complete")
-		readline.set_completer(_complete);
+		readline.set_completer(_complete)
 
 		while(True):
 			try:

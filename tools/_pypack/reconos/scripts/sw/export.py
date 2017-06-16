@@ -62,7 +62,7 @@ def export_sw(args, swdir, link):
 	dictionary["CLOCKS"] = []
 	for c in prj.clocks:
 		d = {}
-		d["NameLower"] = c.name.lower();
+		d["NameLower"] = c.name.lower()
 		d["Id"] = c.id
 		param = c.get_pllparam(800000000, 1600000000, 100000000)
 		d["M"] = param[0]

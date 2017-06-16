@@ -28,8 +28,8 @@ class Clock:
 	_id = 0
 
 	def __init__(self, name, source, freq):
-		self.id = Resource._id
-		Resource._id += 1
+		self.id = Clock._id
+		Clock._id += 1
 		self.name = name
 		self.source = source
 		self.freq = freq

@@ -19,39 +19,62 @@ import reconos.utils.shutil2 as shutil2
 # Internal method used for replacing each occurence of a generate
 # statement in the source file.
 #
-#   d - dictionary including the used keys
+#   scope - list of dictionaries including the used keys
 #
-def _gen_preproc(d):
+def _gen_preproc(scope):
 	def _gen_(m):
-		if m.group("key") not in d:
+		values = [_[m.group("key")] for _ in scope if m.group("key") in _]
+
+		if not values:
 			return m.string[m.start():m.end()]
+		else:
+			value = values[0]
 
-		if type(d[m.group("key")]) is bool:
-			return m.group("data")
+		if type(value) is bool:
+			return m.group("data") if value else ""
 
-		if type(d[m.group("key")]) is not list:
+		if type(value) is int:
+			value = [{} for _ in range(value)]
+
+		if type(value) is not list:
 			return m.string[m.start():m.end()]
 
 		data = ""
-		for i, r in enumerate(d[m.group("key")]):
-			l = {"_i" : i}
-			l.update(r)
+		i = 0
+		for r in value:
+			local = {"_i" : i}
+			local.update(r)
+			nscope = [local] + scope
 
-			if m.group("cond") is not None and not eval(m.group("cond"), l):
+			if m.group("cond") is not None and not eval(m.group("cond"), local):
 				continue
 
-			ndata = m.group("data")
+			# recursively processing nested generates which use equal signs to
+			# indicate the nesting, e.g. <<= ... =>>
+			od = "<<" + "=" * len(scope)
+			cd = "=" * len(scope) + ">>"
+			reg = od + r"generate for (?P<key>[A-Za-z0-9_]*?)(?:\((?P<cond>.*?)\))?" + cd + r"\n?(?P<data>.*?)" + od + r"end generate" + cd
+			ndata = re.sub(reg, _gen_preproc(nscope), m.group("data"), 0, re.DOTALL)
 
-			reg = r"<<(?P<key>[A-Za-z0-9_]+)(?:\((?P<join>.*?)\))?>>"
+			# processing keys which are replaced by values from the scope, e.g.
+			# <<...>>
+			reg = r"<<(?P<key>[A-Za-z0-9_]+)(?:\((?P<join>.*?)\))?(?:\|(?P<format>.*))?>>"
 			def repl(m):
-				if m.group("key") in l:
-					return str(l[m.group("key")]) 
-				else:
+				values = [_[m.group("key")] for _ in nscope if m.group("key") in _]
+
+				if not values:
 					return "<<" + m.group("key") + ">>"
+				else:
+					if m.group("format") is None:
+						return str(values[0])
+					else:
+						return m.group("format").format(values[0])
 			ndata = re.sub(reg, repl, ndata)
 
+			# processing optional character which is not printed in the last
+			# iteration of the generation
 			reg = r"<<c(?P<data>.)>>"
-			if i < len(d[m.group("key")]) - 1:
+			if i < len(value) - 1:
 				ndata = re.sub(reg, "\g<data>", ndata)
 			else:
 				ndata = re.sub(reg, "", ndata)
@@ -60,6 +83,7 @@ def _gen_preproc(d):
 				ndata += "\n"
 
 			data += ndata
+			i += 1
 
 		return data
 
@@ -102,20 +126,27 @@ def preproc(filepath, dictionary, mode, force=False):
 	else:
 		data = re.sub(r"<<reconos_preproc>>", "", data)
 
-	# Generate syntax: <<generate for KEY(OPTIONAL = CONDITION)>> ... <<end generate>>
-	# Used to automatically generate several lines of code.
+	# generate syntax: <<generate for KEY(OPTIONAL = CONDITION)>> ... <<end generate>>
+	# used to automatically generate several lines of code
 	reg = r"<<generate for (?P<key>[A-Za-z0-9_]*?)(?:\((?P<cond>.*?)\))?>>\n?(?P<data>.*?)<<end generate>>"
-	data = re.sub(reg, _gen_preproc(dictionary), data, 0, re.DOTALL)
+	data = re.sub(reg, _gen_preproc([dictionary]), data, 0, re.DOTALL)
 
-	# If syntax: <<if KEY OPERATOR VALUE>> ... <<end if>>
-	# Used to conditionally include or exclude code fragments
+	# if syntax: <<if KEY OPERATOR VALUE>> ... <<end if>>
+	# used to conditionally include or exclude code fragments
 	reg = r"<<if (?P<key>[A-Za-z0-9_]*?)(?P<comp>[<>=!]*?)(?P<value>[A-Za-z0-9_\"]*?)>>\n?(?P<data>.*?)<<end if>>"
 	data = re.sub(reg, _if_preproc(dictionary), data, 0, re.DOTALL)
 
-	reg = r"<<(?P<key>[A-Za-z0-9_]+)>>"
+	# global keys not inside generate
+	reg = r"<<(?P<key>[A-Za-z0-9_]+)(?:\|(?P<format>.*))?>>"
 	def repl(m): 
 		if m.group("key") in dictionary:
-			return str(dictionary[m.group("key")])
+			if m.group("format") is None:
+				return str(dictionary[m.group("key")])
+			else:
+				if type(dictionary[m.group("key")]) is list:
+					return m.group("format").format(*tuple(dictionary[m.group("key")]))
+				else:
+					return m.group("format").format(dictionary[m.group("key")])
 		else:
 			return m.string[m.start():m.end()]
 	data = re.sub(reg, repl, data)
@@ -205,7 +236,7 @@ def predirectory(dirpath, dirs, dictionary):
 #
 #   filepath   - path to template directory
 #   dictionary - dictionary containing all keys
-#   mode       - printe or overwrite to print to stdout or overwrite
+#   mode       - print or overwrite to print to stdout or overwrite
 #
 def generate(filepath, dictionary, mode, link = False):
 	def pc(f): return precopy(f, dictionary, link)

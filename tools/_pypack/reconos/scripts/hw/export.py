@@ -127,7 +127,11 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 
 	if thread.hwsource == "vhdl":
 		dictionary = {}
+		dictionary["ID"] = thread.id;
 		dictionary["NAME"] = thread.name.lower();
+		dictionary["MEM"] = thread.mem;
+		dictionary["MEM_N"] = not thread.mem;
+		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
 		srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
 		dictionary["SOURCES"] = [srcs]
 		incls = shutil2.listfiles(srcs, True)
@@ -150,6 +154,8 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 		dictionary = {}
 		dictionary["PART"] = prj.impinfo.part
 		dictionary["NAME"] = thread.name.lower()
+		dictionary["MEM"] = thread.mem;
+		dictionary["MEM_N"] = not thread.mem;
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
 		srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
 		dictionary["SOURCES"] = [srcs]
@@ -181,6 +187,8 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 
 				dictionary = {}
 				dictionary["NAME"] = thread.name.lower()
+				dictionary["MEM"] = thread.mem;
+				dictionary["MEM_N"] = not thread.mem;
 				srcs = shutil2.join(tmp.name, "rt_imp.edn")
 				dictionary["SOURCES"] = [srcs]
 				incls = ["rt_imp.edn"]
@@ -201,6 +209,8 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 
 			dictionary = {}
 			dictionary["NAME"] = thread.name.lower()
+			dictionary["MEM"] = thread.mem;
+			dictionary["MEM_N"] = not thread.mem;
 			srcs = shutil2.join(tmp.name, "hls", "sol", "syn", "vhdl")
 			dictionary["SOURCES"] = [srcs]
 			incls = shutil2.listfiles(srcs, True)

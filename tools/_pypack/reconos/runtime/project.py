@@ -96,12 +96,13 @@ class Slot:
 class Thread:
 	_id = 0
 
-	def __init__(self, name, slots, hw, sw, res):
-		self.Id = Thread._id
+	def __init__(self, name, slots, hw, sw, res, mem):
+		self.id = Thread._id
 		Thread._id += 1
 		self.name = name
 		self.slots = slots
 		self.resources = res
+		self.mem = mem
 		if hw is not None:
 			hw = hw.split(",")
 			self.hwsource = hw[0]
@@ -364,10 +365,14 @@ class Project:
 					log.error("ResourceGroup not found")
 			else:
 				res = []
+			if cfg.has_option(t, "UseMem"):
+				mem = cfg.get(t, "UseMem") in ["True", "true"]
+			else:
+				mem = True
 
 			log.debug("Found thread '" + str(name) + "' (" + str(slots) + "," + str(hw) + "," + str(sw) + "," + str(res) + ")")
 
-			thread = Thread(name, slots, hw, sw, res)
+			thread = Thread(name, slots, hw, sw, res, mem)
 			for s in slots: s.threads.append(thread)
 			self.threads.append(thread)
 			

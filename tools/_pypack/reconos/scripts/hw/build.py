@@ -22,18 +22,17 @@ def get_parser(prj):
 	return parser
 
 def build_cmd(args):
-	build(args, args.hwdir)
+	build(args.prj, args.hwdir)
 
-def build(args, hwdir):
-	if args.prj.impinfo.xil[0] == "ise":
-		build_ise(args, hwdir)
-	elif args.prj.impinfo.xil[0] == "vivado":
-		build_vivado(args, hwdir)
+def build(prj, hwdir):
+	if prj.impinfo.xil[0] == "ise":
+		_build_ise(prj, hwdir)
+	elif prj.impinfo.xil[0] == "vivado":
+		_build_vivado(prj, hwdir)
 	else:
 		log.error("Tool not supported")
 
-def build_ise(args, hwdir):
-	prj = args.prj
+def _build_ise(prj, hwdir):
 	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
 
 	try:
@@ -50,8 +49,7 @@ def build_ise(args, hwdir):
 	print()
 	shutil2.chdir(prj.dir)
 	
-def build_vivado(args, hwdir):
-	prj = args.prj
+def _build_vivado(prj, hwdir):
 	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
 
 	try:

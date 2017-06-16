@@ -207,6 +207,10 @@ class Project:
 	#   filepath - path to the project file (*.cfg)
 	#
 	def open(self, filepath):
+		Clock._id = 0
+		Resource._id = 128
+		Thread._id = 0
+
 		self.clocks = []
 		self.resources = []
 		self.slots = []

@@ -56,25 +56,25 @@ def get_dict(prj):
 	
 def export_hw_cmd(args):
 	if args.thread is None:
-		export_hw(args, args.hwdir, args.link)
+		export_hw(args.prj, args.hwdir, args.link)
 	else:
-		export_hw_thread(args, args.hwdir, args.link, args.thread)
+		export_hw_thread(args.prj, args.hwdir, args.link, args.thread)
 
-def export_hw(args, hwdir, link):
-	if args.prj.impinfo.xil[0] == "ise":
-		export_hw_ise(args, hwdir, link)
-	elif args.prj.impinfo.xil[0] == "vivado":
-		export_hw_vivado(args, hwdir, link)
-	else:
-		log.error("Tool not supported")
-
-def export_hw_thread(args, hwdir, link, thread):
-	if (args.prj.impinfo.xil[0] == "ise") or (args.prj.impinfo.xil[0] == "vivado"):
-		export_hw_thread_ise_vivado(args, hwdir, link, thread)
+def export_hw(prj, hwdir, link):
+	if prj.impinfo.xil[0] == "ise":
+		_export_hw_ise(prj, hwdir, link)
+	elif prj.impinfo.xil[0] == "vivado":
+		_export_hw_vivado(prj, hwdir, link)
 	else:
 		log.error("Tool not supported")
 
-def export_hw_ise(args, hwdir, link):
+def export_hw_thread(prj, hwdir, link, thread):
+	if (prj.impinfo.xil[0] == "ise") or (prj.impinfo.xil[0] == "vivado"):
+		_export_hw_thread_ise_vivado(prj, hwdir, link, thread)
+	else:
+		log.error("Tool not supported")
+
+def _export_hw_ise(prj, hwdir, link):
 	''' 
 	Generates the project directory for an ISE/XPS project.
 	
@@ -84,7 +84,6 @@ def export_hw_ise(args, hwdir, link):
 	hwdir gives the name of the project directory
 	link boolean; if true files will be linked instead of copied
 	'''
-	prj = args.prj
 	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
 
 	log.info("Export hardware to directory '" + hwdir + "'")
@@ -97,9 +96,9 @@ def export_hw_ise(args, hwdir, link):
 
 	log.info("Generating threads ...")
 	for t in prj.threads:
-		export_hw_thread(args, shutil2.join(hwdir, "pcores"), link, t.name)
+		export_hw_thread(prj, shutil2.join(hwdir, "pcores"), link, t.name)
 
-def export_hw_thread_ise_vivado(args, hwdir, link, thread):
+def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 	''' 
 	Generates sources for one hardware thread for ReconOS in an ISE/XPS or Vivado project.
 	
@@ -110,7 +109,6 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 	link boolean; if true files will be linked instead of copied
 	thread is the name of the hardware thread to generate
 	'''
-	prj = args.prj
 	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw" + "." + thread.lower()
 
 	log.info("Exporting thread " + thread + " to directory '" + hwdir + "'")
@@ -223,7 +221,7 @@ def export_hw_thread_ise_vivado(args, hwdir, link, thread):
 		shutil2.mkdir("/tmp/test")
 		shutil2.copytree(tmp.name, "/tmp/test")
 		
-def export_hw_vivado(args, hwdir, link):
+def _export_hw_vivado(prj, hwdir, link):
 	''' 
 	Generates a TCL script for generation of a Vivado based project.
 	
@@ -235,7 +233,6 @@ def export_hw_vivado(args, hwdir, link):
 	'''
 	
 	print("export_hw_vivado")
-	prj = args.prj
 	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
 
 	log.info("Export hardware to directory '" + hwdir + "'")
@@ -252,7 +249,7 @@ def export_hw_vivado(args, hwdir, link):
 
 	log.info("Generating threads ...")
 	for t in prj.threads:
-		export_hw_thread(args, shutil2.join(hwdir, "pcores"), link, t.name)
+		export_hw_thread(prj, shutil2.join(hwdir, "pcores"), link, t.name)
 		
 	print("Calling TCL script to generate Vivado IP Repository")
 	subprocess.call("""

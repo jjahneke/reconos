@@ -32,11 +32,19 @@ log = logging.getLogger(__name__)
 #
 def main():
 	prj = project.Project()
-	try:
-		prjfile = shutil2.listfiles(".", ext="cfg$", rel=True)[0]
-	except:
+	prjfiles = shutil2.listfiles(".", ext="cfg", rel=True)
+	if not prjfiles:
 		log.error("Project file not found")
 		sys.exit(1)
+	elif len(prjfiles) > 1:
+		print("Multiple project files found. Please select:")
+		for i,f in enumerate(prjfiles):
+			print("  [" + str(i) + "] " + f)
+		prjfile = prjfiles[int(input())]
+		print("Selected '" + prjfile + "'")
+	else:
+		prjfile = prjfiles[0]
+
 	prj.open(prjfile)
 
 	pkgs = pkgutil.walk_packages(reconos.scripts.__path__, reconos.scripts.__name__ + ".")

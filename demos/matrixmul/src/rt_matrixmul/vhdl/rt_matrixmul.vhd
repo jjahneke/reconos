@@ -2,14 +2,15 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
+use ieee.math_real.all;
 
-library proc_common_v3_00_a;
-use proc_common_v3_00_a.proc_common_pkg.all;
+-- library proc_common_v3_00_a;
+-- use proc_common_v3_00_a.proc_common_pkg.all;
 
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 
-entity hwt_matrixmul is
+entity rt_matrixmul is
 	port (
 		-- OSIF FIFO ports
 		OSIF_Sw2Hw_Data    : in  std_logic_vector(31 downto 0);
@@ -34,9 +35,9 @@ entity hwt_matrixmul is
 		HWT_Signal : in  std_logic
 	);
 
-end hwt_matrixmul;
+end rt_matrixmul;
 
-architecture implementation of hwt_matrixmul is
+architecture implementation of rt_matrixmul is
 	type STATE_TYPE is (
 		STATE_INIT,
 		STATE_GET_ADDR2MADDRS,
@@ -82,13 +83,13 @@ architecture implementation of hwt_matrixmul is
 	
 	-- const for matrixes A and C
 	constant C_LOCAL_RAM_SIZE_MATRIX_A_C          : integer := C_LINE_LEN_MATRIX;
-	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C    : integer := clog2(C_LOCAL_RAM_SIZE_MATRIX_A_C);
+	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C    : integer := integer(ceil(log2(real(C_LOCAL_RAM_SIZE_MATRIX_A_C))));
 	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_A_C : integer := 4 * C_LOCAL_RAM_SIZE_MATRIX_A_C;
 	type LOCAL_MEMORY_TYPE_MATRIX_A_C is array(0 to C_LOCAL_RAM_SIZE_MATRIX_A_C - 1) of std_logic_vector(31 downto 0);
 	
 	-- const for matrix B
 	constant C_LOCAL_RAM_SIZE_MATRIX_B            : integer := C_LINE_LEN_MATRIX*C_LINE_LEN_MATRIX;
-	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B      : integer := clog2(C_LOCAL_RAM_SIZE_MATRIX_B);
+	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B      : integer := integer(ceil(log2(real(C_LOCAL_RAM_SIZE_MATRIX_B))));
 	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B   : integer := 4 * C_LOCAL_RAM_SIZE_MATRIX_B;
 	type LOCAL_MEMORY_TYPE_MATRIX_B is array(0 to C_LOCAL_RAM_SIZE_MATRIX_B   - 1) of std_logic_vector(31 downto 0);
 	

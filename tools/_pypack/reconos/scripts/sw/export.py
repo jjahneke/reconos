@@ -45,6 +45,8 @@ def export_sw(args, swdir, link):
 		d["SlotCount"] = len(t.slots)
 		d["Resources"] = ",".join(["&" + (_.group + "_" + _.name).lower() + "_res" for _ in t.resources])
 		d["ResourceCount"] = len(t.resources)
+		d["HasHw"] = t.hwsource is not None
+		d["HasSw"] = t.hssource is not None
 		dictionary["THREADS"].append(d)
 	dictionary["RESOURCES"] = []
 	for r in prj.resources:
@@ -98,6 +100,7 @@ def export_sw_thread(args, swdir, link, thread):
 
 		if thread.swsource is None:
 			log.info("No software source specified")
+			return
 	else:
 		log.info("Thread '" + thread  + "' not found")
 		return

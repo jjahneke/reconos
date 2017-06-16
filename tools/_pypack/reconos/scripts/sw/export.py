@@ -74,7 +74,7 @@ def export_sw(args, swdir, link):
 
 	log.info("Generating export files ...")
 	templ = "app_" + prj.impinfo.os
-	prj.apply_template(templ, dictionary, swdir)
+	prj.apply_template(templ, dictionary, swdir, link)
 
 	log.info("Generating threads ...")
 	for t in prj.threads:

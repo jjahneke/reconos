@@ -35,6 +35,7 @@ Program map
 -mt 4;
 #-fp <design>.mfp;       # Floorplan file
 -ol high;
+-xe c;
 -timing;
 -detail;
 <inputdir><design>.ngd;  # Input NGD file
@@ -63,6 +64,7 @@ END Program post_map_trce
 Program par
 -w;                 # Overwrite existing placed and routed ncd
 -ol high;              # Overall effort level
+-xe c;
 -mt 4;
 <inputdir><design>_map.ncd;  # Input mapped NCD file
 <design>.ncd;                # Output placed and routed NCD

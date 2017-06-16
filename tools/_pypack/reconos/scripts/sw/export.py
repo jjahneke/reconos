@@ -51,6 +51,7 @@ def export_sw(args, swdir, link):
 	dictionary["RESOURCES"] = []
 	for r in prj.resources:
 		d = {}
+		d["Id"] = r.id
 		d["NameUpper"] = (r.group + "_" + r.name).upper()
 		d["NameLower"] = (r.group + "_" + r.name).lower()
 		d["Type"] = r.type

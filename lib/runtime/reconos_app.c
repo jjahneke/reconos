@@ -115,6 +115,7 @@ void *swt_idle(void *data) {
 <<generate for THREADS>>
 struct reconos_resource *resources_<<Name>>[] = {<<Resources>>};
 
+<<=generate for HasHw=>>
 /*
  * @see header
  */
@@ -133,7 +134,9 @@ struct reconos_thread *reconos_thread_create_hwt_<<Name>>() {
 
 	return rt;
 }
+<<=end generate=>>
 
+<<=generate for HasSw=>>
 extern void *rt_<<Name>>(void *data);
 
 /*
@@ -155,6 +158,7 @@ struct reconos_thread *reconos_thread_create_swt_<<Name>>() {
 
 	return rt;
 }
+<<=end generate=>>
 
 /*
  * @see header

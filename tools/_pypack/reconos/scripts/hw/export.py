@@ -35,11 +35,15 @@ def get_dict(prj):
 	for s in prj.slots:
 		if s.threads:
 			d = {}
+			d["_e"] = s
 			d["HwtCoreName"] = s.threads[0].get_corename()
 			d["HwtCoreVersion"] = s.threads[0].get_coreversion()
 			d["Id"] = s.id
+			d["SlotId"] = s.id
+			d["Name"] = s.name.lower()
 			d["Clk"] = s.clock.id
 			d["Async"] = "sync" if s.clock == prj.clock else "async"
+			d["Ports"] = s.ports
 			dictionary["SLOTS"].append(d)
 	dictionary["CLOCKS"] = []
 	for c in prj.clocks:
@@ -135,7 +139,6 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 		incls = shutil2.listfiles(srcs, True)
 		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
 		dictionary["RESOURCES"] = []
-		dictionary["PORTS"] = thread.ports
 		for i, r in enumerate(thread.resources):
 			d = {}
 			d["NameUpper"] = (r.group + "_" + r.name).upper()
@@ -143,6 +146,7 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 			d["LocalId"] = i
 			d["HexLocalId"] =  "%08x" % i
 			dictionary["RESOURCES"].append(d)
+		dictionary["PORTS"] = thread.ports
 
 		log.info("Generating export files ...")
 		prj.apply_template("thread_vhdl_pcore", dictionary, hwdir, link)

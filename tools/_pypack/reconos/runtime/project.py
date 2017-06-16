@@ -58,7 +58,7 @@ class Clock:
 # Class representing a resource in the project.
 #
 class Resource:
-	_id = 0
+	_id = 128
 
 	def __init__(self, name, type_, args, group):
 		self.id = Resource._id
@@ -374,7 +374,8 @@ class Project:
 			else:
 				sw = None
 			if cfg.has_option(t, "ResourceGroup"):
-				res = [_ for _ in self.resources if _.group == cfg.get(t, "ResourceGroup")]
+				res = re.split(r"[, ]+", cfg.get(t, "ResourceGroup"))
+				res = [_ for _ in self.resources if _.group in res]
 				if not res:
 					log.error("ResourceGroup not found")
 			else:

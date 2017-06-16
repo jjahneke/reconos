@@ -81,7 +81,7 @@ void reconos_app_cleanup();
  *   rt   - pointer to the ReconOS thread
  */
 struct reconos_thread *reconos_thread_create_hwt_<<Name>>();
-<<end generate>>
+<<=end generate=>>
 
 <<=generate for HasSw=>>
 /*
@@ -90,7 +90,7 @@ struct reconos_thread *reconos_thread_create_hwt_<<Name>>();
  *   rt   - pointer to the ReconOS thread
  */
 struct reconos_thread *reconos_thread_create_swt_<<Name>>();
-<<end generate>>
+<<=end generate=>>
 
 /*
  * Destroyes a hardware thread created.

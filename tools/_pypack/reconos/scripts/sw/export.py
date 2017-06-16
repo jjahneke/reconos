@@ -113,8 +113,10 @@ def export_sw_thread(args, swdir, link, thread):
 		d = {}
 		d["NameUpper"] = (r.group + "_" + r.name).upper()
 		d["NameLower"] = (r.group + "_" + r.name).lower()
+		d["Id"] = r.id
+		d["HexId"] = "%08x" % r.id
 		d["LocalId"] = i
-		d["HexLocalId"] =  "%08x" % i
+		d["HexLocalId"] = "%08x" % i
 		d["Type"] = r.type
 		d["TypeUpper"] = r.type.upper()
 		dictionary["RESOURCES"].append(d)

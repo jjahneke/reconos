@@ -60,9 +60,12 @@ def export_hls_ise(args, hlsdir, link, thread):
 	files = shutil2.listfiles(srcs, True)
 	dictionary["FILES"] = [{"File": _} for _ in files]
 	dictionary["HLSDIR"] = hlsdir
+	dictionary["MEM"] = thread.mem
+	dictionary["MEM_N"] = not thread.mem
 	dictionary["RESOURCES"] = []
 	for i, r in enumerate(thread.resources):
 		d = {}
+		d["Id"] = r.id
 		d["NameUpper"] = (r.group + "_" + r.name).upper()
 		d["NameLower"] = (r.group + "_" + r.name).lower()
 		d["LocalId"] = i

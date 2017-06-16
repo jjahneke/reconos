@@ -200,6 +200,9 @@ BEGIN <<HwtCoreName>>
  PORT HWT_Clk = reconos_clk_<<Clk>>
  PORT HWT_Rst = reconos_rst_<<Id>>
  PORT HWT_Signal = reconos_sig_<<Id>>
+ <<=generate for Ports=>>
+ PORT <<Name> = slot_<<Id>>_<<Name>>
+ <<=end generate=>>
 END
 <<end generate>>
 

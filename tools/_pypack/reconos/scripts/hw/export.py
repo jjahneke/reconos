@@ -135,6 +135,7 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 		incls = shutil2.listfiles(srcs, True)
 		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
 		dictionary["RESOURCES"] = []
+		dictionary["PORTS"] = thread.ports
 		for i, r in enumerate(thread.resources):
 			d = {}
 			d["NameUpper"] = (r.group + "_" + r.name).upper()

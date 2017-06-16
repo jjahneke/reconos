@@ -34,4 +34,8 @@ PORT HWT_Clk = "", DIR = I, SIGIS = Clk
 PORT HWT_Rst = "", DIR = I, SIGIS = Rst
 PORT HWT_Signal = "", DIR = I
 
+<<generate for PORTS>>
+PORT <<Name>> = "", <<Options>>
+<<end generate>>
+
 END

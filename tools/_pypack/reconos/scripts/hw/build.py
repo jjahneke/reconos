@@ -47,6 +47,15 @@ def _build_ise(prj, hwdir):
 	  shell=True)
 
 	print()
+
+	with open(shutil2.join(hwdir, "implementation", "system.bin"), "rb") as b:
+		with open(shutil2.join(hwdir, "implementation", "system.bin.rev"), "wb") as r:
+			while True:
+				word = b.read(4)
+				if not word:
+					break;
+				r.write(word[::-1])
+
 	shutil2.chdir(prj.dir)
 	
 def _build_vivado(prj, hwdir):
@@ -63,5 +72,13 @@ def _build_vivado(prj, hwdir):
 					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1]),
 					shell=True)
 
+	with open(shutil2.join(hwdir, "implementation", "system.bin"), "rb") as b:
+		with open(shutil2.join(hwdir, "implementation", "system.bin.rev"), "wb") as r:
+			while True:
+				word = b.read(4)
+				if not word:
+					break;
+				r.write(word[::-1])
 	print()
+
 	shutil2.chdir(prj.dir)

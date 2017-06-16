@@ -411,4 +411,3 @@ class Project:
 		if (hlsNeeded == True) and (self.impinfo.hls==""):
 			log.error("Thread has HLS sources, but no HLS tool is specified. Please specify TargetHls variable in General section in build.cfg")
 			exit(1)
-		

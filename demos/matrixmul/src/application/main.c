@@ -13,8 +13,8 @@
 
 #define log(...) printf(__VA_ARGS__); fflush(stdout)
 
-static struct mbox *mbox_addr = &matrixmul_resources_address;
-static struct mbox *mbox_ack = &matrixmul_resources_acknowledge;
+// static struct mbox *mbox_addr = &matrixmul_resources_address;
+// static struct mbox *mbox_ack = &matrixmul_resources_acknowledge;
 
 int matrix_data[3 * NUM_MATRICES][MATRIX_SIZE][MATRIX_SIZE];
 int *matrix_ptr[3 * NUM_MATRICES];
@@ -87,11 +87,11 @@ int main(int argc, char **argv) {
 		log("  at mbox addr + 0: 0x%x\n", (uint32_t)matrix_ptr[3 * i]);
 		log("  at mbox addr + 4: 0x%x\n", (uint32_t)matrix_ptr[3 * i + 1]);
 		log("  at mbox addr + 8: 0x%x\n", (uint32_t)matrix_ptr[3 * i + 2]);
-		mbox_put(mbox_addr, (uint32_t)&matrix_ptr[3 * i]);
+		mbox_put(resources_address, (uint32_t)&matrix_ptr[3 * i]);
 	}
 
 	while (1) {
-		m = mbox_get(mbox_ack);
+		m = mbox_get(resources_acknowledge);
 		log("matrixmul finished, setting up new matrix\n");
 		log("hwt returned 0x%x\n", m);
 
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 		log("  at mbox addr + 0: 0x%p\n", matrix_ptr[m - 2]);
 		log("  at mbox addr + 4: 0x%p\n", matrix_ptr[m - 1]);
 		log("  at mbox addr + 8: 0x%p\n", matrix_ptr[m]);
-		mbox_put(mbox_addr, (uint32_t)&matrix_ptr[m - 2]);
+		mbox_put(resources_address, (uint32_t)&matrix_ptr[m - 2]);
 	}
 
 	return 0;

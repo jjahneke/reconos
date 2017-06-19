@@ -48,9 +48,6 @@ proc help {} {
 #set reconos_ip_dir $::env(RECONOS)/demos/sort_demo/build.hw/pcores
 set reconos_ip_dir [pwd]/pcores
 
-# How many hardware threads do you want?
-set num_hwts 2
-
 set proj_name ""
 set proj_path ""
 set hwts "rt_sortdemo,rt_sortdemo"

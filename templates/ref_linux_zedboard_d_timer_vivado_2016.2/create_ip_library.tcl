@@ -1,4 +1,21 @@
-
+#                                                        ____  _____
+#                            ________  _________  ____  / __ \/ ___/
+#                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
+#                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
+#                         /_/   \___/\___/\____/_/ /_/\____//____/
+# 
+# ======================================================================
+#
+#   title:        ReconOS ip library script for Vivado
+#
+#   project:      ReconOS
+#   author:       Sebastian Meisner, University of Paderborn
+#   description:  This TCL script sets imports all ReconOS modules and 
+#                 the hardware threads to an IP integrator library. The
+#                 export.tcl then uses this library to create a working
+#                 ReconOS system design.
+#
+# ======================================================================
 
 <<reconos_preproc>>
 

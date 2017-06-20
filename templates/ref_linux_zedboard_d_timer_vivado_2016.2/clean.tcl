@@ -10,9 +10,8 @@
 #
 #   project:      ReconOS
 #   author:       Sebastian Meisner, University of Paderborn
-#   description:  This TCL script sets up all modules and connections
-#                 in an IP integrator block design needed to create
-#                 a fully functional ReconoOS design.
+#   description:  This TCL script cleans an Vivado project from temporary
+#                 and automatically created files. 
 #
 # ======================================================================
 

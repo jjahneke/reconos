@@ -37,7 +37,6 @@ proc help {} {
   puts "-proj_name <Name>        Optional: When given, a new preject will be"
   puts "                         created with the given name"
   puts "-proj_path <path>        Path to the newly created project"
-  puts "-hwts <T1,T2,...>        List of hardware threads to instantiate."
   puts "\[--help\]               Print help information for this script"
   puts "-------------------------------------------------------------------------\n"
   exit 0
@@ -45,12 +44,10 @@ proc help {} {
 
 
 # Set the directory where the IP integrator cores live
-#set reconos_ip_dir $::env(RECONOS)/demos/sort_demo/build.hw/pcores
 set reconos_ip_dir [pwd]/pcores
 
 set proj_name ""
 set proj_path ""
-set hwts "rt_sortdemo,rt_sortdemo"
 
 # Parse command line arguments
 if { $::argc > 0 } {
@@ -59,7 +56,6 @@ if { $::argc > 0 } {
     switch -regexp -- $option {
       "-proj_name" { incr i; set proj_name  [lindex $::argv $i] }
       "-proj_path" { incr i; set proj_path  [lindex $::argv $i] }
-      "-hwts"      { incr i; set hwts       [lindex $::argv $i] }
       "-help"      { help }
       default {
         if { [regexp {^-} $option] } {
@@ -89,7 +85,7 @@ proc reconos_hw_delete {} {
 }
 
 
-proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir hwts} {
+proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
     # Create new project if "new_project_name" is given.
     # Otherwise current project will be reused.
@@ -102,14 +98,6 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir hwts} {
     set proj_name [current_project]
     set proj_dir [get_property directory [current_project]]
     
-    # Process $hwts which is a string that contains a comma seperated list of hardware
-    # threads to implement
-    set hwts_list [split $hwts ","]
-    #set hwts_num  [llength $hwts_list]
-    set hwts_num  <<NUM_SLOTS>>
-    
-    
-
     # Set project properties
     set_property "board_part" "em.avnet.com:zed:part0:1.3" $proj_name
     set_property "default_lib" "xil_defaultlib" $proj_name
@@ -217,73 +205,78 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir hwts} {
     #create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 reconos_fifo_async_0
     #create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_hwt_idle:1.0 reconos_hwt_idle_0
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_memif_arbiter:1.0 reconos_memif_arbiter_0
-    set_property -dict [list CONFIG.C_NUM_HWTS $hwts_num ] [get_bd_cells reconos_memif_arbiter_0]
+    set_property -dict [list CONFIG.C_NUM_HWTS <<NUM_SLOTS>> ] [get_bd_cells reconos_memif_arbiter_0]
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_memif_memory_controller:1.0 reconos_memif_memory_controller_0
     #create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_memif_mmu_microblaze:1.0 reconos_memif_mmu_microblaze_0
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_memif_mmu_zynq:1.0 reconos_memif_mmu_zynq_0
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_osif_intc:1.0 reconos_osif_intc_0
-    set_property -dict [list CONFIG.C_NUM_INTERRUPTS $hwts_num ] [get_bd_cells reconos_osif_intc_0]
+    set_property -dict [list CONFIG.C_NUM_INTERRUPTS <<NUM_SLOTS>> ] [get_bd_cells reconos_osif_intc_0]
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_osif:1.0 reconos_osif_0
-    set_property -dict [list CONFIG.C_NUM_HWTS  $hwts_num ] [get_bd_cells reconos_osif_0]
+    set_property -dict [list CONFIG.C_NUM_HWTS  <<NUM_SLOTS>> ] [get_bd_cells reconos_osif_0]
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_proc_control:1.0 reconos_proc_control_0
-    set_property -dict [list CONFIG.C_NUM_HWTS  $hwts_num ] [get_bd_cells reconos_proc_control_0]
+    set_property -dict [list CONFIG.C_NUM_HWTS  <<NUM_SLOTS>> ] [get_bd_cells reconos_proc_control_0]
     create_bd_cell -type ip -vlnv cs.upb.de:reconos:timer:1.0 timer_0
 
-    # Add hardware thread and related FIFOs
-    for {set i 0} {$i < $hwts_num} {incr i} {
-        set hwt [string trim [lindex $hwts_list $i]]
-        switch -regexp -- $hwt {
-        "rt_sortdemo" { create_bd_cell -type ip -vlnv cs.upb.de:reconos:rt_sortdemo:1.0 "rt_sortdemo_$i" }
-
-        default {
-            puts "ERROR: Unknown hardware thread '$hwt' specified!\n"
-            return 1
-            }
-        }
+	<<generate for SLOTS>>
+	create_bd_cell -type ip -vlnv cs.upb.de:reconos:<<HwtCoreName>>:[str range <<HwtCoreVersion>> 0 2] "slot_<<Id>>"
+	
+	<<end generate>>
+        #"rt_sortdemo" { create_bd_cell -type ip -vlnv cs.upb.de:reconos:rt_sortdemo:1.0 "rt_sortdemo_$i" }
         
+	<<generate for SLOTS(Async == "sync")>>
         # Add FIFOS between hardware threads and MEMIF and OSIF
-        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_osif_hw2sw_$i"
-        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_osif_sw2hw_$i"
-        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_memif_hwt2mem_$i"
-        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_memif_mem2hwt_$i"
-
+        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_osif_hw2sw_<<Id>>"
+        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_osif_sw2hw_<<Id>>"
+        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_memif_hwt2mem_<<Id>>"
+        create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_sync:1.0 "reconos_fifo_memif_mem2hwt_<<Id>>"
+	<<end generate>>
+	
+	<<generate for SLOTS(Async == "async")>>
+	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_osif_hw2sw_<<Id>>"
+	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_osif_sw2hw_<<Id>>"
+	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_memif_hwt2mem_<<Id>>"
+	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_memif_mem2hwt_<<Id>>"	
+	<<end generate>>
+	
         # Add connections between FIFOs and other modules
-        connect_bd_intf_net [get_bd_intf_pins "rt_sortdemo_$i/OSIF_Hw2SW"] [get_bd_intf_pins "reconos_fifo_osif_hw2sw_$i/FIFO_M"]
-        connect_bd_intf_net [get_bd_intf_pins "rt_sortdemo_$i/OSIF_Sw2Hw"] [get_bd_intf_pins "reconos_fifo_osif_sw2hw_$i/FIFO_S"]
-        connect_bd_intf_net [get_bd_intf_pins "reconos_fifo_osif_hw2sw_$i/FIFO_S"] [get_bd_intf_pins "reconos_osif_0/OSIF_hw2sw_$i"]
-        connect_bd_intf_net [get_bd_intf_pins "reconos_fifo_osif_sw2hw_$i/FIFO_M"] [get_bd_intf_pins "reconos_osif_0/OSIF_sw2hw_$i"]
-        connect_bd_net [get_bd_pins "reconos_fifo_osif_hw2sw_$i/FIFO_Has_Data"] [get_bd_pins "reconos_osif_intc_0/OSIF_INTC_In_$i"]
+	<<generate for SLOTS>>
+        connect_bd_intf_net [get_bd_intf_pins "slot_<<Id>>/OSIF_Hw2SW"] [get_bd_intf_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_M"]
+        connect_bd_intf_net [get_bd_intf_pins "slot_<<Id>>/OSIF_Sw2Hw"] [get_bd_intf_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_S"]
+        connect_bd_intf_net [get_bd_intf_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_S"] [get_bd_intf_pins "reconos_osif_0/OSIF_hw2sw_<<Id>>"]
+        connect_bd_intf_net [get_bd_intf_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_M"] [get_bd_intf_pins "reconos_osif_0/OSIF_sw2hw_<<Id>>"]
+        connect_bd_net [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_Has_Data"] [get_bd_pins "reconos_osif_intc_0/OSIF_INTC_In_<<Id>>"]
 
-        connect_bd_intf_net [get_bd_intf_pins "rt_sortdemo_$i/MEMIF_Hwt2Mem"] [get_bd_intf_pins "reconos_fifo_memif_hwt2mem_$i/FIFO_M"]
-        connect_bd_intf_net [get_bd_intf_pins "rt_sortdemo_$i/MEMIF_Mem2Hwt"] [get_bd_intf_pins "reconos_fifo_memif_mem2hwt_$i/FIFO_S"]
-        connect_bd_intf_net [get_bd_intf_pins "reconos_memif_arbiter_0/MEMIF_Hwt2Mem_$i"] [get_bd_intf_pins "reconos_fifo_memif_hwt2mem_$i/FIFO_S"]
-        connect_bd_intf_net [get_bd_intf_pins "reconos_memif_arbiter_0/MEMIF_Mem2Hwt_$i"] [get_bd_intf_pins "reconos_fifo_memif_mem2hwt_$i/FIFO_M"]
+        connect_bd_intf_net [get_bd_intf_pins "slot_<<Id>>/MEMIF_Hwt2Mem"] [get_bd_intf_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_M"]
+        connect_bd_intf_net [get_bd_intf_pins "slot_<<Id>>/MEMIF_Mem2Hwt"] [get_bd_intf_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_S"]
+        connect_bd_intf_net [get_bd_intf_pins "reconos_memif_arbiter_0/MEMIF_Hwt2Mem_<<Id>>"] [get_bd_intf_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_S"]
+        connect_bd_intf_net [get_bd_intf_pins "reconos_memif_arbiter_0/MEMIF_Mem2Hwt_<<Id>>"] [get_bd_intf_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_M"]
         
         # Set sizes of FIFOs
-        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {3}] [get_bd_cells "reconos_fifo_osif_hw2sw_$i"]
-        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {3}] [get_bd_cells "reconos_fifo_osif_sw2hw_$i"]
+        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {3}] [get_bd_cells "reconos_fifo_osif_hw2sw_<<Id>>"]
+        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {3}] [get_bd_cells "reconos_fifo_osif_sw2hw_<<Id>>"]
         
-        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {7}] [get_bd_cells "reconos_fifo_memif_hwt2mem_$i"]
-        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {7}] [get_bd_cells "reconos_fifo_memif_mem2hwt_$i"]
+        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {7}] [get_bd_cells "reconos_fifo_memif_hwt2mem_<<Id>>"]
+        set_property -dict [list CONFIG.C_FIFO_ADDR_WIDTH {7}] [get_bd_cells "reconos_fifo_memif_mem2hwt_<<Id>>"]
 
         # Connect clock signals
 	# FIFOs
-        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_osif_hw2sw_$i/FIFO_Clk"]
-        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_osif_sw2hw_$i/FIFO_Clk"]
-        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_memif_hwt2mem_$i/FIFO_Clk"]
-        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_memif_mem2hwt_$i/FIFO_Clk"]
+        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_Clk"]
+        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_Clk"]
+        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_Clk"]
+        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_Clk"]
         
         # HWTs
-        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "rt_sortdemo_$i/HWT_Clk"]
+        connect_bd_net [get_bd_pins reconos_clock_0/CLK0_Out] [get_bd_pins "slot_<<Id>>/HWT_Clk"]
 	
         # Resets
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_$i"] [get_bd_pins "rt_sortdemo_$i/HWT_Rst"]
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_$i"] [get_bd_pins "reconos_fifo_memif_mem2hwt_$i/FIFO_Rst"]
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_$i"] [get_bd_pins "reconos_fifo_memif_hwt2mem_$i/FIFO_Rst"]
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_$i"] [get_bd_pins "reconos_fifo_osif_hw2sw_$i/FIFO_Rst"]
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_$i"] [get_bd_pins "reconos_fifo_osif_sw2hw_$i/FIFO_Rst"]
-        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Signal_$i"] [get_bd_pins "rt_sortdemo_$i/HWT_Signal"]
-    }
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "slot_<<Id>>/HWT_Rst"]
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_Rst"]
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_Rst"]
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_Rst"]
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_Rst"]
+        connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Signal_<<Id>>"] [get_bd_pins "slot_<<Id>>/HWT_Signal"]
+	<<end generate>>
+
 
     #
     # Connections between components
@@ -451,7 +444,7 @@ proc reconos_built_bitstream {} {
 # MAIN
 #
 
-reconos_hw_setup $proj_name $proj_path $reconos_ip_dir $hwts
+reconos_hw_setup $proj_name $proj_path $reconos_ip_dir
 
 
 

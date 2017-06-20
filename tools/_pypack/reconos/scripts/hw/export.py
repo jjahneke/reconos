@@ -267,6 +267,6 @@ def _export_hw_vivado(prj, hwdir, link):
 	subprocess.call("""
 					source /opt/Xilinx/Vivado/{1}/settings64.sh;
 					cd {0};
-					vivado -mode batch -notrace -nojournal -nolog -source export.tcl -tclargs -proj_name myReconOS -proj_path . -hwts rt_sortdemo,rt_sortdemo;""".format(hwdir, prj.impinfo.xil[1]),
+					vivado -mode batch -notrace -nojournal -nolog -source export.tcl -tclargs -proj_name myReconOS -proj_path . ;""".format(hwdir, prj.impinfo.xil[1]),
 					shell=True)
 

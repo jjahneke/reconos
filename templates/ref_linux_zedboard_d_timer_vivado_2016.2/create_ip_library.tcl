@@ -249,8 +249,6 @@ proc import_pcore { repo_path ip_name {libs ""} } {
 	
 	if { $reconos_pcore_name == "reconos" } {
 		ipx::infer_core -set_current true -as_library true -vendor cs.upb.de -taxonomy /ReconOS  $reconos_pcore_dir/$reconos_pcore
-		#set_property is_include true [ipx::get_files hdl/vhdl/reconos_pkg.vhd -of_objects [ipx::get_file_groups vhdl_synthesis -of_objects [ipx::current_core]]]
-		#set_property is_include true [ipx::get_files hdl/vhdl/reconos_pkg.vhd -of_objects [ipx::get_file_groups vhdl_behavioral_simulation -of_objects [ipx::current_core]]]
 		set_property display_name ReconosLib [ipx::current_core]
 	} else {
 		ipx::infer_core -set_current true -as_library false -vendor cs.upb.de -taxonomy /ReconOS  $reconos_pcore_dir/$reconos_pcore
@@ -262,8 +260,6 @@ proc import_pcore { repo_path ip_name {libs ""} } {
 	set_property company_url 			http://www.reconos.de 	[ipx::current_core]
 	set_property vendor_display_name 	{Paderborn University - Computer Engineering Group} [ipx::current_core]
 	set_property description 			{ReconOS Library} 		[ipx::current_core]
-
-	#set_property previous_version_for_upgrade user.org:user:$reconos_pcore_name:1.0 [ipx::current_core]
 
 	# Set libraries
 	foreach {lib} $libs {
@@ -282,7 +278,6 @@ proc import_pcore { repo_path ip_name {libs ""} } {
 # MAIN
 #
 
-#set ip_repo "/home/meise/git/reconos_zynq/reconos/templates/ref_linux_zedboard_d_timer_vivado_2016.2/pcores"
 set ip_repo "pcores"
 set temp_dir "/tmp/reconos_tmp/"
 
@@ -291,12 +286,6 @@ set_property  ip_repo_paths  $ip_repo [current_project]
 
 create_fifo_interfaces $ip_repo 
 load_fifo_interfaces   $ip_repo
-
-#missing libraries: proc_common_v3_00_a, axi_lite_ipif_v1_01_a, xilinx.com:ip:axi_lite_ipif:1.01
-#WARNING: [IP_Flow 19-4330] HDL Parser: Not inferring subcore reference 'xilinx.com:ip:proc_common:3.00' from the library reference 'proc_common_v3_00_a' as the subcore cannot be found from the IP catalog.
-#WARNING: [IP_Flow 19-4330] HDL Parser: Not inferring subcore reference 'xilinx.com:ip:axi_lite_ipif:1.01' from the library reference 'axi_lite_ipif_v1_01_a' as the subcore cannot be found from the IP catalog.
-#WARNING: [IP_Flow 19-4330] HDL Parser: Not inferring subcore reference 'xilinx.com:ip:reconos:3.01' from the library reference 'reconos_v3_01_a' as the subcore cannot be found from the IP catalog.
-#WARNING: [IP_Flow 19-4330] HDL Parser: Not inferring subcore reference 'xilinx.com:ip:axi_master_burst:1.00' from the library reference 'axi_master_burst_v1_00_a' as the subcore cannot be found from the IP catalog.
 
 import_pcore $ip_repo reconos_v3_01_a ""; # ReconOS Lib has to be imported first, so other IP can use it
 
@@ -315,15 +304,28 @@ import_pcore $ip_repo reconos_osif_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0"
 import_pcore $ip_repo reconos_proc_control_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
 import_pcore $ip_repo timer_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
 
-import_pcore $ip_repo rt_sortdemo_v1_00_a "cs.upb.de:reconos:reconos:3.01.a"
+# create empty list
+set hwt_list [list]
+
+# add all hardware threads to the list (substitute dots in version string with underscores)
+<<generate for SLOTS>>
+lappend hwt_list <<HwtCoreName>>_v[string map {. _} "<<HwtCoreVersion>>"]
+<<end generate>>
+
+# make the elements of the list unique, i.e. remove duplicates
+set hwt_list [lsort -unique $hwt_list]
+
+# now import all hardware threads exactly once
+foreach hwt $hwt_list {
+    import_pcore $ip_repo $hwt "cs.upb.de:reconos:reconos:3.01.a"
+}
 
 #
 # AXI and other ports are automatically recognized, but our FIFO interfaces are not.
 # Therefore we have to add them manually.
 #
 set ip_name "reconos_memif_arbiter_v1_00_a"
-#ipx::edit_ip_in_project -upgrade true -name ${ip_name}_project -directory  ${ip_repo}/${ip_name}_project $ip_repo/$ip_name/component.xml
-#ipx::current_core $ip_repo/$ip_name/component.xml
+
 <<generate for SLOTS>>
 add_fifo_m_interface $ip_repo/$ip_name "MEMIF_Mem2Hwt_<<Id>>" "MEMIF_Mem2Hwt_<<Id>>_In_Full" "MEMIF_Mem2Hwt_<<Id>>_In_Data" "MEMIF_Mem2Hwt_<<Id>>_In_WE" "master"
 add_fifo_s_interface $ip_repo/$ip_name "MEMIF_Hwt2Mem_<<Id>>" "MEMIF_Hwt2Mem_<<Id>>_In_Empty" "MEMIF_Hwt2Mem_<<Id>>_In_Data" "MEMIF_Hwt2Mem_<<Id>>_In_RE" "master"

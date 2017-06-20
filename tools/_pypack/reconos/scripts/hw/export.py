@@ -257,11 +257,14 @@ def _export_hw_vivado(prj, hwdir, link):
 		export_hw_thread(prj, shutil2.join(hwdir, "pcores"), link, t.name)
 		
 	print("Calling TCL script to generate Vivado IP Repository")
-	subprocess.call("""
+	result = subprocess.call("""
 					source /opt/Xilinx/Vivado/{1}/settings64.sh;
 					cd {0};
 					vivado -mode batch -notrace -nojournal -nolog -source create_ip_library.tcl;""".format(hwdir, prj.impinfo.xil[1]),
 					shell=True)
+	if result != 0 :
+		print("[RDK] Generation of Vivado IP repository failed. Maybe you specified unknown components in build.cfg?")
+		exit(1)
 	
 	print("Calling TCL script to generate ReconOS in Vivado IP Integrator")
 	subprocess.call("""

@@ -349,7 +349,7 @@ fi
 # [13] move rootfs to ramdisk image
 #
 if [[ $ROOTFS = 2 ]]; then
-  sudo cp $WD/nfs/* $WD/ramdisk/mnt/
+  sudo cp -r $WD/nfs/* $WD/ramdisk/mnt/
   sudo umount $WD/ramdisk/mnt/
   gzip $WD/ramdisk/ramdisk.image
   mkimage -A arm -T ramdisk -C gzip -d $WD/ramdisk/ramdisk.image.gz $WD/ramdisk/uramdisk.image.gz

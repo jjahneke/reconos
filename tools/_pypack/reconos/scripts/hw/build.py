@@ -72,14 +72,6 @@ def _build_vivado(prj, hwdir):
 					source /opt/Xilinx/Vivado/{0}/settings64.sh;
 					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1]),
 					shell=True)
-
-	with open(shutil2.join(hwdir, "implementation", "system.bin"), "rb") as b:
-		with open(shutil2.join(hwdir, "implementation", "system.bin.rev"), "wb") as r:
-			while True:
-				word = b.read(4)
-				if not word:
-					break
-				r.write(word[::-1])
 	print()
 
 	shutil2.chdir(prj.dir)

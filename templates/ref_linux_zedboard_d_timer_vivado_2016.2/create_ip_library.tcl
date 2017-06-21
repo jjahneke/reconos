@@ -360,13 +360,14 @@ add_fifo_s_interface $ip_repo/$ip_name "MEMIF_Hwt2Mem_Out" "MEMIF_Hwt2Mem_Out_Em
 add_fifo_m_interface $ip_repo/$ip_name "MEMIF_Mem2Hwt_Out" "MEMIF_Mem2Hwt_Out_Full" "MEMIF_Mem2Hwt_Out_Data" "MEMIF_Mem2Hwt_Out_WE" "slave"
 
 
-set ip_name "rt_sortdemo_v1_00_a"
-add_fifo_s_interface $ip_repo/$ip_name "OSIF_Sw2Hw" "OSIF_Sw2Hw_Empty" "OSIF_Sw2Hw_Data" "OSIF_Sw2Hw_RE" "master"
-add_fifo_m_interface $ip_repo/$ip_name "OSIF_Hw2Sw" "OSIF_Hw2Sw_Full" "OSIF_Hw2Sw_Data" "OSIF_Hw2Sw_WE" "master"
-
-add_fifo_m_interface $ip_repo/$ip_name "MEMIF_Hwt2Mem" "MEMIF_Hwt2Mem_Full" "MEMIF_Hwt2Mem_Data" "MEMIF_Hwt2Mem_WE" "master"
-add_fifo_s_interface $ip_repo/$ip_name "MEMIF_Mem2Hwt" "MEMIF_Mem2Hwt_Empty" "MEMIF_Mem2Hwt_Data" "MEMIF_Mem2Hwt_RE" "master"
-
+foreach hwt $hwt_list {
+    set ip_name $hwt
+    add_fifo_s_interface $ip_repo/$ip_name "OSIF_Sw2Hw" "OSIF_Sw2Hw_Empty" "OSIF_Sw2Hw_Data" "OSIF_Sw2Hw_RE" "master"
+    add_fifo_m_interface $ip_repo/$ip_name "OSIF_Hw2Sw" "OSIF_Hw2Sw_Full" "OSIF_Hw2Sw_Data" "OSIF_Hw2Sw_WE" "master"
+    
+    add_fifo_m_interface $ip_repo/$ip_name "MEMIF_Hwt2Mem" "MEMIF_Hwt2Mem_Full" "MEMIF_Hwt2Mem_Data" "MEMIF_Hwt2Mem_WE" "master"
+    add_fifo_s_interface $ip_repo/$ip_name "MEMIF_Mem2Hwt" "MEMIF_Mem2Hwt_Empty" "MEMIF_Mem2Hwt_Data" "MEMIF_Mem2Hwt_RE" "master"    
+}
 
 set ip_name "reconos_osif_v1_00_a"
 <<generate for SLOTS>>

@@ -79,7 +79,7 @@ architecture implementation of rt_matrixmul is
 		);
 	end component;
 	
-	constant C_LINE_LEN_MATRIX : integer := 4;
+	constant C_LINE_LEN_MATRIX : integer := 128;
 	
 	-- const for matrixes A and C
 	constant C_LOCAL_RAM_SIZE_MATRIX_A_C          : integer := C_LINE_LEN_MATRIX;

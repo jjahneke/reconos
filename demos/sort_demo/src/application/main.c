@@ -13,7 +13,7 @@
 
 void print_help() {
 	printf("\n"
-	       "ReconOS v3 sort demo application\n"
+	       "ReconOS v4 sort demo application\n"
 	       "--------------------------------\n"
 	       "\n"
 	       "Sorts a buffer full of data with a variable number of sw and hw threads.\n"

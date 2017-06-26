@@ -34,7 +34,18 @@ function pre_check {
     if command -v "$2" > /dev/null 2>&1; then
       printf "$1...AVAILABLE\n"
     else
-      printf "$1...MISSING\n"
+      printf "$1...MISSING (ubuntu pkg: $4)\n"
+      eval $var=false
+    fi
+}
+
+function pre_check_lib {
+    var=$3
+    ldconfig -p | grep "$2" > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+      printf "$1...AVAILABLE\n"
+    else
+      printf "$1...MISSING (ubuntu pkg: $4)\n"
       eval $var=false
     fi
 }
@@ -65,9 +76,12 @@ else
 fi
 
 # more prerequisites
-pre_check "Git" "git" ALLCHECK
-pre_check "Sed" "sed" ALLCHECK
-pre_check "NFS" "nfsstat" ALLCHECK
+pre_check "Git" "git" ALLCHECK "git"
+pre_check "Sed" "sed" ALLCHECK ""
+pre_check "NFS" "nfsstat" ALLCHECK "nfs-kernel-server"
+pre_check "Make" "make" ALLCHECK "build-essential"
+pre_check_lib "lib32z1" "/usr/lib32/libz.so.1" ALLCHECK "lib32z1"
+pre_check_lib "libssl" "libssl.so$" ALLCHECK "libssl-dev"
 
 if [ "$ALLCHECK" = false ]; then
   printf "Please make sure that the prerequisites are met and run the install script again.\n"
@@ -296,6 +310,7 @@ if [[ $ROOTFS = 1 ]]; then
   sudo bash -c "cat >> /etc/exports << EOF
   ${WD}/nfs/ ${BOARDIP}(rw,no_subtree_check,fsid=root,anonuid=$(id -u),anongid=$(id -g))
   EOF"
+  sudo exportfs -ar
 fi
 
 #
@@ -334,7 +349,7 @@ fi
 # [13] move rootfs to ramdisk image
 #
 if [[ $ROOTFS = 2 ]]; then
-  sudo cp $WD/nfs/* $WD/ramdisk/mnt/
+  sudo cp -r $WD/nfs/* $WD/ramdisk/mnt/
   sudo umount $WD/ramdisk/mnt/
   gzip $WD/ramdisk/ramdisk.image
   mkimage -A arm -T ramdisk -C gzip -d $WD/ramdisk/ramdisk.image.gz $WD/ramdisk/uramdisk.image.gz

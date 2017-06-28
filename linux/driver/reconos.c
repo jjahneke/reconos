@@ -19,35 +19,50 @@
 
 #include "reconos.h"
 
-#include "osif.h"
+#include "osif_intc.h"
 #include "proc_control.h"
 
 
 // extern variables available in the entire module
 int NUM_HWTS = 0;
+int DYNAMIC_REG_COUNT = 0;
 
 static __init int reconos_init(void) {
-	__printk(KERN_INFO "[reconos] initizializing driver ...\n");
+	int ret;
 
-	proc_control_init();
+	__printk(KERN_INFO "[reconos] initializing driver ...\n");
 
-	if (osif_init() < 0)
-		goto osif_failed;
+	NUM_HWTS = proc_control_num_hwts_static();
+	DYNAMIC_REG_COUNT = (NUM_HWTS - 1) / 32 + 1;
+	__printk(KERN_INFO "[reconos] detected %d HWTs\n", NUM_HWTS);
+	if (NUM_HWTS < 0) {
+		goto num_hwts_failed;
+	}
 
-	goto out;
+	ret = proc_control_init();
+	if (ret < 0) {
+		goto proc_control_failed;
+	}
 
-osif_failed:
-	proc_control_exit();
-	return -1;
+	ret = osif_intc_init();
+	if (ret < 0) {
+		goto osif_intc_failed;
+	}
 
-out:
 	return 0;
+
+osif_intc_failed:
+	proc_control_exit();
+
+proc_control_failed:
+num_hwts_failed:
+	return -1;
 }
 
 static __exit void reconos_exit(void) {
 	__printk(KERN_INFO "[reconos] removing driver ...\n");
 
-	osif_exit();
+	osif_intc_exit();
 	proc_control_exit();
 
 	return;

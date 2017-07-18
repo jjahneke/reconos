@@ -81,7 +81,10 @@ pre_check "Sed" "sed" ALLCHECK ""
 pre_check "NFS" "nfsstat" ALLCHECK "nfs-kernel-server"
 pre_check "Make" "make" ALLCHECK "build-essential"
 pre_check_lib "lib32z1" "/usr/lib32/libz.so.1" ALLCHECK "lib32z1"
-pre_check_lib "libssl" "libssl.so$" ALLCHECK "libssl-dev"
+. /etc/lsb-release
+if [[ $DISTRIB_RELEASE = "14.04" ]]; then
+  pre_check_lib "libssl" "libssl.so$" ALLCHECK "libssl-dev"
+fi
 
 if [ "$ALLCHECK" = false ]; then
   printf "Please make sure that the prerequisites are met and run the install script again.\n"
@@ -308,8 +311,8 @@ ln -s bin/busybox init
 if [[ $ROOTFS = 1 ]]; then
   printf "Please provide root access to export NFS share!\n"
   sudo bash -c "cat >> /etc/exports << EOF
-  ${WD}/nfs/ ${BOARDIP}(rw,no_subtree_check,fsid=root,anonuid=$(id -u),anongid=$(id -g))
-  EOF"
+${WD}/nfs/ ${BOARDIP}(rw,no_subtree_check,all_squash,anonuid=$(id -u),anongid=$(id -g))
+EOF"
   sudo exportfs -ar
 fi
 
@@ -336,7 +339,7 @@ make -j"$(nproc)" RECONOS_ARCH=zynq RECONOS_OS=linux RECONOS_MMU=true PREFIX=$WD
 if [[ $ROOTFS = 2 ]]; then
   mkdir $WD/ramdisk
   cd $WD/ramdisk
-  dd if=/dev/zero of=ramdisk.image bs=1024 count=8192
+  dd if=/dev/zero of=ramdisk.image bs=1024 count=16384
   mke2fs -F ramdisk.image -L "ramdisk" -b 1024 -m 0
   tune2fs ramdisk.image -i 0
   chmod a+rwx ramdisk.image

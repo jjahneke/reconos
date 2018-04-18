@@ -569,10 +569,11 @@ void hwslot_resumethread(struct hwslot *slot,
 	reconos_proc_control_hwt_reset(_proc_control, slot->id, 1);
 	reconos_proc_control_hwt_signal(_proc_control, slot->id, 0);
 	reconos_proc_control_hwt_reset(_proc_control, slot->id, 0);
-
+	
+	slot->rt = rt;
+	
 	reconos_osif_write(slot->osif, (uint32_t)OSIF_SIGNAL_THREAD_RESUME);
 
-	slot->rt = rt;
 }
 
 /*

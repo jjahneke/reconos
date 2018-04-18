@@ -1056,25 +1056,32 @@ package body reconos_pkg is
 
 			when 1 =>
 				if i_osif.hw2sw_full = '0' then
-					o_osif.hw2sw_we <= '0';
-					o_osif.sw2hw_re <= '1';
+					o_osif.hw2sw_data <= arg0;
 
 					o_osif.step <= 2;
 				end if;
-				
+
 			when 2 =>
-				if i_osif.sw2hw_empty = '0' then
-					ret0 <= i_osif.sw2hw_data;
+				if i_osif.hw2sw_full = '0' then
+					o_osif.hw2sw_we <= '0';
+					o_osif.sw2hw_re <= '1';
 
 					o_osif.step <= 3;
 				end if;
 				
 			when 3 =>
 				if i_osif.sw2hw_empty = '0' then
+					ret0 <= i_osif.sw2hw_data;
+
+					o_osif.step <= 4;
+				end if;
+				
+			when 4 =>
+				if i_osif.sw2hw_empty = '0' then
 					ret1 <= i_osif.sw2hw_data;
 					o_osif.sw2hw_re <= '0';
 
-					o_osif.step <= 4;
+					o_osif.step <= 5;
 				end if;
 
 			when others =>

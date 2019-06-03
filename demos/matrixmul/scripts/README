@@ -1,5 +1,0 @@
-tcl and python files with to make export_hw work with matrixmul and vivado.
-
-reconos/tools/_pypack/reconos/scripts/hw/export.py
-reconos/templates/ref_linux_zedboard_d_timer_vivado_2016.2/create_ip_library.tcl
-reconos/templates/ref_linux_zedboard_d_timer_vivado_2016.2/system.tcl

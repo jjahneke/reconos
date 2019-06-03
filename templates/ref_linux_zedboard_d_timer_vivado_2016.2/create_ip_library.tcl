@@ -255,7 +255,7 @@ proc import_pcore { repo_path ip_name {libs ""} } {
 	}
 
 	puts "\[RDK\] After infer_core"
-	#set_property vendor 				cs.upb.de 				[ipx::current_core]
+	set_property vendor 				cs.upb.de 				[ipx::current_core]
 	set_property library 				reconos 				[ipx::current_core]
 	set_property company_url 			http://www.reconos.de 	[ipx::current_core]
 	set_property vendor_display_name 	{Paderborn University - Computer Engineering Group} [ipx::current_core]
@@ -314,6 +314,9 @@ lappend hwt_list <<HwtCoreName>>_v[string map {. _} "<<HwtCoreVersion>>"]
 
 # make the elements of the list unique, i.e. remove duplicates
 set hwt_list [lsort -unique $hwt_list]
+
+# make sure project is using automatic compile order before importing pcores without legacy .pao files
+set_property source_mgmt_mode All [current_project]
 
 # now import all hardware threads exactly once
 foreach hwt $hwt_list {

@@ -27,8 +27,6 @@ use ieee.std_logic_misc.all;
 --library proc_common_v3_00_a;
 --use proc_common_v3_00_a.proc_common_pkg.all;
 
-library reconos_memif_mmu_microblaze_v1_00_a;
-use reconos_memif_mmu_microblaze_v1_00_a.tlb;
 
 entity reconos_memif_mmu_microblaze is
 	generic (
@@ -344,7 +342,7 @@ begin
 	tlb_di  <= small_page_addr(31 downto 12);
 
 	tlb_gen : if C_TLB_SIZE > 0 generate
-		tlb : entity reconos_memif_mmu_microblaze_v1_00_a.tlb
+		tlb : entity work.tlb
 			generic map (
 				C_TLB_SIZE  => C_TLB_SIZE,
 				C_TAG_SIZE  => 20,

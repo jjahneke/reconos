@@ -38,8 +38,6 @@ use 	axi_lite_ipif_v3_0_4.axi_lite_ipif;
 <<end if>>
 
 
-library reconos_clock_v1_00_a;
-use reconos_clock_v1_00_a.user_logic;
 
 entity reconos_clock is
 	--
@@ -221,7 +219,7 @@ begin
 	--   The user logic includes the actual implementation of the bus
 	--   attachment.
 	--
-	ul : entity reconos_clock_v1_00_a.user_logic
+	ul : entity work.user_logic
 		generic map (
 			C_NUM_CLOCKS => C_NUM_CLOCKS,
 

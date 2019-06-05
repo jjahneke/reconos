@@ -38,8 +38,6 @@ use 	 axi_lite_ipif_v3_0_4.ipif_pkg.all;
 use 	 axi_lite_ipif_v3_0_4.axi_lite_ipif;
 <<end if>>
 
-library timer_v1_00_a;
-use timer_v1_00_a.user_logic;
 
 
 entity timer is
@@ -191,7 +189,7 @@ begin
 		);
 
 
-	USER_LOGIC_I : entity timer_v1_00_a.user_logic
+	USER_LOGIC_I : entity work.user_logic
 		generic map (
 			-- Bus protocol parameters
 			C_NUM_REG      => USER_NUM_REG,

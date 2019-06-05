@@ -31,8 +31,6 @@ library axi_master_burst_v2_0_7;
 use 	 axi_master_burst_v2_0_7.axi_master_burst;
 <<end if>>
 
-library reconos_memif_memory_controller_v1_00_a;
-use reconos_memif_memory_controller_v1_00_a.user_logic;
 
 entity reconos_memif_memory_controller is
 	--
@@ -265,7 +263,7 @@ begin
 	--   The user logic includes the actual implementation of the memory
 	--   controller.
 	--
-	ul : entity reconos_memif_memory_controller_v1_00_a.user_logic
+	ul : entity work.user_logic
 		port map (
 			MEMIF_Hwt2Mem_In_Data  => MEMIF_Hwt2Mem_In_Data_d,
 			MEMIF_Hwt2Mem_In_Empty => MEMIF_Hwt2Mem_In_Empty_d,

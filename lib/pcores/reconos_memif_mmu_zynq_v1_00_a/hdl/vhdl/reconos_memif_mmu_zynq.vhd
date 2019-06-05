@@ -24,8 +24,6 @@ use ieee.numeric_std.all;
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 
-library reconos_memif_mmu_zynq_v1_00_a;
-use reconos_memif_mmu_zynq_v1_00_a.tlb;
 
 entity reconos_memif_mmu_zynq is
 	--
@@ -305,7 +303,7 @@ begin
 	-- == TLB =============================================================
 
 	tlb_gen : if C_TLB_SIZE > 0 generate
-		tlb : entity reconos_memif_mmu_zynq_v1_00_a.tlb
+		tlb : entity work.tlb
 			generic map (
 				C_TLB_SIZE  => C_TLB_SIZE,
 				C_TAG_SIZE  => 20,

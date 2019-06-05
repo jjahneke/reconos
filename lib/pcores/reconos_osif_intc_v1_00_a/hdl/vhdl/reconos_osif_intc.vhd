@@ -38,8 +38,6 @@ use		 axi_lite_ipif_v3_0_4.ipif_pkg.all;
 use		 axi_lite_ipif_v3_0_4.axi_lite_ipif;
 <<end if>>
 
-library reconos_osif_intc_v1_00_a;
-use reconos_osif_intc_v1_00_a.user_logic;
 
 
 entity reconos_osif_intc is
@@ -198,7 +196,7 @@ begin
 			IP2Bus_Data     => ipif_IP2Bus_Data
 		);
 
-	USER_LOGIC_I : entity reconos_osif_intc_v1_00_a.user_logic
+	USER_LOGIC_I : entity work.user_logic
 		generic map (
 			-- INTC ports
 			C_NUM_INTERRUPTS   => C_NUM_INTERRUPTS,

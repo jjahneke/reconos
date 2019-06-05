@@ -287,6 +287,9 @@ set_property  ip_repo_paths  $ip_repo [current_project]
 create_fifo_interfaces $ip_repo 
 load_fifo_interfaces   $ip_repo
 
+# make sure project is using automatic compile order before importing pcores without legacy .pao files
+set_property source_mgmt_mode All [current_project]
+
 import_pcore $ip_repo reconos_v3_01_a ""; # ReconOS Lib has to be imported first, so other IP can use it
 
 update_ip_catalog ;#-rebuild -repo_path $ip_repo
@@ -314,9 +317,6 @@ lappend hwt_list <<HwtCoreName>>_v[string map {. _} "<<HwtCoreVersion>>"]
 
 # make the elements of the list unique, i.e. remove duplicates
 set hwt_list [lsort -unique $hwt_list]
-
-# make sure project is using automatic compile order before importing pcores without legacy .pao files
-set_property source_mgmt_mode All [current_project]
 
 # now import all hardware threads exactly once
 foreach hwt $hwt_list {

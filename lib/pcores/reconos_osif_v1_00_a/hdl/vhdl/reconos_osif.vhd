@@ -40,8 +40,6 @@ use 	 axi_lite_ipif_v3_0_4.axi_lite_ipif;
 <<end if>>
 
 
-library reconos_osif_v1_00_a;
-use reconos_osif_v1_00_a.user_logic;
 
 entity reconos_osif is
 	--
@@ -212,7 +210,7 @@ begin
 	--   The user logic includes the actual implementation of the bus
 	--   attachment.
 	--
-	ul : entity reconos_osif_v1_00_a.user_logic
+	ul : entity work.user_logic
 		generic map (
 			C_NUM_HWTS => C_NUM_HWTS,
 

@@ -19,109 +19,6 @@
 
 <<reconos_preproc>>
 
-proc create_fifo_interfaces {repo_path} {
-	
-	#
-	# FIFO_M
-	#
-	ipx::create_abstraction_definition cs.upb.de reconos FIFO_M_rtl 1.0
-	ipx::create_bus_definition cs.upb.de reconos FIFO_M 1.0
-	set_property xml_file_name $repo_path/FIFO_M_rtl.xml [ipx::current_busabs]
-	set_property xml_file_name $repo_path/FIFO_M.xml [ipx::current_busdef]
-	set_property bus_type_vlnv cs.upb.de:reconos:FIFO_M:1.0 [ipx::current_busabs]
-	set_property description {Master writes data, Slave accepts data} [ipx::current_busdef]
-	
-	#
-	# FIFO_M_Data
-	#
-	ipx::add_bus_abstraction_port FIFO_M_Data [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property master_width 32 [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property slave_direction in [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property slave_width 32 [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property is_data true [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Master Data Signal} [ipx::get_bus_abstraction_ports FIFO_M_Data -of_objects [ipx::current_busabs]]
-	
-	#
-	# FIFO_M_Full
-	#
-	ipx::add_bus_abstraction_port FIFO_M_Full [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property master_direction in [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property master_width 1 [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property slave_width 1 [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Master Full Signal} [ipx::get_bus_abstraction_ports FIFO_M_Full -of_objects [ipx::current_busabs]]
-	
-	#
-	# FIFO_M_WE
-	#
-	ipx::add_bus_abstraction_port FIFO_M_WE [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property master_width 1 [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property slave_direction in [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property slave_width 1 [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Master Write Enable Signal} [ipx::get_bus_abstraction_ports FIFO_M_WE -of_objects [ipx::current_busabs]]
-	
-	ipx::save_abstraction_definition [ipx::current_busabs]
-	ipx::save_bus_definition [ipx::current_busdef]
-	
-	#
-	# FIFO_S
-	#
-	ipx::create_abstraction_definition cs.upb.de reconos FIFO_S_rtl 1.0
-	ipx::create_bus_definition cs.upb.de reconos FIFO_S 1.0
-	set_property xml_file_name $repo_path/FIFO_S_rtl.xml [ipx::current_busabs]
-	set_property xml_file_name $repo_path/FIFO_S.xml [ipx::current_busdef]
-	set_property bus_type_vlnv cs.upb.de:reconos:FIFO_S:1.0 [ipx::current_busabs]
-	set_property description {Master reads data, Slave provides data} [ipx::current_busdef]
-	
-	#
-	# FIFO_S_Data
-	#
-	ipx::add_bus_abstraction_port FIFO_S_Data [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property master_direction in [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property master_width 32 [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property slave_width 32 [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property is_data true [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Slave Data Signal} [ipx::get_bus_abstraction_ports FIFO_S_Data -of_objects [ipx::current_busabs]]
-	
-	#
-	# FIFO_S_Empty
-	#
-	ipx::add_bus_abstraction_port FIFO_S_Empty [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property master_direction in [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property master_width 1 [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property slave_width 1 [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Slave Empty Signal} [ipx::get_bus_abstraction_ports FIFO_S_Empty -of_objects [ipx::current_busabs]]
-	
-	#
-	# FIFO_S_RE
-	#
-	ipx::add_bus_abstraction_port FIFO_S_RE [ipx::current_busabs]
-	set_property default_value 0 [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property master_presence required [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property master_width 1 [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property slave_presence required [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property slave_direction in [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property slave_width 1 [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	set_property description {FIFO Slave Read Enable Signal} [ipx::get_bus_abstraction_ports FIFO_S_RE -of_objects [ipx::current_busabs]]
-	
-	ipx::save_abstraction_definition [ipx::current_busabs]
-	ipx::save_bus_definition [ipx::current_busdef]
-	
-}
 proc load_fifo_interfaces {repo_path} {
 	#
 	# Opens interface definitions
@@ -284,7 +181,7 @@ set temp_dir "/tmp/reconos_tmp/"
 create_project -force managed_ip_project $temp_dir/managed_ip_project -part xc7z020clg484-1 -ip
 set_property  ip_repo_paths  $ip_repo [current_project]
 
-create_fifo_interfaces $ip_repo 
+# load IP-XACT definitions of FIFO interfaces (these are supplied with the template)
 load_fifo_interfaces   $ip_repo
 
 # make sure project is using automatic compile order before importing pcores without legacy .pao files

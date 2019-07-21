@@ -71,10 +71,11 @@ begin
   high <= a    when swap  else b;       -- higher value of a and b
 
   -- sorting state machine
-  sort_proc              : process(clk, reset)
+  sort_proc              : process(clk)
     variable ptr_max_new : natural range 0 to G_LEN-1;  -- number of items left to sort
   begin
 
+  if rising_edge(clk) then
     if reset = '1' then
       ptr       <= 0;
       ptr_max   <= G_LEN-1;
@@ -86,7 +87,7 @@ begin
       a         <= (others => '0');
       b         <= (others => '0');
 		state     <= STATE_IDLE;
-    elsif rising_edge(clk) then
+    else
 
       o_RAMWE   <= '0';
       o_RAMData <= (others => '0');
@@ -195,6 +196,7 @@ begin
       end case;
 
     end if;
+  end if;
   end process;
 
 end Behavioral;

@@ -74,74 +74,76 @@ architecture Behavioral of matrixmultiplier is
 	
 begin
 	
-	multiply : process(clk, reset, start) is
+	multiply : process(clk) is
 		variable j			: integer := 0;
 		variable k			: integer := 0;
 	begin
-		if (reset = '1') then
-			done <= '0';
+		if (clk'event and clk = '1') then
+			if (reset = '1') then
+				done <= '0';
 			
-			o_RAM_A_Addr <= (others=>'0');
-			o_RAM_B_Addr <= (others=>'0');
-			o_RAM_C_Addr <= (others=>'0');
-			o_RAM_C_Data <= (others=>'0');
-			o_RAM_C_WE <= '0';
-			
-			state <= STATE_IDLE;
-		elsif (clk'event and clk = '1') then
-			o_RAM_C_WE <= '0';
-			o_RAM_C_Data <= (others=>'0');
+				o_RAM_A_Addr <= (others=>'0');
+				o_RAM_B_Addr <= (others=>'0');
+				o_RAM_C_Addr <= (others=>'0');
+				o_RAM_C_Data <= (others=>'0');
+				o_RAM_C_WE <= '0';
+				
+				state <= STATE_IDLE;
+			else
+				o_RAM_C_WE <= '0';
+				o_RAM_C_Data <= (others=>'0');
 
-			case state is
-				when STATE_IDLE =>
-					done <= '0';
-					if (start = '1') then
-						j := 0;
-						k := 0;
-						temp <= (others=>'0');
-						state <= STATE_LOAD;
-					end if;
-				when STATE_LOAD =>
-					o_RAM_A_Addr <= conv_std_logic_vector(integer(k), G_RAM_ADDR_WIDTH_MATRIX_A_C);
-					o_RAM_B_Addr <= conv_std_logic_vector(integer(k*G_LINE_LEN_MATRIX+j), G_RAM_ADDR_WIDTH_MATRIX_B);
-					k := k + 1;
-					state <= STATE_LOAD_WAIT;
-				when STATE_LOAD_WAIT =>
-					state <= STATE_DELAY_1;
-				when STATE_DELAY_1 =>
-					state <= STATE_DELAY_2;
-				when STATE_DELAY_2 =>
-					state <= STATE_SUM;
-				when STATE_SUM =>
-					
-					temp <= temp + prod;
-					if (k = G_LINE_LEN_MATRIX) then
-						k := 0;
-						state <= STATE_STORE;
-					else
-						state <= STATE_LOAD;
-					end if;
+				case state is
+					when STATE_IDLE =>
+						done <= '0';
+						if (start = '1') then
+							j := 0;
+							k := 0;
+							temp <= (others=>'0');
+							state <= STATE_LOAD;
+						end if;
+					when STATE_LOAD =>
+						o_RAM_A_Addr <= conv_std_logic_vector(integer(k), G_RAM_ADDR_WIDTH_MATRIX_A_C);
+						o_RAM_B_Addr <= conv_std_logic_vector(integer(k*G_LINE_LEN_MATRIX+j), G_RAM_ADDR_WIDTH_MATRIX_B);
+						k := k + 1;
+						state <= STATE_LOAD_WAIT;
+					when STATE_LOAD_WAIT =>
+						state <= STATE_DELAY_1;
+					when STATE_DELAY_1 =>
+						state <= STATE_DELAY_2;
+					when STATE_DELAY_2 =>
+						state <= STATE_SUM;
+					when STATE_SUM =>
+						
+						temp <= temp + prod;
+						if (k = G_LINE_LEN_MATRIX) then
+							k := 0;
+							state <= STATE_STORE;
+						else
+							state <= STATE_LOAD;
+						end if;
 
-				when STATE_STORE =>
-					o_RAM_C_Addr <= conv_std_logic_vector(integer(j), G_RAM_ADDR_WIDTH_MATRIX_A_C);
-					o_RAM_C_WE <= '1';
-					o_RAM_C_Data <= temp;
-					state <= STATE_STORE_WAIT;
-				when STATE_STORE_WAIT =>
-					o_RAM_C_WE <= '0';
-					state <= STATE_FINISH_CYCLE;
-				when STATE_FINISH_CYCLE =>
-					j := j + 1;
-					
-					if (j = G_LINE_LEN_MATRIX) then
-						j		:= 0;
-						done	<= '1';
-						state	<= STATE_IDLE;
-					else
-						temp	<= (others => '0');
-						state	<= STATE_LOAD;
-					end if;
-			end case;
+					when STATE_STORE =>
+						o_RAM_C_Addr <= conv_std_logic_vector(integer(j), G_RAM_ADDR_WIDTH_MATRIX_A_C);
+						o_RAM_C_WE <= '1';
+						o_RAM_C_Data <= temp;
+						state <= STATE_STORE_WAIT;
+					when STATE_STORE_WAIT =>
+						o_RAM_C_WE <= '0';
+						state <= STATE_FINISH_CYCLE;
+					when STATE_FINISH_CYCLE =>
+						j := j + 1;
+						
+						if (j = G_LINE_LEN_MATRIX) then
+							j		:= 0;
+							done	<= '1';
+							state	<= STATE_IDLE;
+						else
+							temp	<= (others => '0');
+							state	<= STATE_LOAD;
+						end if;
+				end case;
+			end if;
 		end if;
 	end process;
 

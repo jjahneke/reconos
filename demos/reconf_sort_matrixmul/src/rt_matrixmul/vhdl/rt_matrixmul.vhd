@@ -279,175 +279,178 @@ begin
 	o_RAM_C_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1) <= o_RAM_C_Addr_reconos_2((32-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C) to 31);
 	
 	-- os and memory synchronisation state machine
-	reconos_fsm	: process(HWT_Clk,HWT_Rst,o_osif,o_memif,o_ram_a,o_ram_b,o_ram_c) is
+	reconos_fsm	: process(HWT_Clk,o_osif,o_memif,o_ram_a,o_ram_b,o_ram_c) is
 		variable done            : boolean;
 		variable addr_pos        : integer;
 		variable calculated_rows : integer;
 	begin
-		if HWT_Rst = '1' then
-			osif_reset(o_osif);
-			memif_reset(o_memif);
-			ram_reset(o_ram_A);
-			ram_reset(o_ram_B);
-			ram_reset(o_ram_C);
-			
-			multiplier_start <= '0';
-			done := false;
-			
-			calculated_rows	:= 0;
-			
-			len_data_MATRIX_A_C <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_A_C, 32);
-			len_data_MATRIX_B   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B  , 32);
-			-- important to know:
-			-- maddrs(0) = C, maddrs(1) = B, maddrs(2) = A
-			addr2maddrs <= (others => '0');
-			addr_pos    := C_MADDRS - 1;
-			for i in 0 to (C_MADDRS - 1) loop
-				maddrs(i) <= (others => '0');
-			end loop;
-			
-			temp_addr_A <= (others => '0');
-			temp_addr_C <= (others => '0');
-			
-			state <= STATE_INIT;
-		elsif rising_edge(HWT_Clk) then
-			case state is
-				when STATE_INIT =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						osif_read(i_osif, o_osif, ignore, done);
-						if done then
-							state <= STATE_GET_ADDR2MADDRS;
-						end if;
-					end if;
+		if rising_edge(HWT_Clk) then
+			if HWT_Rst = '1' then
+				osif_reset(o_osif);
+				memif_reset(o_memif);
+				ram_reset(o_ram_A);
+				ram_reset(o_ram_B);
+				ram_reset(o_ram_C);
+				
+				multiplier_start <= '0';
+				done := false;
+				
+				calculated_rows	:= 0;
+				
+				len_data_MATRIX_A_C <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_A_C, 32);
+				len_data_MATRIX_B   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B  , 32);
+				-- important to know:
+				-- maddrs(0) = C, maddrs(1) = B, maddrs(2) = A
+				addr2maddrs <= (others => '0');
+				addr_pos    := C_MADDRS - 1;
+				for i in 0 to (C_MADDRS - 1) loop
+					maddrs(i) <= (others => '0');
+				end loop;
+				
+				temp_addr_A <= (others => '0');
+				temp_addr_C <= (others => '0');
+				
+				state <= STATE_INIT;
 
-				-- Get address pointing to the addresses pointing to the 3 matrixes via FSL.
-				when STATE_GET_ADDR2MADDRS =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						--osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr2maddrs, done);
-						osif_mbox_tryget(i_osif, o_osif, MBOX_RECV, addr2maddrs, status, done);
-						if (done) then
-							if status = x"00000000" then
+			else
+				case state is
+					when STATE_INIT =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							osif_read(i_osif, o_osif, ignore, done);
+							if done then
 								state <= STATE_GET_ADDR2MADDRS;
-							else
-								addr2maddrs <= addr2maddrs(31 downto 2) & "00";
-								addr_pos := C_MADDRS - 1;
-								state <= STATE_READ_MADDRS;
 							end if;
 						end if;
-					end if;
-				
-				-- Read addresses pointing to input matrixes A, B and output matrix C from main memory.
-				when STATE_READ_MADDRS =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_read_word(i_memif, o_memif, addr2maddrs, maddrs(addr_pos), done);
-						if done then
-							if (addr_pos = 0) then
-								state <= STATE_READ_MATRIX_B;
-							else
-								addr_pos := addr_pos - 1;
-								addr2maddrs <= conv_std_logic_vector(unsigned(addr2maddrs) + 4, 32);
+
+					-- Get address pointing to the addresses pointing to the 3 matrixes via FSL.
+					when STATE_GET_ADDR2MADDRS =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							--osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr2maddrs, done);
+							osif_mbox_tryget(i_osif, o_osif, MBOX_RECV, addr2maddrs, status, done);
+							if (done) then
+								if status = x"00000000" then
+									state <= STATE_GET_ADDR2MADDRS;
+								else
+									addr2maddrs <= addr2maddrs(31 downto 2) & "00";
+									addr_pos := C_MADDRS - 1;
+									state <= STATE_READ_MADDRS;
+								end if;
 							end if;
 						end if;
-					end if;
-				
-				-- Read matrix B from main memory.
-				when STATE_READ_MATRIX_B =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_read(i_ram_B, o_ram_B, i_memif, o_memif, maddrs(1), X"00000000", len_data_MATRIX_B, done);
-						if done then
-							temp_addr_A <= maddrs(2);
-							temp_addr_C <= maddrs(0);
-							state <= STATE_READ_MATRIX_ROW_FROM_A;
+					
+					-- Read addresses pointing to input matrixes A, B and output matrix C from main memory.
+					when STATE_READ_MADDRS =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_read_word(i_memif, o_memif, addr2maddrs, maddrs(addr_pos), done);
+							if done then
+								if (addr_pos = 0) then
+									state <= STATE_READ_MATRIX_B;
+								else
+									addr_pos := addr_pos - 1;
+									addr2maddrs <= conv_std_logic_vector(unsigned(addr2maddrs) + 4, 32);
+								end if;
+							end if;
 						end if;
-					end if;
-				
-				-- Read a row of matrix A.
-				when STATE_READ_MATRIX_ROW_FROM_A =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_read(i_ram_A, o_ram_A, i_memif, o_memif, temp_addr_A, X"00000000", len_data_MATRIX_A_C, done);
-						if done then
-							multiplier_start <= '1';
-							state <= STATE_MULTIPLY_MATRIX_ROW;
-						end if;
-					end if;
-				
-				-- Multiply row of matrix A with matrix B.
-				when STATE_MULTIPLY_MATRIX_ROW =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						multiplier_start <= '0';
-						if (multiplier_done = '1') then
-							calculated_rows := calculated_rows + 1;
-							state <= STATE_WRITE_MATRIX_ROW_TO_C;
-						end if;
-					end if;
-				
-				-- Write multiplication result (row of matrix C) to main memory.
-				when STATE_WRITE_MATRIX_ROW_TO_C =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_write(i_ram_C, o_ram_C, i_memif, o_memif, X"00000000", temp_addr_C, len_data_MATRIX_A_C, done);
-						if (done) then
-							if (calculated_rows < C_LINE_LEN_MATRIX) then
-								-- Calculate new temporary addresses
-								-- => to fetch next matrix row of matrix A
-								-- => to store calculated values to next matrix row of matrix C
-								temp_addr_A <= conv_std_logic_vector(unsigned(temp_addr_A) + C_LINE_LEN_MATRIX*4, 32);
-								temp_addr_C <= conv_std_logic_vector(unsigned(temp_addr_C) + C_LINE_LEN_MATRIX*4, 32);
+					
+					-- Read matrix B from main memory.
+					when STATE_READ_MATRIX_B =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_read(i_ram_B, o_ram_B, i_memif, o_memif, maddrs(1), X"00000000", len_data_MATRIX_B, done);
+							if done then
+								temp_addr_A <= maddrs(2);
+								temp_addr_C <= maddrs(0);
 								state <= STATE_READ_MATRIX_ROW_FROM_A;
-							else
-								state <= STATE_ACK;
 							end if;
 						end if;
-					end if;
-				
-				-- We finished calculating matrix multiplication A * B = C.
-				when STATE_ACK =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						osif_mbox_put(i_osif, o_osif, MBOX_SEND, maddrs(addr_pos), ignore, done);
-						if (done) then
-							calculated_rows	:= 0;
-							addr_pos := C_MADDRS - 1;
-							temp_addr_A <= (others => '0');
-							temp_addr_C	 <= (others => '0');
-							state <= STATE_GET_ADDR2MADDRS;
+					
+					-- Read a row of matrix A.
+					when STATE_READ_MATRIX_ROW_FROM_A =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_read(i_ram_A, o_ram_A, i_memif, o_memif, temp_addr_A, X"00000000", len_data_MATRIX_A_C, done);
+							if done then
+								multiplier_start <= '1';
+								state <= STATE_MULTIPLY_MATRIX_ROW;
+							end if;
 						end if;
-					end if;
-				
-				-- Terminate hardware thread.
-				when STATE_THREAD_EXIT =>
-					osif_thread_exit(i_osif, o_osif);
-			end case;
+					
+					-- Multiply row of matrix A with matrix B.
+					when STATE_MULTIPLY_MATRIX_ROW =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							multiplier_start <= '0';
+							if (multiplier_done = '1') then
+								calculated_rows := calculated_rows + 1;
+								state <= STATE_WRITE_MATRIX_ROW_TO_C;
+							end if;
+						end if;
+					
+					-- Write multiplication result (row of matrix C) to main memory.
+					when STATE_WRITE_MATRIX_ROW_TO_C =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_write(i_ram_C, o_ram_C, i_memif, o_memif, X"00000000", temp_addr_C, len_data_MATRIX_A_C, done);
+							if (done) then
+								if (calculated_rows < C_LINE_LEN_MATRIX) then
+									-- Calculate new temporary addresses
+									-- => to fetch next matrix row of matrix A
+									-- => to store calculated values to next matrix row of matrix C
+									temp_addr_A <= conv_std_logic_vector(unsigned(temp_addr_A) + C_LINE_LEN_MATRIX*4, 32);
+									temp_addr_C <= conv_std_logic_vector(unsigned(temp_addr_C) + C_LINE_LEN_MATRIX*4, 32);
+									state <= STATE_READ_MATRIX_ROW_FROM_A;
+								else
+									state <= STATE_ACK;
+								end if;
+							end if;
+						end if;
+					
+					-- We finished calculating matrix multiplication A * B = C.
+					when STATE_ACK =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							osif_mbox_put(i_osif, o_osif, MBOX_SEND, maddrs(addr_pos), ignore, done);
+							if (done) then
+								calculated_rows	:= 0;
+								addr_pos := C_MADDRS - 1;
+								temp_addr_A <= (others => '0');
+								temp_addr_C	 <= (others => '0');
+								state <= STATE_GET_ADDR2MADDRS;
+							end if;
+						end if;
+					
+					-- Terminate hardware thread.
+					when STATE_THREAD_EXIT =>
+						osif_thread_exit(i_osif, o_osif);
+				end case;
+			end if;
 		end if;
 	end process;
 	

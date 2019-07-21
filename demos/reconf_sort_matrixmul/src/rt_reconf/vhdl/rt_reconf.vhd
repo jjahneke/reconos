@@ -197,105 +197,107 @@ begin
 	o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
 		
 	-- os and memory synchronisation state machine
-	reconos_fsm: process (HWT_Clk,HWT_Rst,o_osif,o_memif,o_ram) is
+	reconos_fsm: process (HWT_Clk,o_osif,o_memif,o_ram) is
 		variable done : boolean;
 	begin
-		if HWT_Rst = '1' then
-			osif_reset(o_osif);
-			memif_reset(o_memif);
-			ram_reset(o_ram);
-			state <= STATE_INIT;
-			done := False;
-			addr <= (others => '0');
-			len <= (others => '0');
-			sort_start <= '0';
-		elsif rising_edge(HWT_Clk) then
-			case state is
-				when STATE_INIT =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						osif_read(i_osif, o_osif, ignore, done);
-						if done then
-							state <= STATE_GET_ADDR;
+		if rising_edge(HWT_Clk) then
+			if HWT_Rst = '1' then
+				osif_reset(o_osif);
+				memif_reset(o_memif);
+				ram_reset(o_ram);
+				state <= STATE_INIT;
+				done := False;
+				addr <= (others => '0');
+				len <= (others => '0');
+				sort_start <= '0';
+			else
+				case state is
+					when STATE_INIT =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							osif_read(i_osif, o_osif, ignore, done);
+							if done then
+								state <= STATE_GET_ADDR;
+							end if;
 						end if;
-					end if;
 
-				-- get address via mbox: the data will be copied from this address to the local ram in the next states
-				when STATE_GET_ADDR =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr, done);
-						if done then
-							len               <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES,32);
-							state             <= STATE_READ;
+					-- get address via mbox: the data will be copied from this address to the local ram in the next states
+					when STATE_GET_ADDR =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr, done);
+							if done then
+								len               <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES,32);
+								state             <= STATE_READ;
+							end if;
 						end if;
-					end if;
-				
-				-- copy data from main memory to local memory
-				when STATE_READ =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_read(i_ram,o_ram,i_memif,o_memif,addr(31 downto 2) & "00",X"00000000",len,done);
-						if done then
-							sort_start <= '1';
-							state <= STATE_SORTING;
-						end if;
-					end if;
-
-				-- sort the words in local RAM
-				when STATE_SORTING =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						sort_start <= '0';
-						--o_ram.addr <= (others => '0');
-						if sort_done = '1' then
-							len    <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES,32);
-							--state  <= STATE_WRITE_REQ;
-							state  <= STATE_WRITE;
-						end if;
-					end if;
 					
-				-- copy data from local memory to main memory
-				when STATE_WRITE =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",addr,len,done);
-						if done then
-							state <= STATE_ACK;
+					-- copy data from main memory to local memory
+					when STATE_READ =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_read(i_ram,o_ram,i_memif,o_memif,addr(31 downto 2) & "00",X"00000000",len,done);
+							if done then
+								sort_start <= '1';
+								state <= STATE_SORTING;
+							end if;
 						end if;
-					end if;
-				
-				-- send mbox that signals that the sorting is finished
-				when STATE_ACK =>
-					if HWT_SIGNAL = '1' then
-						osif_reset(o_osif);
-						memif_reset(o_memif);
-						state <= STATE_THREAD_EXIT;					
-					else
-						osif_mbox_put(i_osif, o_osif, MBOX_SEND, addr, ignore, done);
-						if done then state <= STATE_GET_ADDR; end if;
-					end if;
 
-				-- thread exit
-				when STATE_THREAD_EXIT =>
-					osif_thread_exit(i_osif,o_osif);
-			
-			end case;
+					-- sort the words in local RAM
+					when STATE_SORTING =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							sort_start <= '0';
+							--o_ram.addr <= (others => '0');
+							if sort_done = '1' then
+								len    <= conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES,32);
+								--state  <= STATE_WRITE_REQ;
+								state  <= STATE_WRITE;
+							end if;
+						end if;
+						
+					-- copy data from local memory to main memory
+					when STATE_WRITE =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",addr,len,done);
+							if done then
+								state <= STATE_ACK;
+							end if;
+						end if;
+					
+					-- send mbox that signals that the sorting is finished
+					when STATE_ACK =>
+						if HWT_SIGNAL = '1' then
+							osif_reset(o_osif);
+							memif_reset(o_memif);
+							state <= STATE_THREAD_EXIT;					
+						else
+							osif_mbox_put(i_osif, o_osif, MBOX_SEND, addr, ignore, done);
+							if done then state <= STATE_GET_ADDR; end if;
+						end if;
+
+					-- thread exit
+					when STATE_THREAD_EXIT =>
+						osif_thread_exit(i_osif,o_osif);
+				
+				end case;
+			end if;
 		end if;
 	end process;
 	

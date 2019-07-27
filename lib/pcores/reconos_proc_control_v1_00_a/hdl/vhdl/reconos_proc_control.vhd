@@ -98,8 +98,10 @@ entity reconos_proc_control is
 		MMU_Fault_Addr       : in  std_logic_vector(31 downto 0);
 		MMU_Retry            : out std_logic;
 		MMU_Pgd              : out std_logic_vector(31 downto 0);
-		MMU_Tlb_Hits         : in  std_logic_vector(31 downto 0);
-		MMU_Tlb_Misses       : in  std_logic_vector(31 downto 0);
+
+		-- These input ports are optional and only used in conjunction with the microblaze mmu
+		MMU_Tlb_Hits         : in  std_logic_vector(31 downto 0) := X"00000000";
+		MMU_Tlb_Misses       : in  std_logic_vector(31 downto 0) := X"00000000";
 
 		-- Bus protocol ports, do not add to or delete
 		S_AXI_ACLK           : in  std_logic;

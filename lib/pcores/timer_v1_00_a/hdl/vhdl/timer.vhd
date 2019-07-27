@@ -59,7 +59,7 @@ entity timer is
 	port (
 		-- Timer ports
 		T_COUNTER   : out std_logic_vector(31 downto 0);
-		T_RST       : in  std_logic;
+		T_RST       : in  std_logic := '0'; -- optional
 
 		-- Bus protocol ports
 		S_AXI_ACLK      : in  std_logic;

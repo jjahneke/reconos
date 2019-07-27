@@ -77,6 +77,32 @@ end entity reconos_memif_mmu_microblaze;
 
 architecture implementation of reconos_memif_mmu_microblaze is
 
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+
+	ATTRIBUTE X_INTERFACE_INFO of MMU_Clk: SIGNAL is "xilinx.com:signal:clock:1.0 MMU_Clk CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of MMU_Clk: SIGNAL is "ASSOCIATED_RESET MMU_Rst, ASSOCIATED_BUSIF CTRL_FIFO_In:CTRL_FIFO_Out:CTRL_FIFO_Mmu:MEMIF_FIFO_Mmu";
+
+	ATTRIBUTE X_INTERFACE_INFO of MMU_Rst: SIGNAL is "xilinx.com:signal:reset:1.0 MMU_Rst RST";
+	ATTRIBUTE X_INTERFACE_PARAMETER of MMU_Rst: SIGNAL is "POLARITY ACTIVE_HIGH";
+
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_In_Data:   SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_In FIFO_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_In_Empty:  SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_In FIFO_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_In_RE:     SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_In FIFO_S_RE";
+
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Out_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Out FIFO_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Out_Empty: SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Out FIFO_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Out_RE:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Out FIFO_S_RE";
+
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Mmu_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Mmu FIFO_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Mmu_Empty: SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Mmu FIFO_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of CTRL_FIFO_Mmu_RE:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 CTRL_FIFO_Mmu FIFO_S_RE";
+
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_FIFO_Mmu_Data: SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_FIFO_Mmu FIFO_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_FIFO_Mmu_Full: SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_FIFO_Mmu FIFO_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_FIFO_Mmu_WE:   SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_FIFO_Mmu FIFO_M_WE";
+
 	constant C_MEMIF_CMD_WIDTH : integer := C_CTRL_FIFO_WIDTH - C_MEMIF_LENGTH_WIDTH;
 
 	signal ctrl_in_re      : std_logic;

@@ -87,6 +87,13 @@ end entity timer;
 
 architecture implementation of timer is
 
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+
+	ATTRIBUTE X_INTERFACE_INFO of T_RST: SIGNAL is "xilinx.com:signal:reset:1.0 T_RST RST";
+	ATTRIBUTE X_INTERFACE_PARAMETER of T_RST: SIGNAL is "POLARITY ACTIVE_HIGH";
+
 	constant USER_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;
 	constant IPIF_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;
 

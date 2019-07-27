@@ -108,6 +108,22 @@ end entity reconos_memif_memory_controller;
 
 
 architecture imp of reconos_memif_memory_controller is
+
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+
+	ATTRIBUTE X_INTERFACE_INFO of M_AXI_ACLK: SIGNAL is "xilinx.com:signal:clock:1.0 M_AXI_ACLK CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of M_AXI_ACLK: SIGNAL is "ASSOCIATED_BUSIF MEMIF_Hwt2Mem_In:MEMIF_Mem2Hwt_In:M_AXI";
+
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Hwt2Mem_In FIFO_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_In_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Hwt2Mem_In FIFO_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_In_RE:       SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Hwt2Mem_In FIFO_S_RE";
+
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Mem2Hwt_In FIFO_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_In_Full:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Mem2Hwt_In FIFO_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_In_WE:       SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Mem2Hwt_In FIFO_M_WE";
+
 	--
 	-- Internal ipif signals
 	--

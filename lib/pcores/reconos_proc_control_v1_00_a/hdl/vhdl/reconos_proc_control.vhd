@@ -127,6 +127,24 @@ end entity reconos_proc_control;
 
 architecture implementation of reconos_proc_control is
 
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+
+	ATTRIBUTE X_INTERFACE_INFO of S_AXI_ACLK: SIGNAL is "xilinx.com:signal:clock:1.0 S_AXI_ACLK CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of S_AXI_ACLK: SIGNAL is "ASSOCIATED_RESET <<generate for SLOTS>>PROC_Hwt_Rst_<<Id>>:<<end generate>>PROC_Sys_Rst:S_AXI_ARESETN";
+
+	ATTRIBUTE X_INTERFACE_INFO of PROC_Pgf_Int: SIGNAL is "xilinx.com:signal:interrupt:1.0 PROC_Pgf_Int INTERRUPT";
+	ATTRIBUTE X_INTERFACE_PARAMETER of PROC_Pgf_Int: SIGNAL is "SENSITIVITY LEVEL_HIGH";
+
+	ATTRIBUTE X_INTERFACE_INFO of PROC_Sys_Rst: SIGNAL is "xilinx.com:signal:reset:1.0 PROC_Sys_Rst RST";
+	ATTRIBUTE X_INTERFACE_PARAMETER of PROC_Sys_Rst: SIGNAL is "POLARITY ACTIVE_HIGH";
+
+	<<generate for SLOTS>>
+	ATTRIBUTE X_INTERFACE_INFO of PROC_Hwt_Rst_<<Id>>: SIGNAL is "xilinx.com:signal:reset:1.0 PROC_Hwt_Rst_<<Id>> RST";
+	ATTRIBUTE X_INTERFACE_PARAMETER of PROC_Hwt_Rst_<<Id>>: SIGNAL is "POLARITY ACTIVE_HIGH";
+	<<end generate>>
+
 	constant USER_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;
 	constant IPIF_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;
 

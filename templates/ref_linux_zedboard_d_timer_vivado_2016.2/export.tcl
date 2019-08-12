@@ -166,7 +166,6 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     set_property  ip_repo_paths  $reconos_ip_dir [current_project]
     update_ip_catalog
 
-	
     # Add system reset module
     create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset_0
 
@@ -244,8 +243,13 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
         connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_Clk"]
         connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_Clk"]
         connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_Clk"]
+
+        set_property -dict [list CONFIG.CLK_DOMAIN {design_1_reconos_clock_0_0_CLK<<SYSCLK>>_Out}] [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_Clk"] \
+                                                                                                   [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_Clk"] \
+                                                                                                   [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_Clk"] \
+                                                                                                   [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_Clk"]
 	<<end generate>>
-	
+
 	<<generate for SLOTS(Async == "async")>>
 	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_osif_hw2sw_<<Id>>"
 	create_bd_cell -type ip -vlnv cs.upb.de:reconos:reconos_fifo_async:1.0 "reconos_fifo_osif_sw2hw_<<Id>>"
@@ -263,8 +267,18 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 	connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_M_Clk"]
 	connect_bd_net [get_bd_pins reconos_clock_0/CLK<<Clk>>_Out] [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_M_Clk"]
 	connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_M_Clk"]
+
+    set_property -dict [list CONFIG.CLK_DOMAIN {design_1_reconos_clock_0_0_CLK<<SYSCLK>>_Out}] [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_S_Clk"] \
+                                                                                               [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_S_Clk"] \
+                                                                                               [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_M_Clk"] \
+                                                                                               [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_M_Clk"]
+
+    set_property -dict [list CONFIG.CLK_DOMAIN {design_1_reconos_clock_0_0_CLK<<Clk>>_Out}] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_S_Clk"] \
+                                                                                            [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_S_Clk"] \
+                                                                                            [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_M_Clk"] \
+                                                                                            [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_M_Clk"]
 	<<end generate>>
-	
+
         # Add connections between FIFOs and other modules
 	<<generate for SLOTS>>
         connect_bd_intf_net [get_bd_intf_pins "slot_<<Id>>/OSIF_Hw2SW"] [get_bd_intf_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_M"]
@@ -287,14 +301,17 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
         # HWTs
         connect_bd_net [get_bd_pins reconos_clock_0/CLK<<Clk>>_Out] [get_bd_pins "slot_<<Id>>/HWT_Clk"]
-	
+
+        set_property -dict [list CONFIG.CLK_DOMAIN {design_1_reconos_clock_0_0_CLK<<Clk>>_Out}] [get_bd_pins reconos_clock_0/CLK<<Clk>>_Out] \
+                                                                                                [get_bd_pins "slot_<<Id>>/HWT_Clk"]
+
         # Resets
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "slot_<<Id>>/HWT_Rst"]
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_memif_mem2hwt_<<Id>>/FIFO_Rst"]
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_memif_hwt2mem_<<Id>>/FIFO_Rst"]
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_osif_hw2sw_<<Id>>/FIFO_Rst"]
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>"] [get_bd_pins "reconos_fifo_osif_sw2hw_<<Id>>/FIFO_Rst"]
-	
+
 	# Misc
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Signal_<<Id>>"] [get_bd_pins "slot_<<Id>>/HWT_Signal"]
 	<<end generate>>
@@ -331,8 +348,9 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     #
     # Connect clocks - most clock inputs come from the reconos_clock module
     #
-
     connect_bd_net [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins reconos_clock_0/CLK_Ref]
+
+    set_property -dict [list CONFIG.CLK_DOMAIN {design_1_processing_system7_0_0_FCLK_CLK0}] [get_bd_pins reconos_clock_0/CLK_Ref]
 
     connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] \
                             [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] \
@@ -356,7 +374,18 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
                             [get_bd_pins reconos_proc_control_0/S_AXI_ACLK] \
                             [get_bd_pins reset_0/slowest_sync_clk] \
                             [get_bd_pins timer_0/S_AXI_ACLK]
-                            
+
+
+    set_property -dict [list CONFIG.CLK_DOMAIN {design_1_reconos_clock_0_0_CLK<<SYSCLK>>_Out}] [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] \
+                                                                                               [get_bd_pins reconos_clock_0/S_AXI_ACLK] \
+                                                                                               [get_bd_pins reconos_memif_arbiter_0/SYS_Clk] \
+                                                                                               [get_bd_pins reconos_memif_memory_controller_0/M_AXI_ACLK] \
+                                                                                               [get_bd_pins reconos_memif_mmu_zynq_0/SYS_Clk] \
+                                                                                               [get_bd_pins reconos_osif_intc_0/S_AXI_ACLK] \
+                                                                                               [get_bd_pins reconos_osif_0/S_AXI_ACLK] \
+                                                                                               [get_bd_pins reconos_proc_control_0/S_AXI_ACLK] \
+                                                                                               [get_bd_pins timer_0/S_AXI_ACLK]
+
     #
     # Connect Resets
     #
@@ -435,8 +464,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     assign_bd_address [get_bd_addr_segs {processing_system7_0/S_AXI_ACP/ACP_DDR_LOWOCM }]
     assign_bd_address [get_bd_addr_segs {processing_system7_0/S_AXI_ACP/ACP_M_AXI_GP0 }]
 
-    
-                            
+
     # Update layout of block design
     regenerate_bd_layout
 

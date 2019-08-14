@@ -4,9 +4,6 @@ use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 use ieee.math_real.all;
 
--- library proc_common_v3_00_a;
--- use proc_common_v3_00_a.proc_common_pkg.all;
-
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 

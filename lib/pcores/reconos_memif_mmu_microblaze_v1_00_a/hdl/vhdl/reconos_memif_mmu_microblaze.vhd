@@ -24,9 +24,6 @@ use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 use ieee.std_logic_misc.all;
 
---library proc_common_v3_00_a;
---use proc_common_v3_00_a.proc_common_pkg.all;
-
 
 entity reconos_memif_mmu_microblaze is
 	generic (

@@ -21,15 +21,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-<<if TOOL=="ise">>
-library axi_master_burst_v1_00_a;
-use 	 axi_master_burst_v1_00_a.axi_master_burst;
-<<end if>>
 
-<<if TOOL=="vivado">>
 library axi_master_burst_v2_0_7;
 use 	 axi_master_burst_v2_0_7.axi_master_burst;
-<<end if>>
 
 
 entity reconos_memif_memory_controller is
@@ -200,12 +194,9 @@ begin
 	--
 	--   @see ds844_axi_master_burst.pdf
 	--
-<<if TOOL=="ise">>
-	ipif : entity axi_master_burst_v1_00_a.axi_master_burst
-<<end if>>
-<<if TOOL=="vivado">>
+
         ipif : entity axi_master_burst_v2_0_7.axi_master_burst
-<<end if>>
+
 		generic map (
 			C_M_AXI_ADDR_WIDTH => C_M_AXI_ADDR_WIDTH,
 			C_M_AXI_DATA_WIDTH => C_M_AXI_DATA_WIDTH,

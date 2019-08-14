@@ -22,16 +22,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-<<if TOOL=="ise">>
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
-<<end if>>
-
-
-<<if TOOL=="vivado">>
-library reconos_v3_01_a;
-use reconos_v3_01_a.reconos_pkg.all;
-<<end if>>
 
 entity reconos_memif_arbiter is
 	--

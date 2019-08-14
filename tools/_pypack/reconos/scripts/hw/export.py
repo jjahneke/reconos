@@ -65,46 +65,20 @@ def export_hw_cmd(args):
 		export_hw_thread(args.prj, args.hwdir, args.link, args.thread)
 
 def export_hw(prj, hwdir, link):
-	if prj.impinfo.xil[0] == "ise":
-		_export_hw_ise(prj, hwdir, link)
-	elif prj.impinfo.xil[0] == "vivado":
+	if prj.impinfo.xil[0] == "vivado":
 		_export_hw_vivado(prj, hwdir, link)
 	else:
 		log.error("Tool not supported")
 
 def export_hw_thread(prj, hwdir, link, thread):
-	if (prj.impinfo.xil[0] == "ise") or (prj.impinfo.xil[0] == "vivado"):
-		_export_hw_thread_ise_vivado(prj, hwdir, link, thread)
+	if prj.impinfo.xil[0] == "vivado":
+		_export_hw_thread_vivado(prj, hwdir, link, thread)
 	else:
 		log.error("Tool not supported")
 
-def _export_hw_ise(prj, hwdir, link):
+def _export_hw_thread_vivado(prj, hwdir, link, thread):
 	''' 
-	Generates the project directory for an ISE/XPS project.
-	
-	It first compiles the configuration dictionary and then processes the templates
-	according to the configuration dictionary.
-	
-	hwdir gives the name of the project directory
-	link boolean; if true files will be linked instead of copied
-	'''
-	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
-
-	log.info("Export hardware to directory '" + hwdir + "'")
-
-	dictionary = get_dict(prj)
-
-	log.info("Generating export files ...")
-	tmpl = "ref_" + prj.impinfo.os + "_" + "_".join(prj.impinfo.board) + "_" + prj.impinfo.design + "_" + prj.impinfo.xil[1]
-	prj.apply_template(tmpl, dictionary, hwdir, link)
-
-	log.info("Generating threads ...")
-	for t in prj.threads:
-		export_hw_thread(prj, shutil2.join(hwdir, "pcores"), link, t.name)
-
-def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
-	''' 
-	Generates sources for one hardware thread for ReconOS in an ISE/XPS or Vivado project.
+	Generates sources for one hardware thread for ReconOS in an Vivado project.
 	
 	It checks whether vhdl or hls sources shall be used and generates the hardware thread
 	from the source templates. 
@@ -179,48 +153,26 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 		prj.apply_template("thread_hls_build", dictionary, tmp.name)
 
 		log.info("Starting Vivado HLS ...")
-		if "bbd" in thread.hwoptions:
-			if "vivado" in thread.hwoptions:
-				subprocess.call("""
-				  source /opt/Xilinx/Vivado/{1}/settings64.sh;
-				  cd {0};
-				  vivado_hls -f script_csynth.tcl;
-				  vivado -mode batch -notrace -nojournal -nolog -source script_vivado_edn.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
-				  shell=True)
 
-				dictionary = {}
-				dictionary["NAME"] = thread.name.lower()
-				dictionary["MEM"] = thread.mem
-				dictionary["MEM_N"] = not thread.mem
-				srcs = shutil2.join(tmp.name, "rt_imp.edn")
-				dictionary["SOURCES"] = [srcs]
-				incls = ["rt_imp.edn"]
-				dictionary["INCLUDES"] = [{"File": _} for _ in incls]
-			else:
-				log.error("No bbd tool found")
-				return
 
-			log.info("Generating export files ...")
-			prj.apply_template("thread_hls_pcore_bbd", dictionary, hwdir)
+		subprocess.call("""
+		  source /opt/Xilinx/Vivado/{1}/settings64.sh;
+		  cd {0};
+		  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
+		  shell=True)
 
-		else:
-			subprocess.call("""
-			  source /opt/Xilinx/Vivado/{1}/settings64.sh;
-			  cd {0};
-			  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
-			  shell=True)
+		dictionary = {}
+		dictionary["NAME"] = thread.name.lower()
+		dictionary["MEM"] = thread.mem
+		dictionary["MEM_N"] = not thread.mem
+		srcs = shutil2.join(tmp.name, "hls", "sol", "syn", "vhdl")
+		dictionary["SOURCES"] = [srcs]
+		incls = shutil2.listfiles(srcs, True)
+		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
 
-			dictionary = {}
-			dictionary["NAME"] = thread.name.lower()
-			dictionary["MEM"] = thread.mem
-			dictionary["MEM_N"] = not thread.mem
-			srcs = shutil2.join(tmp.name, "hls", "sol", "syn", "vhdl")
-			dictionary["SOURCES"] = [srcs]
-			incls = shutil2.listfiles(srcs, True)
-			dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
+		log.info("Generating export files ...")
+		prj.apply_template("thread_hls_pcore_vhdl", dictionary, hwdir)
 
-			log.info("Generating export files ...")
-			prj.apply_template("thread_hls_pcore_vhdl", dictionary, hwdir)
 
 		shutil2.rmtree("/tmp/test")
 		shutil2.mkdir("/tmp/test")

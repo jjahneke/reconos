@@ -474,6 +474,10 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     update_compile_order -fileset sources_1
     update_compile_order -fileset sim_1
     set_property top design_1_wrapper [current_fileset]
+	
+	# Set BD generation mode to OOC (defaults to OOC only from Vivado 2016.3 onwards)
+	set_property synth_checkpoint_mode Hierarchical [get_files $proj_dir/$proj_name.srcs/sources_1/bd/design_1/design_1.bd]
+	
     save_bd_design
 }
 

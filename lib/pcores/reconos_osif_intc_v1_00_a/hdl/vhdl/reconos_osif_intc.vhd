@@ -192,7 +192,7 @@ begin
 			IP2Bus_Data     => ipif_IP2Bus_Data
 		);
 
-	USER_LOGIC_I : entity work.user_logic
+	USER_LOGIC_I : entity work.reconos_osif_intc_user_logic
 		generic map (
 			-- INTC ports
 			C_NUM_INTERRUPTS   => C_NUM_INTERRUPTS,

@@ -212,7 +212,7 @@ begin
 	--   The user logic includes the actual implementation of the bus
 	--   attachment.
 	--
-	ul : entity work.user_logic
+	ul : entity work.reconos_clock_user_logic
 		generic map (
 			C_NUM_CLOCKS => C_NUM_CLOCKS,
 

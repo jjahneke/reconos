@@ -24,7 +24,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
-entity user_logic is
+entity timer_user_logic is
 	generic (
 		-- Bus protocol parameters
 		C_NUM_REG      : integer   := 1;
@@ -47,9 +47,9 @@ entity user_logic is
 		IP2Bus_WrAck    : out std_logic;
 		IP2Bus_Error    : out std_logic
 	);
-end entity user_logic;
+end entity timer_user_logic;
 
-architecture implementation of user_logic is
+architecture implementation of timer_user_logic is
 	signal counter : std_logic_vector(C_SLV_DWIDTH-1 downto 0) := x"00000000";
 	signal step_counter : std_logic_vector(C_SLV_DWIDTH-1 downto 0) := x"00000000";
 	signal step : std_logic_vector(C_SLV_DWIDTH-1 downto 0) := x"00000000";

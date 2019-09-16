@@ -237,7 +237,7 @@ begin
 			IP2Bus_Data     => ipif_IP2Bus_Data
 		);
 
-	USER_LOGIC_I : entity work.user_logic
+	USER_LOGIC_I : entity work.reconos_proc_control_user_logic
 		generic map (
 			-- Proc Control parameters
 			C_NUM_HWTS   => C_NUM_HWTS,

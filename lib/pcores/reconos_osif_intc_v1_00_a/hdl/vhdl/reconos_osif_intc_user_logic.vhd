@@ -24,7 +24,7 @@ use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 use ieee.std_logic_misc.all;
 
-entity user_logic is
+entity reconos_osif_intc_user_logic is
 	generic (
 		-- INTC parameters
 		C_NUM_INTERRUPTS   : integer := 1;
@@ -49,10 +49,10 @@ entity user_logic is
 		IP2Bus_WrAck    : out std_logic;
 		IP2Bus_Error    : out std_logic
 	);
-end entity user_logic;
+end entity reconos_osif_intc_user_logic;
 
 
-architecture imp of user_logic is
+architecture imp of reconos_osif_intc_user_logic is
 	
 	-- padding to fill unused interrupts in interrupt_reg
 	signal pad   : std_logic_vector(C_SLV_DWIDTH * C_NUM_REG - C_NUM_INTERRUPTS - 1 downto 0);

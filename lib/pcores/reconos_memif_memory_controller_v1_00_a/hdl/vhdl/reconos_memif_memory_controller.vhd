@@ -270,7 +270,7 @@ begin
 	--   The user logic includes the actual implementation of the memory
 	--   controller.
 	--
-	ul : entity work.user_logic
+	ul : entity work.reconos_memif_memory_controller_user_logic
 		port map (
 			MEMIF_Hwt2Mem_In_Data  => MEMIF_Hwt2Mem_In_Data_d,
 			MEMIF_Hwt2Mem_In_Empty => MEMIF_Hwt2Mem_In_Empty_d,

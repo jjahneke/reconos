@@ -365,7 +365,7 @@ begin
 	tlb_di  <= small_page_addr(31 downto 12);
 
 	tlb_gen : if C_TLB_SIZE > 0 generate
-		tlb : entity work.tlb
+		tlb : entity work.reconos_memif_mmu_microblaze_tlb
 			generic map (
 				C_TLB_SIZE  => C_TLB_SIZE,
 				C_TAG_SIZE  => 20,

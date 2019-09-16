@@ -24,7 +24,7 @@ use ieee.std_logic_unsigned.all;
 use ieee.std_logic_misc.all;
 use ieee.math_real.all;
 
-entity tlb is
+entity reconos_memif_mmu_zynq_tlb is
 	generic (
 		C_TLB_SIZE  : integer := 128;
 		C_TAG_SIZE  : integer := 20;
@@ -41,9 +41,9 @@ entity tlb is
 		TLB_Clk : in std_logic;
 		TLB_Rst : in std_logic
 	);
-end entity tlb;
+end entity reconos_memif_mmu_zynq_tlb;
 
-architecture implementation of tlb is
+architecture implementation of reconos_memif_mmu_zynq_tlb is
 	
 	signal do  : std_logic_vector(C_DATA_SIZE - 1 downto 0);
 	signal hit : std_logic;

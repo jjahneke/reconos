@@ -180,7 +180,7 @@ begin
 		);
 
 
-	USER_LOGIC_I : entity work.user_logic
+	USER_LOGIC_I : entity work.timer_user_logic
 		generic map (
 			-- Bus protocol parameters
 			C_NUM_REG      => USER_NUM_REG,

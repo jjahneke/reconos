@@ -330,7 +330,7 @@ begin
 	-- == TLB =============================================================
 
 	tlb_gen : if C_TLB_SIZE > 0 generate
-		tlb : entity work.tlb
+		tlb : entity work.reconos_memif_mmu_zynq_tlb
 			generic map (
 				C_TLB_SIZE  => C_TLB_SIZE,
 				C_TAG_SIZE  => 20,

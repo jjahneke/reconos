@@ -199,9 +199,11 @@ def _export_hw_vivado(prj, hwdir, link):
 	log.info("Generating export files ...")
 	
 	
-	tmpl = "ref_" + prj.impinfo.os + "_" + "_".join(prj.impinfo.board) + "_" + prj.impinfo.design + "_" + prj.impinfo.xil[0] + "_" + prj.impinfo.xil[1]
+	tmpl = "ref_" + prj.impinfo.os + "_" + "_".join(prj.impinfo.board) + "_" + prj.impinfo.design + "_" + prj.impinfo.xil[0]
 	print("Using template directory " + tmpl)
-	# TODO: No error message when template directory is not found!
+	if not shutil2.exists(prj.get_template(tmpl)):
+		log.error("Template directory not found in project or ReconOS repository")
+		return
 	prj.apply_template(tmpl, dictionary, hwdir, link)
 
 	log.info("Generating threads ...")

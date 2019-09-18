@@ -40,8 +40,8 @@ def _build_vivado(prj, hwdir):
 		return
 	
 	subprocess.call("""
-					source /opt/Xilinx/Vivado/{0}/settings64.sh;
-					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1]),
+					source {2}/Vivado/{0}/settings64.sh;
+					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1], prj.impinfo.xil_path),
 					shell=True, executable="/bin/bash")
 	print()
 

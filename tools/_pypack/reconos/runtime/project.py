@@ -153,6 +153,7 @@ class ImpInfo:
 		self.part = ""
 		self.design = ""
 		self.xil = ""
+		self.xil_path = ""
 		self.hls = ""
 
 		self.os = ""
@@ -251,7 +252,7 @@ class Project:
 		if cfg.has_option("General", "TargetHls"):
 			self.impinfo.hls = cfg.get("General", "TargetHls").split(",")
 		else:
-			self.impinfo.hls = ""
+			self.impinfo.hls = self.impinfo.xil
 		if cfg.has_option("General", "CFlags"):
 			self.impinfo.cflags = cfg.get("General", "CFlags")
 		else:
@@ -260,6 +261,11 @@ class Project:
 			self.impinfo.ldflags = cfg.get("General", "LdFlags")
 		else:
 			self.impinfo.ldflags = ""
+		if cfg.has_option("General", "XilinxPath"):
+			self.impinfo.xil_path = cfg.get("General", "XilinxPath")
+		else:
+			self.impinfo.xil_path = "/opt/Xilinx"
+
 		log.debug("Found project '" + str(self.name) + "' (" + str(self.impinfo.board) + "," + str(self.impinfo.os) + ")")
 
 		self._parse_clocks(cfg)

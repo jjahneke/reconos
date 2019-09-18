@@ -156,9 +156,9 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 
 
 		subprocess.call("""
-		  source /opt/Xilinx/Vivado/{1}/settings64.sh;
+		  source {2}/Vivado/{1}/settings64.sh;
 		  cd {0};
-		  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
+		  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1], prj.impinfo.xil_path),
 		  shell=True, executable="/bin/bash")
 
 		dictionary = {}
@@ -212,9 +212,9 @@ def _export_hw_vivado(prj, hwdir, link):
 		
 	print("Calling TCL script to generate Vivado IP Repository")
 	result = subprocess.call("""
-					source /opt/Xilinx/Vivado/{1}/settings64.sh;
+					source {2}/Vivado/{1}/settings64.sh;
 					cd {0};
-					vivado -mode batch -notrace -nojournal -nolog -source create_ip_library.tcl;""".format(hwdir, prj.impinfo.xil[1]),
+					vivado -mode batch -notrace -nojournal -nolog -source create_ip_library.tcl;""".format(hwdir, prj.impinfo.xil[1], prj.impinfo.xil_path),
 					shell=True, executable="/bin/bash")
 	if result != 0 :
 		print("[RDK] Generation of Vivado IP repository failed. Maybe you specified unknown components in build.cfg?")
@@ -222,8 +222,8 @@ def _export_hw_vivado(prj, hwdir, link):
 	
 	print("Calling TCL script to generate ReconOS in Vivado IP Integrator")
 	subprocess.call("""
-					source /opt/Xilinx/Vivado/{1}/settings64.sh;
+					source {2}/Vivado/{1}/settings64.sh;
 					cd {0};
-					vivado -mode batch -notrace -nojournal -nolog -source export.tcl -tclargs -proj_name myReconOS -proj_path . ;""".format(hwdir, prj.impinfo.xil[1]),
+					vivado -mode batch -notrace -nojournal -nolog -source export.tcl -tclargs -proj_name myReconOS -proj_path . ;""".format(hwdir, prj.impinfo.xil[1], prj.impinfo.xil_path),
 					shell=True, executable="/bin/bash")
 

@@ -44,7 +44,7 @@ def clean_vivado(args):
 		subprocess.call("""
 				source /opt/Xilinx/Vivado/{0}/settings64.sh;
 				vivado -mode batch -notrace -nojournal -nolog -source clean.tcl;""".format(prj.impinfo.xil[1]),
-				shell=True)
+				shell=True, executable="/bin/bash")
 
 		print()
 		shutil2.chdir(prj.dir)

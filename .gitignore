@@ -67,3 +67,10 @@ demos/*/*.hw*/
 demos/*/*.sw*/
 demos/*/*.sim*/
 demos/*/*.hls*/
+demos/*/Bitstreams/
+demos/*/Checkpoint/
+demos/*/Implement/
+demos/*/Synth/
+demos/*/hd_visual/
+demos/*/*.log
+demos/*/*.jou

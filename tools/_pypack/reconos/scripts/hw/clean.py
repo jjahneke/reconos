@@ -42,7 +42,7 @@ def clean_vivado(args):
 			return
 		
 		subprocess.call("""
-				source {2}/Vivado/{0}/settings64.sh;
+				source {1}/Vivado/{0}/settings64.sh;
 				vivado -mode batch -notrace -nojournal -nolog -source clean.tcl;""".format(prj.impinfo.xil[1], prj.impinfo.xil_path),
 				shell=True, executable="/bin/bash")
 

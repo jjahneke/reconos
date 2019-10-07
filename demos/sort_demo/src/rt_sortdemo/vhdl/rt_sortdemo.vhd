@@ -7,6 +7,8 @@ use ieee.math_real.all;
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 
+use work.reconos_thread_pkg.all;
+
 entity rt_sortdemo is
 	port (
 		-- OSIF FIFO ports
@@ -97,9 +99,6 @@ architecture implementation of rt_sortdemo is
 	constant C_LOCAL_RAM_SIZE_IN_BYTES : integer := 4*C_LOCAL_RAM_SIZE;
 
 	type LOCAL_MEMORY_T is array (0 to C_LOCAL_RAM_SIZE-1) of std_logic_vector(31 downto 0);
-	
-	constant MBOX_RECV  : std_logic_vector(31 downto 0) := x"00000000";
-	constant MBOX_SEND  : std_logic_vector(31 downto 0) := x"00000001";
 
 	signal addr     : std_logic_vector(31 downto 0);
 	signal len      : std_logic_vector(31 downto 0);
@@ -247,7 +246,7 @@ begin
 
 					-- get address via mbox: the data will be copied from this address to the local ram in the next states
 					when STATE_GET_ADDR =>
-						osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr, done);
+						osif_mbox_get(i_osif, o_osif, RESOURCES_ADDRESS, addr, done);
 						if done then
 							if (addr = X"FFFFFFFF") then
 								state <= STATE_THREAD_EXIT;
@@ -284,7 +283,7 @@ begin
 					
 					-- send mbox that signals that the sorting is finished
 					when STATE_ACK =>
-						osif_mbox_put(i_osif, o_osif, MBOX_SEND, addr, ignore, done);
+						osif_mbox_put(i_osif, o_osif, RESOURCES_ACKNOWLEDGE, addr, ignore, done);
 						if done then state <= STATE_GET_ADDR; end if;
 
 					-- thread exit

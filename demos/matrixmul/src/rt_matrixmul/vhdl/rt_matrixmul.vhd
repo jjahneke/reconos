@@ -7,6 +7,8 @@ use ieee.math_real.all;
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 
+use work.reconos_thread_pkg.all;
+
 entity rt_matrixmul is
 	port (
 		-- OSIF FIFO ports
@@ -117,11 +119,6 @@ architecture implementation of rt_matrixmul is
 	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B   : integer := 4 * C_LOCAL_RAM_SIZE_MATRIX_B;
 	type LOCAL_MEMORY_TYPE_MATRIX_B is array(0 to C_LOCAL_RAM_SIZE_MATRIX_B   - 1) of std_logic_vector(31 downto 0);
 	
-	-- communication with microblaze core
-	constant MBOX_RECV : std_logic_vector(31 downto 0) := x"00000000";
-	constant MBOX_SEND : std_logic_vector(31 downto 0) := x"00000001";
-	signal ignore : std_logic_vector(31 downto 0);
-	
 	-- maddr is an acronym for "matrix address" (address that points to a matrix)
 	constant C_MADDRS : integer	:= 3;
 	type MADDR_BOX_TYPE is array(0 to C_MADDRS-1) of std_logic_vector(31 downto 0);
@@ -187,6 +184,8 @@ architecture implementation of rt_matrixmul is
 	
 	signal multiplier_start : std_logic;
 	signal multiplier_done  : std_logic;
+	
+	signal ignore : std_logic_vector(31 downto 0);
 begin
 	-- local BRAM read and write access
 	local_ram_ctrl_1 : process (HWT_Clk) is
@@ -343,7 +342,7 @@ begin
 
 					-- Get address pointing to the addresses pointing to the 3 matrixes via FSL.
 					when STATE_GET_ADDR2MADDRS =>
-						osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr2maddrs, done);
+						osif_mbox_get(i_osif, o_osif, RESOURCES_ADDRESS, addr2maddrs, done);
 						if (done) then
 							if (addr2maddrs = x"FFFFFFFF") then
 								state <= STATE_THREAD_EXIT;
@@ -409,7 +408,7 @@ begin
 					
 					-- We finished calculating matrix multiplication A * B = C.
 					when STATE_ACK =>
-						osif_mbox_put(i_osif, o_osif, MBOX_SEND, maddrs(addr_pos), ignore, done);
+						osif_mbox_put(i_osif, o_osif, RESOURCES_ACKNOWLEDGE, maddrs(addr_pos), ignore, done);
 						if (done) then
 							calculated_rows	:= 0;
 							addr_pos := C_MADDRS - 1;

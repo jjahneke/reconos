@@ -24,7 +24,7 @@ void std_matrix_mul(int *i_matrix_a, int *i_matrix_b, int *o_matrix_c, int matri
 	printf ("\n");
 }
 
-void *rt_matrixmul(void *data) {
+THREAD_ENTRY() {
 	unsigned int ret;
 	int **ret2;
 
@@ -37,5 +37,5 @@ void *rt_matrixmul(void *data) {
 		std_matrix_mul(ret2[0], ret2[1], ret2[2], STD_MMP_MATRIX_SIZE);
 		MBOX_PUT(resources_acknowledge, (int)ret2[2]);
 	}
-	return NULL;
+	return;
 }

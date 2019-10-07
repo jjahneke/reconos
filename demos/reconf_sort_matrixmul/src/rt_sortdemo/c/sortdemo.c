@@ -28,7 +28,7 @@ void bubblesort(uint32_t *data, int data_count) {
 	}
 }
 
-void *rt_sortdemo(void *data) {
+THREAD_ENTRY() {
 	uint32_t ret;
 	int flag;
 

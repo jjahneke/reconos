@@ -75,10 +75,10 @@ void reconos_app_cleanup();
 <<generate for THREADS>>
 <<=generate for HasHw=>>
 /*
- * Creates a hardware thread in the specified slot with its associated
+ * Creates a hardware thread in one of the specified slots with its associated
  * resources.
  *
- *   rt   - pointer to the ReconOS thread
+ *   returns: pointer to the ReconOS thread
  */
 struct reconos_thread *reconos_thread_create_hwt_<<Name>>();
 <<=end generate=>>
@@ -87,13 +87,13 @@ struct reconos_thread *reconos_thread_create_hwt_<<Name>>();
 /*
  * Creates a software thread with its associated resources.
  *
- *   rt   - pointer to the ReconOS thread
+ *   returns: pointer to the ReconOS thread
  */
 struct reconos_thread *reconos_thread_create_swt_<<Name>>();
 <<=end generate=>>
 
 /*
- * Destroyes a hardware thread created.
+ * Destroys a hardware thread created.
  *
  *   rt   - pointer to the ReconOS thread
  */
@@ -102,8 +102,8 @@ void reconos_thread_destroy_<<Name>>(struct reconos_thread *rt);
 
 <<generate for CLOCKS>>
 /*
- * Sets the frequency for the iven clock. Returns the actual clock which
- * were able to configure for the clock.
+ * Sets the frequency for the given clock. Returns the actual clock that
+ * the system was able to configure.
  *
  *   f - the wanted frequency in kHz
  */

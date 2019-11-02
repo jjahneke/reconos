@@ -164,7 +164,7 @@ void reconos_thread_init(struct reconos_thread *rt,
 void reconos_thread_setinitdata(struct reconos_thread *rt, void *init_data);
 
 /*
- * Specifies the allowed threads the hardware thread is allowed to
+ * Specifies the allowed slots the hardware thread is allowed to
  * run in.
  *
  *   rt         - pointer to the ReconOS thread
@@ -176,7 +176,7 @@ void reconos_thread_setallowedslots(struct reconos_thread *rt,
 
 /*
  * Associates the resource array to this thread. The resource array
- * is used directly and no copy is created. Make shure to not modify
+ * is used directly and no copy is created. Make sure to not modify
  * it and not put it on the stack.
  *
  *   rt             - pointer to the ReconOS thread
@@ -218,13 +218,13 @@ void reconos_thread_setbitstream(struct reconos_thread *rt,
  * thread. A bitstream for each slot must be provided.
  *
  *   rt   - pointer to the ReconOS thread
- *   path - paths of the bitstream containing, %d replaced by slot number
+ *   path - path of the bitstreams, %d replaced by slot number
  */
 void reconos_thread_loadbitstream(struct reconos_thread *rt,
                                   char *path);
 
 /*
- * Sets the main method of the software thread. When createing the
+ * Sets the main method of the software thread. When creating the
  * thread, a pointer to the thread is passed via the data parameter.
  *
  *   rt      - pointer to the ReconOS thread

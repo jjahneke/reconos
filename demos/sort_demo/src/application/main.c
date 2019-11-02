@@ -1,6 +1,5 @@
 #include "reconos.h"
 #include "reconos_app.h"
-#include "mbox.h"
 #include "timer.h"
 
 #include <stdio.h>

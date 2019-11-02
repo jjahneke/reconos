@@ -109,7 +109,7 @@
 	pthread_cond_broadcast((p_handle), (p_handle2))
 
 /*
- * Puts a single word into the mbox specified by handle.
+ * Reads a single word from the mbox specified by handle and returns it.
  *
  *   @see mbox_get
  */
@@ -117,7 +117,7 @@
 	mbox_get((p_handle))
 
 /*
- * Reads a single word from the mbox specified by handle.
+ * Puts a single word into the mbox specified by handle.
  *
  *   @see mbox_put
  */
@@ -125,8 +125,8 @@
 	mbox_put((p_handle), (data))
 
 /*
- * Tries to put a single word into the mbox specified by handle but does not
- * blocks until the mbox gets populated.
+ * Tries to read a single word from the mbox specified by handle but does not
+ * block until the mbox gets populated.
  *
  *   @see mbox_tryget
  */
@@ -134,8 +134,8 @@
 	mbox_tryget((p_handle), (&data))
 
 /*
- * Tries to read a single word from the mbox specified by handle but does not
- * blocks until the mbox gets free.
+ * Tries to put a single word into the mbox specified by handle but does not
+ * block until the mbox becomes free.
  *
  *   @see mbox_tryput
  */
@@ -163,7 +163,7 @@
  * Writes several words from the local ram into the main memory.
  *
  *   src - array to read data from
- *   dst - start address to read from the main memory
+ *   dst - start address to write to the main memory
  *   len - number of bytes to transmit (bytes)
  */
 #define MEM_WRITE(src, dst, len)

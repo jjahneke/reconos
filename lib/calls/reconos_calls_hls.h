@@ -207,7 +207,7 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 	stream_read(osif_sw2hw))
 
 /*
- * Puts a single word into the mbox specified by handle.
+ * Reads a single word from the mbox specified by handle and returns it.
  *
  *   @see mbox_get
  */
@@ -217,7 +217,7 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 	stream_read(osif_sw2hw))
 
 /*
- * Reads a single word from the mbox specified by handle.
+ * Puts a single word into the mbox specified by handle.
  *
  *   @see mbox_put
  */
@@ -228,8 +228,8 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 	stream_read(osif_sw2hw))
 
 /*
- * Tries to put a single word into the mbox specified by handle but does not
- * blocks until the mbox gets populated.
+ * Tries to read a single word from the mbox specified by handle but does not
+ * block until the mbox gets populated.
  *
  *   @see mbox_tryget
  */
@@ -240,8 +240,8 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 	stream_read(osif_sw2hw))
 
 /*
- * Tries to read a single word from the mbox specified by handle but does not
- * blocks until the mbox gets free.
+ * Tries to put a single word into the mbox specified by handle but does not
+ * block until the mbox becomes free.
  *
  *   @see mbox_tryput
  */
@@ -298,7 +298,7 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
  * correct address translation.
  *
  *   src - array to read data from
- *   dst - start address to read from the main memory
+ *   dst - start address to write to the main memory
  *   len - number of bytes to transmit (bytes)
  */
 #define MEM_WRITE(src,dst,len){\

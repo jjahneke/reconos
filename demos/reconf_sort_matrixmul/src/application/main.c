@@ -3,7 +3,6 @@
 
 #include "reconos.h"
 #include "reconos_app.h"
-#include "mbox.h"
 #include "timer.h"
 
 #include "utils.h"
@@ -166,7 +165,6 @@ int main(int argc, char **argv) {
 	int num_hwts, num_swts, num_blocks, str_matrix_size;
 	uint32_t *data, *copy;
 	int data_count;
-	int clk;
 
 	if (argc != 5) {
 		print_help();
@@ -209,7 +207,7 @@ int main(int argc, char **argv) {
 	reconos_init();
 	reconos_app_init();
 
-	clk = reconos_clock_threads_set(100000);
+	reconos_clock_threads_set(100000); //set dynamic clock "threads" to 100MHz
 
 	log("creating %d hw-threads:", num_hwts);
 	struct reconos_thread **reconos_hwts = (struct reconos_thread **) malloc(num_hwts * sizeof(struct reconos_thread));

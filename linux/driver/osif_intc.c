@@ -35,6 +35,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/uaccess.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 

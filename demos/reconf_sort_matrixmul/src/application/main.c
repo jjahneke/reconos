@@ -48,10 +48,9 @@ void print_help() {
 	);
 }
 
-/* function for the reconfiguration */
+/* functions for the reconfiguration */
 
-int reconfigure(char* filename,unsigned int partial){
-	/* construct path of bitfile */
+int reconfigure_xdevcfg(char* filename,unsigned int partial){
 
 	FILE *bitfile;
 	unsigned int size;
@@ -59,7 +58,7 @@ int reconfigure(char* filename,unsigned int partial){
 
 	bitfile = fopen(filename, "rb");
 	if(!bitfile){
-		log("Error opening bitfile %s\n",filename);
+		log("Error opening bitstream file %s\n",filename);
 		return -1;
 	}
 
@@ -110,9 +109,68 @@ int reconfigure(char* filename,unsigned int partial){
 	close(fd_finish_flag);
 
 	return 0;
-
 }
 
+int reconfigure_fpga_manager(char* filename,unsigned int partial){
+
+	//Check if bitstream file exists. For the FPGA Manager, it needs to be located at /lib/firmware/
+	char path [114] = "/lib/firmware/";
+	struct stat buffer;
+  	if (stat(strcat(path, filename), &buffer) != 0){
+		log("Bitstream file %s could not be found at /lib/firmware/\n",filename);
+		return -1;
+	}
+
+	int fd_partial = open("/sys/class/fpga_manager/fpga0/flags", O_RDWR);
+	if(fd_partial < 0){
+		log("Failed to open FPGA Manager attribute 'flags' when configuring %s\n",filename);
+		return -1;
+	}
+
+	char partial_flag[2];
+	if(!partial){
+		strcpy(partial_flag,"0");
+	}
+	else {
+		strcpy(partial_flag,"1");
+	}
+
+	write(fd_partial, partial_flag, 2);
+	close(fd_partial);
+
+	fd_partial = open("/sys/class/fpga_manager/fpga0/firmware", O_WRONLY);
+	if(fd_partial < 0){
+		log("Failed to open FPGA Manager attribute 'firmware' when configuring %s\n",filename);
+		return -1;
+	}
+	log("Opened FPGA Manager. Initiating bitstream reconfiguration\n");
+	write(fd_partial, filename, strlen(filename));
+
+	int fd_finish_flag = open("/sys/class/fpga_manager/fpga0/state", O_RDONLY);
+	char finish_flag[32];
+
+	/* wait until reconfiguration is finished */
+	while(strncmp(finish_flag, "operating", 9)){
+		read(fd_finish_flag,finish_flag,32);
+	}
+	log("Reconfiguration with bitfile %s finished\n",filename);
+	close(fd_partial);
+	close(fd_finish_flag);
+
+	return 0;
+}
+
+int reconfigure(char* filename,unsigned int partial){
+	struct stat buffer;
+	if (stat("/dev/xdevcfg", &buffer) == 0){
+		//Xilinx xdevcfg driver found (older kernel versions)
+		return reconfigure_xdevcfg(filename, partial);
+	}
+	else{
+		//Xilinx xdevcfg driver NOT found. Use FPGA Manager (newer kernel versions)
+		return reconfigure_fpga_manager(filename, partial);
+	}
+}
 
 /* functions for sortdemo */
 
@@ -198,7 +256,7 @@ int main(int argc, char **argv) {
 	}
 
 	t_reconfiguration_full = timer_get();
-	if(reconfigure("./config_sortdemo.bit",0) < 0){
+	if(reconfigure("config_sortdemo.bit.bin",0) < 0){
 		printf("Failed to load static bitfile of sortdemo\n");
 		return -1;
 	}
@@ -287,7 +345,7 @@ int main(int argc, char **argv) {
 		char id[10];
 		sprintf(id, "%d",i);
 		strcat(filename,id);
-		strcat(filename,"_partial.bit");
+		strcat(filename,"_partial.bit.bin");
 
 		/*suspend each thread and reconfigure */
 		log("Suspending HWT %d\n",i);

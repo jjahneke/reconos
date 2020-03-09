@@ -25,6 +25,8 @@ proc load_fifo_interfaces {repo_path} {
 	#
 	ipx::open_ipxact_file $repo_path/FIFO_M.xml
 	ipx::open_ipxact_file $repo_path/FIFO_S.xml
+	ipx::open_ipxact_file $repo_path/FIFO64_M.xml
+	ipx::open_ipxact_file $repo_path/FIFO64_S.xml
 }
 
 proc import_pcore { repo_path ip_name {libs ""} } {
@@ -84,15 +86,16 @@ update_ip_catalog ;#-rebuild -repo_path $ip_repo
 
 import_pcore $ip_repo reconos_clock_v1_00_a  "xilinx.com:ip:axi_lite_ipif:3.0" 
 import_pcore $ip_repo reconos_fifo_async_v1_00_a ""
+import_pcore $ip_repo reconos_fifo64_async_v1_00_a ""
 import_pcore $ip_repo reconos_fifo_sync_v1_00_a ""
 import_pcore $ip_repo reconos_hwt_idle_v1_00_a ""
 import_pcore $ip_repo reconos_memif_arbiter_v1_00_a "cs.upb.de:reconos:reconos:3.01.a"
-import_pcore $ip_repo reconos_memif_memory_controller_v1_00_a "cs.upb.de:reconos:reconos:3.01.a xilinx.com:ip:axi_master_burst:2.0"
+import_pcore $ip_repo reconos_memif_memory_controller_v1_00_a "cs.upb.de:reconos:reconos:3.01.a"
 import_pcore $ip_repo reconos_memif_mmu_microblaze_v1_00_a ""
-import_pcore $ip_repo reconos_memif_mmu_zynq_v1_00_a "cs.upb.de:reconos:reconos:3.01.a"
+import_pcore $ip_repo reconos_memif_mmu_usp_v1_00_a "cs.upb.de:reconos:reconos:3.01.a"
 import_pcore $ip_repo reconos_osif_intc_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
 import_pcore $ip_repo reconos_osif_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
-import_pcore $ip_repo reconos_proc_control_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
+import_pcore $ip_repo reconos_proc_control_v1_00_a 
 import_pcore $ip_repo timer_v1_00_a "xilinx.com:ip:axi_lite_ipif:3.0" 
 
 # create empty list

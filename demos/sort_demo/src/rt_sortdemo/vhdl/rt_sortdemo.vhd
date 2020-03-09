@@ -21,13 +21,13 @@ entity rt_sortdemo is
 		OSIF_Hw2Sw_WE      : out std_logic;
 
 		-- MEMIF FIFO ports
-		MEMIF_Hwt2Mem_Data    : out std_logic_vector(31 downto 0);
-		MEMIF_Hwt2Mem_Full    : in  std_logic;
-		MEMIF_Hwt2Mem_WE      : out std_logic;
+		MEMIF64_Hwt2Mem_Data    : out std_logic_vector(63 downto 0);
+		MEMIF64_Hwt2Mem_Full    : in  std_logic;
+		MEMIF64_Hwt2Mem_WE      : out std_logic;
 
-		MEMIF_Mem2Hwt_Data    : in  std_logic_vector(31 downto 0);
-		MEMIF_Mem2Hwt_Empty   : in  std_logic;
-		MEMIF_Mem2Hwt_RE      : out std_logic;
+		MEMIF64_Mem2Hwt_Data    : in  std_logic_vector(63 downto 0);
+		MEMIF64_Mem2Hwt_Empty   : in  std_logic;
+		MEMIF64_Mem2Hwt_RE      : out std_logic;
 
 		HWT_Clk    : in  std_logic;
 		HWT_Rst    : in  std_logic;
@@ -44,7 +44,7 @@ architecture implementation of rt_sortdemo is
 	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
 
 	ATTRIBUTE X_INTERFACE_INFO of HWT_Clk: SIGNAL is "xilinx.com:signal:clock:1.0 HWT_Clk CLK";
-	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Clk: SIGNAL is "ASSOCIATED_RESET HWT_Rst, ASSOCIATED_BUSIF OSIF_Sw2Hw:OSIF_Hw2Sw:MEMIF_Hwt2Mem:MEMIF_Mem2Hwt";
+	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Clk: SIGNAL is "ASSOCIATED_RESET HWT_Rst, ASSOCIATED_BUSIF OSIF_Sw2Hw:OSIF_Hw2Sw:MEMIF64_Hwt2Mem:MEMIF64_Mem2Hwt";
 
 	ATTRIBUTE X_INTERFACE_INFO of HWT_Rst: SIGNAL is "xilinx.com:signal:reset:1.0 HWT_Rst RST";
 	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Rst: SIGNAL is "POLARITY ACTIVE_HIGH";
@@ -57,13 +57,13 @@ architecture implementation of rt_sortdemo is
 	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_Full:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Hw2Sw FIFO_M_Full";
 	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_WE:       SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Hw2Sw FIFO_M_WE";
 
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_Data";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_Full:  SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_Full";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_WE:    SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_WE";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_Data:  SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_Full:  SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_WE:    SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_WE";
 
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_Data";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_Empty: SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_Empty";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_RE:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_RE";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_Data:  SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_Empty: SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_RE:    SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_RE";
 
 	type STATE_TYPE is (
 					STATE_INIT,
@@ -96,9 +96,10 @@ architecture implementation of rt_sortdemo is
 	-- IMPORTANT: define size of local RAM here!!!! 
 	constant C_LOCAL_RAM_SIZE          : integer := 2048;
 	constant C_LOCAL_RAM_ADDRESS_WIDTH : integer := integer(ceil(log2(real(C_LOCAL_RAM_SIZE))));
-	constant C_LOCAL_RAM_SIZE_IN_BYTES : integer := 4*C_LOCAL_RAM_SIZE;
+	constant C_LOCAL_RAM_SIZE_IN_BYTES : integer := 8*C_LOCAL_RAM_SIZE;
+	--4*C_LOCAL_RAM_SIZE;
 
-	type LOCAL_MEMORY_T is array (0 to C_LOCAL_RAM_SIZE-1) of std_logic_vector(31 downto 0);
+	type LOCAL_MEMORY_T is array (0 to C_LOCAL_RAM_SIZE-1) of std_logic_vector(63 downto 0); --(31 downto 0);
 
 	signal addr     : std_logic_vector(31 downto 0);
 	signal len      : std_logic_vector(31 downto 0);
@@ -111,15 +112,15 @@ architecture implementation of rt_sortdemo is
 	signal o_ram    : o_ram_t;
 
 	signal o_RAMAddr_sorter : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
-	signal o_RAMData_sorter : std_logic_vector(0 to 31);
+	signal o_RAMData_sorter : std_logic_vector(0 to 63); --(0 to 31);
 	signal o_RAMWE_sorter   : std_logic;
-	signal i_RAMData_sorter : std_logic_vector(0 to 31);
+	signal i_RAMData_sorter : std_logic_vector(0 to 63); --(0 to 31);
 
 	signal o_RAMAddr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
-	signal o_RAMAddr_reconos_2 : std_logic_vector(0 to 31);
-	signal o_RAMData_reconos   : std_logic_vector(0 to 31);
+	signal o_RAMAddr_reconos_2 : std_logic_vector(0 to 63); --(0 to 31);
+	signal o_RAMData_reconos   : std_logic_vector(0 to 63); --(0 to 31);
 	signal o_RAMWE_reconos     : std_logic;
-	signal i_RAMData_reconos   : std_logic_vector(0 to 31);
+	signal i_RAMData_reconos   : std_logic_vector(0 to 63); --(0 to 31);
 	
 	constant o_RAMAddr_max : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) := (others=>'1');
 
@@ -139,9 +140,9 @@ begin
 	DEBUG(6) <= '1' when state = STATE_THREAD_EXIT else '0';
 	DEBUG(38 downto 7) <= OSIF_Sw2Hw_Data;
 	DEBUG(39) <= OSIF_Sw2Hw_Empty;
-	DEBUG(71 downto 40) <= MEMIF_Mem2Hwt_Data;
-	DEBUG(72) <= MEMIF_Mem2Hwt_Empty;
-	DEBUG(104 downto 73) <= o_memif.hwt2mem_data;
+	DEBUG(71 downto 40) <= MEMIF64_Mem2Hwt_Data(31 downto 0);   --ToDo
+	DEBUG(72) <= MEMIF64_Mem2Hwt_Empty;
+	DEBUG(104 downto 73) <= o_memif.hwt2mem_data(31 downto 0);  --ToDO
 	DEBUG(105) <= o_memif.hwt2mem_we;
 	DEBUG(106) <= i_memif.hwt2mem_full;
 	DEBUG(110 downto 107) <= conv_std_logic_vector(i_memif.step, 4);
@@ -175,7 +176,7 @@ begin
 		generic map (
 			G_LEN     => C_LOCAL_RAM_SIZE,
 			G_AWIDTH  => C_LOCAL_RAM_ADDRESS_WIDTH,
-			G_DWIDTH  => 32
+			G_DWIDTH  => 64 --32
 		)
 		port map (
 			clk       => HWT_Clk,
@@ -203,12 +204,12 @@ begin
 	memif_setup (
 		i_memif,
 		o_memif,
-		MEMIF_Mem2Hwt_Data,
-		MEMIF_Mem2Hwt_Empty,
-		MEMIF_Mem2Hwt_RE,
-		MEMIF_Hwt2Mem_Data,
-		MEMIF_Hwt2Mem_Full,
-		MEMIF_Hwt2Mem_WE
+		MEMIF64_Mem2Hwt_Data,
+		MEMIF64_Mem2Hwt_Empty,
+		MEMIF64_Mem2Hwt_RE,
+		MEMIF64_Hwt2Mem_Data,
+		MEMIF64_Hwt2Mem_Full,
+		MEMIF64_Hwt2Mem_WE
 	);
 	
 	ram_setup (
@@ -223,7 +224,7 @@ begin
 	o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
 		
 	-- os and memory synchronisation state machine
-	reconos_fsm: process (HWT_Clk,o_osif,o_memif,o_ram) is
+	reconos_fsm: process (HWT_Clk,HWT_Rst,o_osif,o_memif,o_ram) is
 		variable done : boolean;
 	begin
 		if rising_edge(HWT_Clk) then
@@ -258,7 +259,8 @@ begin
 					
 					-- copy data from main memory to local memory
 					when STATE_READ =>
-						memif_read(i_ram,o_ram,i_memif,o_memif,addr(31 downto 2) & "00",X"00000000",len,done);
+						memif_read(i_ram,o_ram,i_memif,o_memif,X"7F" & addr(31 downto 2) & "00",X"00000000",len,done);
+					--ToDo: hardcoded offset                     xx
 						if done then
 							sort_start <= '1';
 							state <= STATE_SORTING;
@@ -276,7 +278,8 @@ begin
 						
 					-- copy data from local memory to main memory
 					when STATE_WRITE =>
-						memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",addr,len,done);
+						memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",X"7F" & addr,len,done);
+						--ToDo: hardcoded offset                              xx
 						if done then
 							state <= STATE_ACK;
 						end if;

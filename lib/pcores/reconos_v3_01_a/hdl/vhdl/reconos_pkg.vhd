@@ -1,21 +1,34 @@
 --                                                        ____  _____
---                            ________  _________  ____  / __ \/ ___/
+--                            ________  _________  ____  / __ \/ ___/64
 --                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
 --                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
 --                         /_/   \___/\___/\____/_/ /_/\____//____/
+--                         supporting 39-bit address width
+----------------------------------------------------------------------------------
+-- Company:     University of Paderborn
+-- Engineer:    Enno Lübbers
+--              Andreas Agne
+--              Christoph Rüthing
+--              Lennart Clausing
 -- 
--- ======================================================================
---
---   title:        VHDL Package - ReconOS
---
---   project:      ReconOS
---   author:       Enno Lübbers, University of Paderborn
---                 Andreas Agne, University of Paderborn
---                 Christoph Rüthing, University of Paderborn
---   description:  The entire ReconOS package with type definitions and
---                 hardware OS services in VHDL
---
--- ======================================================================
+-- Create Date:     05/10/2019 01:33:41 PM
+-- Design Name:     VHDL Package - ReconOS
+-- Module Name:     reconos64_pkg
+-- Project Name:    ReconOS
+-- Target Devices:  Zynq Ultrascale+
+-- Tool Versions:   Vivado 2018.2
+-- Description:     The entire ReconOS package with type definitions and
+--                  hardware OS services in VHDL
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 1.01 - altered MEMIF data width to 64bit
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
+
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -39,12 +52,13 @@ package reconos_pkg is
 	--   C_MEMIF_OP_WIDTH     - width of the operation in command word
 	--
 	constant C_OSIF_DATA_WIDTH  : integer := 32;
-	constant C_MEMIF_DATA_WIDTH : integer := 32;
+	constant C_MEMIF_DATA_WIDTH : integer := 64;
+	
 
-	constant C_MEMIF_CHUNK_WORDS  : integer := 64;
-	constant C_MEMIF_CHUNK_BYTES  : integer := C_MEMIF_CHUNK_WORDS * 4;
+	constant C_MEMIF_CHUNK_WORDS  : integer := 32;
+	constant C_MEMIF_CHUNK_BYTES  : integer := C_MEMIF_CHUNK_WORDS * 8;
 	constant C_MEMIF_CHUNK_WIDTH  : integer := 8;
-	constant C_MEMIF_LENGTH_WIDTH : integer := 24;
+	constant C_MEMIF_LENGTH_WIDTH : integer := 56;
 	constant C_MEMIF_OP_WIDTH     : integer := 8;
 
 	--
@@ -157,20 +171,20 @@ package reconos_pkg is
 	--   mem_addr - remote address of main memory
 	--
 	type i_ram_t is record
-		ram_addr : unsigned(31 downto 0);
-		ram_data : std_logic_vector(31 downto 0);
+		ram_addr : unsigned(63 downto 0);
+		ram_data : std_logic_vector(63 downto 0);
 
 		remm     : unsigned(31 downto 0);
-		mem_addr : unsigned(31 downto 0);
+		mem_addr : unsigned(63 downto 0);
 	end record;
 	
 	type o_ram_t is record
-		ram_addr : unsigned(31 downto 0);
-		ram_data : std_logic_vector(31 downto 0);
+		ram_addr : unsigned(63 downto 0);
+		ram_data : std_logic_vector(63 downto 0);
 		ram_we   : std_logic;
 
 		remm     : unsigned(31 downto 0);
-		mem_addr : unsigned(31 downto 0);
+		mem_addr : unsigned(63 downto 0);
 	end record;
 
 
@@ -644,40 +658,43 @@ package reconos_pkg is
 		signal i_osif  : in  i_osif_t;
 		signal o_osif  : out o_osif_t
 	);
-
+	
+	
+	-- supports 39-bit addressing
+	
 	--
-	-- Writes a single word into the main memory.
+    -- Writes a double word into the main memory.
+    --
+    --   i_memif - i_memif_t record
+    --   o_memif - o_memif_t record
+    --   addr    - address of the main memory to write
+    --   data    - double word to write into the main memory
+    --   done    - indicates that the call finished
+    --
+    procedure memif_write_word (
+        signal i_memif : in  i_memif_t;
+        signal o_memif : out o_memif_t;
+        addr           : in  std_logic_vector(63 downto 0);
+        data           : in  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
+        variable done  : out boolean
+    );
+	
 	--
-	--   i_memif - i_memif_t record
-	--   o_memif - o_memif_t record
-	--   addr    - address of the main memory to write
-	--   data    - word to write into the main memory
-	--   done    - indicates that the call finished
-	--
-	procedure memif_write_word (
-		signal i_memif : in  i_memif_t;
-		signal o_memif : out o_memif_t;
-		addr           : in  std_logic_vector(31 downto 0);
-		data           : in  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
-		variable done  : out boolean
-	);
-
-	--
-	-- Reads a single word from the main memory.
-	--
-	--   i_memif - i_memif_t record
-	--   o_memif - o_memif_t record
-	--   addr    - address of the main memory to read from
-	--   data    - word read from the main memory
-	--   done    - indicates that the call finished
-	--
-	procedure memif_read_word (
-		signal i_memif : in  i_memif_t;
-		signal o_memif : out o_memif_t;
-		addr           : in  std_logic_vector(31 downto 0);
-		signal data    : out std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
-		variable done  : out boolean
-	);
+    -- Reads a double word from the main memory.
+    --
+    --   i_memif - i_memif_t record
+    --   o_memif - o_memif_t record
+    --   addr    - address of the main memory to read from
+    --   data    - word read from the main memory
+    --   done    - indicates that the call finished
+    --
+    procedure memif_read_word (
+        signal i_memif : in  i_memif_t;
+        signal o_memif : out o_memif_t;
+        addr           : in  std_logic_vector(63 downto 0);
+        signal data    : out std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
+        variable done  : out boolean
+    );
 
 	--
  	-- Writes several words from the local ram into main memory. Therefore,
@@ -699,8 +716,8 @@ package reconos_pkg is
 		signal o_ram   : out o_ram_t;
 		signal i_memif : in  i_memif_t;
 		signal o_memif : out o_memif_t;
-		src_addr       : in  std_logic_vector(31 downto 0);
-		dst_addr       : in  std_logic_vector(31 downto 0);
+		src_addr       : in  std_logic_vector(63 downto 0);
+		dst_addr       : in  std_logic_vector(63 downto 0);
 		len            : in  std_logic_vector(31 downto 0);
 		variable done  : out boolean
 	);
@@ -725,8 +742,8 @@ package reconos_pkg is
 		signal o_ram   : out o_ram_t;
 		signal i_memif : in  i_memif_t;
 		signal o_memif : out o_memif_t;
-		src_addr       : in  std_logic_vector(31 downto 0);
-		dst_addr       : in  std_logic_vector(31 downto 0);
+		src_addr       : in  std_logic_vector(63 downto 0);
+		dst_addr       : in  std_logic_vector(63 downto 0);
 		len            : in  std_logic_vector(31 downto 0);
 		variable done  : out boolean
 	);
@@ -1344,10 +1361,13 @@ package body reconos_pkg is
 		end case;
 	end procedure osif_thread_exit;
 
+
+-- changed to 39-bit addressing
+
 	procedure memif_write_word (
 		signal i_memif  : in  i_memif_t;
 		signal o_memif  : out o_memif_t;
-		addr            : in  std_logic_vector(31 downto 0);
+		addr            : in  std_logic_vector(63 downto 0);
 		data            : in  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
 		variable done   : out boolean
 	) is begin
@@ -1356,13 +1376,14 @@ package body reconos_pkg is
 		case i_memif.step is
 			when 0 =>
 				o_memif.hwt2mem_we <= '1';
-				o_memif.hwt2mem_data <= MEMIF_CMD_WRITE & X"000004";
+				o_memif.hwt2mem_data <= MEMIF_CMD_WRITE & X"00000000000004";
 
 				o_memif.step <= 1;
 
 			when 1 =>
 				if i_memif.hwt2mem_full = '0' then
-					o_memif.hwt2mem_data <= addr(31 downto 2) & "00";
+				    -- 64bit aligned
+					o_memif.hwt2mem_data <= addr(63 downto 3) & "000";
 
 					o_memif.step <= 2;
 				end if;
@@ -1388,59 +1409,62 @@ package body reconos_pkg is
 		end case;
 	end procedure memif_write_word;
 	
-	procedure memif_read_word (
-		signal i_memif  : in  i_memif_t;
-		signal o_memif  : out o_memif_t;
-		addr            : in  std_logic_vector(31 downto 0);
-		signal data     : out  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
-		variable done   : out boolean
-	) is begin
-		done := False;
+	
+        procedure memif_read_word (
+                signal i_memif  : in  i_memif_t;
+                signal o_memif  : out o_memif_t;
+                addr            : in  std_logic_vector(63 downto 0);
+                signal data     : out  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
+                variable done   : out boolean
+        ) is begin
+                done := False;
 
-		case i_memif.step is
-			when 0 =>
-				o_memif.hwt2mem_we <= '1';
-				o_memif.hwt2mem_data <= MEMIF_CMD_READ & X"000004";
+                case i_memif.step is
+                    when 0 =>
+                        o_memif.hwt2mem_we <= '1';
+                        o_memif.hwt2mem_data <= MEMIF_CMD_READ & X"00000000000004";
 
-				o_memif.step <= 1;
+                        o_memif.step <= 1;
 
-			when 1 =>
-				if i_memif.hwt2mem_full = '0' then
-					o_memif.hwt2mem_data <= addr(31 downto 2) & "00";
+                    when 1 =>
+                        if i_memif.hwt2mem_full = '0' then
+                            -- 64bit aligned
+                            o_memif.hwt2mem_data <= addr(63 downto 3) & "000";
 
-					o_memif.step <= 2;
-				end if;
+                            o_memif.step <= 2;
+                        end if;
 
-			when 2 =>
-				if i_memif.hwt2mem_full = '0' then
-					o_memif.hwt2mem_we <= '0';
-					o_memif.mem2hwt_re <= '1';
+                    when 2 =>
+                        if i_memif.hwt2mem_full = '0' then
+                            o_memif.hwt2mem_we <= '0';
+                            o_memif.mem2hwt_re <= '1';
 
-					o_memif.step <= 3;
-				end if;
+                            o_memif.step <= 3;
+                        end if;
 
-			when 3 =>
-				if i_memif.mem2hwt_empty = '0' then
-					data <= i_memif.mem2hwt_data;
-					o_memif.mem2hwt_re <= '0';
+                    when 3 =>
+                        if i_memif.mem2hwt_empty = '0' then
+                            data <= i_memif.mem2hwt_data;
+                            o_memif.mem2hwt_re <= '0';
 
-					o_memif.step <= 4;
-				end if;
+                            o_memif.step <= 4;
+                        end if;
 
-			when others =>
-					done := True;
-					o_memif.step <= 0;
+                    when others =>
+                            done := True;
+                            o_memif.step <= 0;
 
-		end case;
-	end procedure memif_read_word;
+                end case;
+        end procedure memif_read_word;
+    
 
 	procedure memif_write (
 		signal i_ram    : in  i_ram_t;
 		signal o_ram    : out o_ram_t;
 		signal i_memif  : in  i_memif_t;
 		signal o_memif  : out o_memif_t;
-		src_addr        : in  std_logic_vector(31 downto 0);
-		dst_addr        : in  std_logic_vector(31 downto 0);
+		src_addr        : in  std_logic_vector(63 downto 0);
+		dst_addr        : in  std_logic_vector(63 downto 0);
 		len             : in  std_logic_vector(31 downto 0);
 		variable done   : out boolean
 	) is
@@ -1452,7 +1476,7 @@ package body reconos_pkg is
 			when 0 =>
 				o_memif.hwt2mem_we <= '0';
 				
-				o_ram.mem_addr <= unsigned(dst_addr(31 downto 2) & "00");
+				o_ram.mem_addr <= unsigned(dst_addr(63 downto 3) & "000");
 				o_ram.remm <= unsigned(len);
 
 				o_ram.ram_addr <= unsigned(src_addr);
@@ -1505,10 +1529,10 @@ package body reconos_pkg is
 					
 					o_ram.ram_addr <= i_ram.ram_addr + 1;
 				
-					o_ram.mem_addr <= i_ram.mem_addr + 4;
-					o_ram.remm <= i_ram.remm - 4;
+					o_ram.mem_addr <= i_ram.mem_addr + 8;
+					o_ram.remm <= i_ram.remm - 8;
 					
-					if (i_ram.mem_addr + 4) mod C_MEMIF_CHUNK_BYTES = 0 then
+					if (i_ram.mem_addr + 8) mod C_MEMIF_CHUNK_BYTES = 0 then
 						o_memif.hwt2mem_we <= '0';
 						
 						o_ram.ram_addr <= i_ram.ram_addr - 1;
@@ -1516,7 +1540,7 @@ package body reconos_pkg is
 						o_memif.step <= 1;
 					end if;
 								
-					if i_ram.remm - 4 = 0 then
+					if i_ram.remm - 8 = 0 then
 						o_memif.hwt2mem_we <= '0';
 						
 						o_memif.step <= 8;
@@ -1543,13 +1567,14 @@ package body reconos_pkg is
 		end case;
 	end procedure memif_write;
 
+	
 	procedure memif_read (
 		signal i_ram    : in  i_ram_t;
 		signal o_ram    : out o_ram_t;
 		signal i_memif  : in  i_memif_t;
 		signal o_memif  : out o_memif_t;
-		src_addr        : in  std_logic_vector(31 downto 0);
-		dst_addr        : in  std_logic_vector(31 downto 0);
+		src_addr        : in  std_logic_vector(63 downto 0);
+		dst_addr        : in  std_logic_vector(63 downto 0);
 		len             : in  std_logic_vector(31 downto 0);
 		variable done   : out boolean
 	) is
@@ -1559,7 +1584,8 @@ package body reconos_pkg is
 
 		case i_memif.step is
 			when 0 =>
-				o_ram.mem_addr <= unsigned(src_addr(31 downto 2) & "00");
+                                -- 64bit align
+				o_ram.mem_addr <= unsigned(src_addr(63 downto 3) & "000");
 				o_ram.remm <= unsigned(len);
 
 				o_ram.ram_addr <= unsigned(dst_addr) - 1;
@@ -1602,16 +1628,16 @@ package body reconos_pkg is
 					o_ram.ram_data <= i_memif.mem2hwt_data;
 					
 					o_ram.ram_addr <= i_ram.ram_addr + 1;
-					o_ram.mem_addr <= i_ram.mem_addr + 4;
-					o_ram.remm <= i_ram.remm - 4;
+					o_ram.mem_addr <= i_ram.mem_addr + 8;
+					o_ram.remm <= i_ram.remm - 8;
 					
-					if (i_ram.mem_addr + 4) mod C_MEMIF_CHUNK_BYTES = 0 then
+					if (i_ram.mem_addr + 8) mod C_MEMIF_CHUNK_BYTES = 0 then
 						o_memif.mem2hwt_re <= '0';
 					
 						o_memif.step <= 1;
 					end if;
 					
-					if i_ram.remm - 4 = 0 then
+					if i_ram.remm - 8 = 0 then
 						o_memif.mem2hwt_re <= '0';
 						
 						o_memif.step <= 5;

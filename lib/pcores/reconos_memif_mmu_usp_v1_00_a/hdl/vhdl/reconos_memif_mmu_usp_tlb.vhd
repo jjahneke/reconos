@@ -1,5 +1,5 @@
 --                                                        ____  _____
---                            ________  _________  ____  / __ \/ ___/
+--                            ________  _________  ____  / __ \/ ___/64
 --                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
 --                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
 --                         /_/   \___/\___/\____/_/ /_/\____//____/
@@ -10,8 +10,11 @@
 --
 --   project:      ReconOS
 --   author:       Christoph R??thing, University of Paderborn
+--                 Lennart Clausing, UPB (07/2019)
 --   description:  The TLB (translation lookaside buffer) caches the last
 --                 address translations for faster access.
+--                 
+--                 supports 39 bit VA / 48bit PA
 --
 -- ======================================================================
 
@@ -19,16 +22,19 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.std_logic_unsigned.all;
-use ieee.std_logic_misc.all;
-use ieee.math_real.all;
+--use ieee.std_logic_arith.all;
+--use ieee.std_logic_unsigned.all;
+--use ieee.std_logic_misc.all;
+--use ieee.math_real.all;
+use ieee.numeric_std.all;
 
-entity reconos_memif_mmu_zynq_tlb is
+
+
+entity reconos_memif_mmu_usp_tlb is
 	generic (
 		C_TLB_SIZE  : integer := 128;
-		C_TAG_SIZE  : integer := 20;
-		C_DATA_SIZE : integer := 32
+		C_TAG_SIZE  : integer := 27;
+		C_DATA_SIZE : integer := 36
 	);
 	port (
 		-- TLB ports
@@ -41,9 +47,9 @@ entity reconos_memif_mmu_zynq_tlb is
 		TLB_Clk : in std_logic;
 		TLB_Rst : in std_logic
 	);
-end entity reconos_memif_mmu_zynq_tlb;
+end entity reconos_memif_mmu_usp_tlb;
 
-architecture implementation of reconos_memif_mmu_zynq_tlb is
+architecture implementation of reconos_memif_mmu_usp_tlb is
 	
 	signal do  : std_logic_vector(C_DATA_SIZE - 1 downto 0);
 	signal hit : std_logic;
@@ -55,8 +61,8 @@ architecture implementation of reconos_memif_mmu_zynq_tlb is
 	signal tag_mem  : TAG_MEM_T;
 	signal data_mem : DATA_MEM_T;
 	
-	--signal wrptr : std_logic_vector(clog2(C_TLB_SIZE) - 1 downto 0); 
-	signal wrptr : std_logic_vector(integer(ceil(log2(real(C_TLB_SIZE)))) - 1 downto 0); 
+	--signal wrptr : std_logic_vector(integer(ceil(log2(real(C_TLB_SIZE)))) - 1 downto 0); 
+	signal wrptr: integer range 0 to C_TLB_SIZE - 1 := 0;
 	
 
 begin
@@ -68,14 +74,17 @@ begin
 	write_proc : process(TLB_Clk,TLB_Rst) is
 	begin
 		if TLB_Rst = '1' then
-			wrptr <= (others => '0');
+			--wrptr <= (others => '0');
+			wrptr <= 0;
 			valid <= (others => '0');
 		elsif rising_edge(TLB_Clk) then
 			if TLB_WE = '1' then
-				tag_mem(CONV_INTEGER(wrptr)) <= TLB_Tag;
-				data_mem(CONV_INTEGER(wrptr)) <= TLB_DI;
-				
-				valid(CONV_INTEGER(wrptr)) <= '1';
+				--tag_mem(CONV_INTEGER(wrptr)) <= TLB_Tag;
+				tag_mem(wrptr) <= TLB_Tag;
+				--data_mem(CONV_INTEGER(wrptr)) <= TLB_DI;
+				data_mem(wrptr) <= TLB_DI;
+				--valid(CONV_INTEGER(wrptr)) <= '1';
+				valid(wrptr) <= '1';
 				
 				wrptr <= wrptr + 1;
 			end if;

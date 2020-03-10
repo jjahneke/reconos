@@ -174,7 +174,7 @@ package reconos_pkg is
 		ram_addr : unsigned(63 downto 0);
 		ram_data : std_logic_vector(63 downto 0);
 
-		remm     : unsigned(31 downto 0);
+		remm     : unsigned(63 downto 0);
 		mem_addr : unsigned(63 downto 0);
 	end record;
 	
@@ -183,7 +183,7 @@ package reconos_pkg is
 		ram_data : std_logic_vector(63 downto 0);
 		ram_we   : std_logic;
 
-		remm     : unsigned(31 downto 0);
+		remm     : unsigned(63 downto 0);
 		mem_addr : unsigned(63 downto 0);
 	end record;
 
@@ -1477,7 +1477,7 @@ package body reconos_pkg is
 				o_memif.hwt2mem_we <= '0';
 				
 				o_ram.mem_addr <= unsigned(dst_addr(63 downto 3) & "000");
-				o_ram.remm <= unsigned(len);
+				o_ram.remm(31 downto 0) <= unsigned(len);
 
 				o_ram.ram_addr <= unsigned(src_addr);
 
@@ -1586,7 +1586,7 @@ package body reconos_pkg is
 			when 0 =>
                                 -- 64bit align
 				o_ram.mem_addr <= unsigned(src_addr(63 downto 3) & "000");
-				o_ram.remm <= unsigned(len);
+				o_ram.remm(31 downto 0) <= unsigned(len);
 
 				o_ram.ram_addr <= unsigned(dst_addr) - 1;
 

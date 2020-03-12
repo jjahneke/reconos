@@ -25,7 +25,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define TIMER_BASE_ADDR 0x64a00000
+//#define TIMER_BASE_ADDR 0x64a00000
+#define TIMER_BASE_ADDR 0xa0130000 //adapt for US /lc
 #define CLK_FREQ 100000000
 
 volatile uint32_t *ptr = 0;

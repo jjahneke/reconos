@@ -3,6 +3,8 @@
  * Copyright 2012 Daniel Borkmann <dborkma@tik.ee.ethz.ch>
  */
 
+#define dbg(...) printf(__VA_ARGS__); fflush(stdout)
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -88,15 +90,29 @@ int mbox_put_interruptible(struct mbox *mb, uint32_t msg)
 uint32_t mbox_get(struct mbox *mb)
 {
 	uint32_t msg;
-	
+	dbg("[mbox.c-get] MBOX_GET\n");
+        
 	pthread_mutex_lock(&mb->mutex_read);
+        dbg("[mbox.c-get] mutex lock\n");
+        
+        int semVal;
+        sem_getvalue(&mb->sem_read, &semVal);
+        
+        dbg("[mbox.c-get-sem_wait] semaphore @0x%x, count: %u\n", &mb->sem_read, semVal);
 	sem_wait(&mb->sem_read);
+        dbg("[mbox.c-get] sem wait\n");
 
+        dbg("[mbox.c-get] read msg at index %ld\n", mb->read_idx);
 	msg = mb->messages[mb->read_idx];
+        dbg("[mbox.c-get] msg content: 0x%x\n", msg);
+        
 	mb->read_idx = (mb->read_idx + 1) % mb->size;
 
 	sem_post(&mb->sem_write);
+        dbg("[mbox.c-get] sem post\n");
+        
 	pthread_mutex_unlock(&mb->mutex_read);
+        dbg("[mbox.c-get] mutex unlock\n");
 	
 	return msg;
 }

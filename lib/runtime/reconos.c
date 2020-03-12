@@ -449,8 +449,13 @@ void *proc_pgfhandler(void *arg) {
 
 		printf("[reconos_core] "
 		       "page fault occured at address %x\n", (unsigned int)addr);
+                fflush(stdout);
 
 		*addr = 0;
+                
+                printf("[reconos_core] "
+		       "page fault address reset\n", (unsigned int)addr);
+                fflush(stdout);
 
 		reconos_proc_control_clear_page_fault(_proc_control);
 	}

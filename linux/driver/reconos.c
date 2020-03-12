@@ -1,6 +1,6 @@
 /*
  *                                                        ____  _____
- *                            ________  _________  ____  / __ \/ ___/
+ *                            ________  _________  ____  / __ \/ ___/64
  *                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
  *                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
  *                         /_/   \___/\___/\____/_/ /_/\____//____/
@@ -22,6 +22,9 @@
 #include "osif_intc.h"
 #include "proc_control.h"
 
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Christoph Rüthing <ruething@mail.upb.de>");
+MODULE_DESCRIPTION("reconos kernel module");
 
 // extern variables available in the entire module
 int NUM_HWTS = 0;
@@ -30,11 +33,11 @@ int DYNAMIC_REG_COUNT = 0;
 static __init int reconos_init(void) {
 	int ret;
 
-	__printk(KERN_INFO "[reconos] initializing driver ...\n");
+	printk(KERN_INFO "[reconos] initializing driver ...\n");
 
 	NUM_HWTS = proc_control_num_hwts_static();
 	DYNAMIC_REG_COUNT = (NUM_HWTS - 1) / 32 + 1;
-	__printk(KERN_INFO "[reconos] detected %d HWTs\n", NUM_HWTS);
+	printk(KERN_INFO "[reconos] detected %d HWTs\n", NUM_HWTS);
 	if (NUM_HWTS < 0) {
 		goto num_hwts_failed;
 	}
@@ -60,7 +63,7 @@ num_hwts_failed:
 }
 
 static __exit void reconos_exit(void) {
-	__printk(KERN_INFO "[reconos] removing driver ...\n");
+	printk(KERN_INFO "[reconos] removing driver ...\n");
 
 	osif_intc_exit();
 	proc_control_exit();
@@ -70,6 +73,3 @@ static __exit void reconos_exit(void) {
 
 module_init(reconos_init);
 module_exit(reconos_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Christoph Rüthing <ruething@mail.upb.de>");

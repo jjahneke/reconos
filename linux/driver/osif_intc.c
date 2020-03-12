@@ -1,6 +1,6 @@
 /*
  *                                                        ____  _____
- *                            ________  _________  ____  / __ \/ ___/
+ *                            ________  _________  ____  / __ \/ ___/64
  *                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
  *                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
  *                         /_/   \___/\___/\____/_/ /_/\____//____/
@@ -35,9 +35,8 @@
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-#include <linux/uaccess.h>
 #include <asm/io.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 /*
  * Register definitions as offset from base address
@@ -124,7 +123,7 @@ static inline void enable_interrupt(struct osif_intc_dev *dev,
 	dev->irq_enable[irq / 32] |= 0x1 << irq % 32;
 	write_interrupt_enable(dev);
 
-	__printk(KERN_DEBUG "[reconos-osif-intc] "
+	printk(KERN_DEBUG "[reconos-osif-intc] "
 	                    "enabling interrupt %d\n", irq);
 }
 
@@ -139,7 +138,7 @@ static inline void disable_interrupt(struct osif_intc_dev *dev,
 	dev->irq_enable[irq / 32] &= ~(0x1 << irq % 32);
 	write_interrupt_enable(dev);
 
-	__printk(KERN_DEBUG "[reconos-osif-intc] "
+	printk(KERN_DEBUG "[reconos-osif-intc] "
 	                    "disabling interrupt %d\n", irq);
 }
 
@@ -229,7 +228,7 @@ static long osif_intc_ioctl(struct file *filp, unsigned int cmd,
 
 	ret = copy_from_user(&irq, (unsigned int *)arg, sizeof(unsigned int));
 	if (irq > NUM_HWTS) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "index out of range, aborting wait ...\n");
 
 		return 0;
@@ -237,7 +236,7 @@ static long osif_intc_ioctl(struct file *filp, unsigned int cmd,
 
 	switch (cmd) {
 		case RECONOS_OSIF_INTC_WAIT:
-			__printk(KERN_DEBUG "[reconos-osif-intc] "
+			printk(KERN_DEBUG "[reconos-osif-intc] "
 			                    "waiting for interrupt %d\n", irq);
 
 			spin_lock_irqsave(&dev->lock, flags);
@@ -246,14 +245,14 @@ static long osif_intc_ioctl(struct file *filp, unsigned int cmd,
 			spin_unlock_irqrestore(&dev->lock, flags);
 
 			if (wait_event_interruptible(dev->wait, get_interrupt(dev, irq) || get_break(dev, irq)) < 0) {
-				__printk(KERN_INFO "[reconos-osif-intc] "
+				printk(KERN_INFO "[reconos-osif-intc] "
 				                   "interrupted in waiting, aborting ...\n");
 
 				spin_lock_irqsave(&dev->lock, flags);
 				disable_interrupt(dev, irq);
 				spin_unlock_irqrestore(&dev->lock, flags);
 			} else {
-				__printk(KERN_DEBUG "[reconos-osif-intc] "
+				printk(KERN_DEBUG "[reconos-osif-intc] "
 				                    "interrupted %d (irq: %d, signal: %d)\n",
 				                    irq, get_interrupt(dev, irq), get_break(dev, irq));
 			}
@@ -306,7 +305,7 @@ static irqreturn_t interrupt(int irq, void *data) {
 	disable_interrupt_active(dev);
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	__printk(KERN_DEBUG "[reconos-osif-intc] "
+	printk(KERN_DEBUG "[reconos-osif-intc] "
 	                    " osif interrupt: 0x%x\n", dev->irq_reg[0]);
 
 	wake_up_interruptible(&dev->wait);
@@ -323,6 +322,7 @@ static irqreturn_t interrupt(int irq, void *data) {
 static struct of_device_id osif_of_match[] =
 {
     { .compatible = "upb,reconos-osif-intc-3.1"},
+    { .compatible = "xlnx,reconos-osif-intc-1.0"}, //temp fix /lc
     {}
 };
 
@@ -334,7 +334,7 @@ int osif_intc_init() {
 	struct device_node *node = NULL;
 	struct resource res;
 
-	__printk(KERN_INFO "[reconos-osif] "
+	printk(KERN_INFO "[reconos-osif] "
 	                   "initializing driver ...\n");
 
 	dev = &osif_intc;
@@ -343,11 +343,11 @@ int osif_intc_init() {
 	node = of_find_matching_node(NULL, osif_of_match);
 	if (!node)
 	{
-		__printk(KERN_ERR "[reconos-osif] "
+		printk(KERN_ERR "[reconos-osif] "
 		                  "device tree node not found\n");
 		goto of_failed;
 	}
-	__printk(KERN_INFO "[reconos-osif] "
+	printk(KERN_INFO "[reconos-osif] "
 	                   "found device %s\n", node->name);
 
 	// set some general information of intc
@@ -359,21 +359,21 @@ int osif_intc_init() {
 	// allocating interrupt-register
 	dev->irq_reg = kcalloc(DYNAMIC_REG_COUNT, sizeof(uint32_t), GFP_KERNEL);
 	if (!dev->irq_reg) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "cannot allocate irq-memory\n");
 		goto irqreg_failed;
 	}
 
 	dev->irq_enable = kcalloc(DYNAMIC_REG_COUNT, sizeof(uint32_t), GFP_KERNEL);
 	if (!dev->irq_enable) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "cannot allocate irq-enable\n");
 		goto irqenable_failed;
 	}
 
 	dev->irq_break = kcalloc(DYNAMIC_REG_COUNT, sizeof(uint32_t), GFP_KERNEL);
 	if (!dev->irq_break) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "cannot allocate irq-break\n");
 		goto irqbreak_failed;
 	}
@@ -381,26 +381,26 @@ int osif_intc_init() {
 	// getting address from device tree
 	if (of_address_to_resource(node, 0, &res))
 	{
-		__printk(KERN_ERR "[reconos-osif] "
+		printk(KERN_ERR "[reconos-osif] "
 	                      "address could not be determined\n");
 		goto req_failed;
 	}
 	dev->base_addr = res.start;
 	dev->mem_size = res.end - res.start + 1;
-	__printk(KERN_INFO "[reconos-osif] "
+	printk(KERN_INFO "[reconos-osif] "
 	                   "found memory at 0x%08x with size 0x%x\n",
 	                   dev->base_addr, dev->mem_size);
 
 	// allocation io memory to read intc registers
 	if (!request_mem_region(dev->base_addr, dev->mem_size, dev->name)) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "memory region busy\n");
 		goto req_failed;
 	}
 
 	dev->mem = ioremap(dev->base_addr, dev->mem_size);
 	if(!dev->mem) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "ioremap failed\n");
 		goto map_failed;
 	}
@@ -412,16 +412,16 @@ int osif_intc_init() {
 	dev->irq = irq_of_parse_and_map(node, 0);
 	if (!dev->irq)
 	{
-		__printk(KERN_ERR "[reconos-osif] "
+		printk(KERN_ERR "[reconos-osif] "
 		                  "irq could not be determined\n");
 		goto irq_failed;
 	}
-	__printk(KERN_INFO "[reconos-osif] "
+	printk(KERN_INFO "[reconos-osif] "
 	                   "found interrupt %d\n", dev->irq);
 
 	// requesting interrupt
 	if(request_irq(dev->irq, interrupt, 0, "reconos-osif-intc", dev)) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "can't get irq\n");
 		goto irq_failed;
 	}
@@ -432,13 +432,13 @@ int osif_intc_init() {
 	dev->mdev.name = dev->name;
 
 	if (misc_register(&dev->mdev) < 0) {
-		__printk(KERN_WARNING "[reconos-osif-intc] "
+		printk(KERN_WARNING "[reconos-osif-intc] "
 		                      "error while registering misc-device\n");
 		goto reg_failed;
 	}
 
 
-	__printk(KERN_INFO "[reconos-osif-intc] "
+	printk(KERN_INFO "[reconos-osif-intc] "
 	                   "registered interrupt controller\n");
 
 	goto out;
@@ -475,7 +475,7 @@ out:
 int osif_intc_exit() {
 	struct osif_intc_dev *dev = &osif_intc;
 
-	__printk(KERN_INFO "[reconos-osif-intc] "
+	printk(KERN_INFO "[reconos-osif-intc] "
 	                   "removing driver ...\n");
 
 	misc_deregister(&dev->mdev);

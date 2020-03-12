@@ -1,6 +1,6 @@
 /*
  *                                                        ____  _____
- *                            ________  _________  ____  / __ \/ ___/
+ *                            ________  _________  ____  / __ \/ ___/64
  *                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
  *                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
  *                         /_/   \___/\___/\____/_/ /_/\____//____/
@@ -22,10 +22,12 @@
 #define RECONOS_DRV_H
 
 //#define __printk(...) printk(__VA_ARGS__)
-#define __printk(...) 
+//#define __printk(...) 
 
-#include "include/reconos.h"
+#include "include/reconosio.h"
 
+#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/module.h>
 
 /*

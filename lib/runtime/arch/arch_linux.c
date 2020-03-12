@@ -17,6 +17,8 @@
  * ======================================================================
  */
 
+#define dbg(...) printf(__VA_ARGS__); fflush(stdout)
+
 #if defined(RECONOS_OS_linux)
 
 #include "arch.h"
@@ -39,7 +41,8 @@ unsigned int NUM_HWTS = 0;
 
 /* == OSIF related functions ============================================ */
 
-#define OSIF_FIFO_BASE_ADDR       0x75A00000
+//#define OSIF_FIFO_BASE_ADDR       0x75A00000
+#define OSIF_FIFO_BASE_ADDR       0xA0100000  //for US /lc
 #define OSIF_FIFO_BASE_SIZE       0x10000
 #define OSIF_FIFO_MEM_SIZE        0x10
 #define OSIF_FIFO_RECV_REG        0
@@ -188,6 +191,9 @@ int reconos_proc_control_get_tlb_misses(int fd) {
 }
 
 uint32_t reconos_proc_control_get_fault_addr(int fd) {
+    
+        
+    
 	uint32_t data;
 
 	ioctl(fd, RECONOS_PROC_CONTROL_GET_FAULT_ADDR, &data);
@@ -234,7 +240,8 @@ void reconos_proc_control_close(int fd) {
 
 /* == Clock related functions =========================================== */
 
-#define CLOCK_BASE_ADDR    0x69E00000
+//#define CLOCK_BASE_ADDR    0x69E00000
+#define CLOCK_BASE_ADDR    0xA0040000 //for US /lc
 #define CLOCK_BASE_SIZE    0x10000
 #define CLOCK_MEM_SIZE     0x20
 

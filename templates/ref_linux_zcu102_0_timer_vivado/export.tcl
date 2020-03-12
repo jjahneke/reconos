@@ -406,6 +406,11 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     #
     # Memory Map of peripheperals
     #
+    set_property -dict [list CONFIG.C_BASEADDR {0xA0100000} CONFIG.C_HIGHADDR {0xA010FFFF}] [get_bd_cells reconos_osif_0]
+    set_property -dict [list CONFIG.C_BASEADDR {0xA0130000} CONFIG.C_HIGHADDR {0xA013FFFF}] [get_bd_cells timer_0]
+    set_property -dict [list CONFIG.C_BASEADDR {0xA0110000} CONFIG.C_HIGHADDR {0xA011FFFF}] [get_bd_cells reconos_osif_intc_0]
+    set_property -dict [list CONFIG.C_BASEADDR {0xA0040000} CONFIG.C_HIGHADDR {0xA004FFFF}] [get_bd_cells reconos_clock_0]
+
     create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_DDR_LOW] SEG_zynq_ultra_ps_e_0_ACP_DDR_LOW
     create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_LPS_OCM] SEG_zynq_ultra_ps_e_0_ACP_LPS_OCM
     create_bd_addr_seg -range 0x10000000 -offset 0xE0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_PCIE_LOW] SEG_zynq_ultra_ps_e_0_ACP_PCIE_LOW

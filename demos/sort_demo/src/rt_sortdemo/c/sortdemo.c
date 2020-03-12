@@ -8,6 +8,8 @@ void bubblesort(uint32_t *data, int data_count) {
 	uint32_t tmp;
 	int s, n, newn;
 
+	uint32_t *data2 = (uint32_t*) (((uint64_t) (0x0000007F00000000)) | ((uint64_t) data));
+
 	s = 1;
 	n = data_count - 1;
 	newn = n;
@@ -15,10 +17,10 @@ void bubblesort(uint32_t *data, int data_count) {
 	while (s) {
 		s = 0;
 		for (i = 0; i < n; i++) {
-			if (data[i] > data[i + 1]) {
-				tmp = data[i];
-				data[i] = data[i + 1];
-				data[i + 1] = tmp;
+			if (data2[i] > data2[i + 1]) {
+				tmp = data2[i];
+				data2[i] = data2[i + 1];
+				data2[i + 1] = tmp;
 				newn = i;
 				s = 1;
 			}

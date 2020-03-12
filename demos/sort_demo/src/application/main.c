@@ -12,8 +12,8 @@
 
 void print_help() {
 	printf("\n"
-	       "ReconOS v4 sort demo application\n"
-	       "--------------------------------\n"
+	       "ReconOS v4 64bit sort demo application\n"
+	       "--------------mod 19-04-16 -----------\n"
 	       "\n"
 	       "Sorts a buffer full of data with a variable number of sw and hw threads.\n"
 	       "\n"
@@ -102,50 +102,72 @@ int main(int argc, char **argv) {
 
 	clk = reconos_clock_threads_set(100000);
 
-	log("creating %d hw-threads:", num_hwts);
+	log("creating %d hw-threads: \n", num_hwts);
 	for (i = 0; i < num_hwts; i++) {
-		log(" %d", i);
+		log("hw-thread %d\n", i);
 		reconos_thread_create_hwt_sortdemo();
 	}
 	log("\n");
 
-	log("creating %d sw-thread:", num_swts);
+	log("creating %d sw-thread: \n", num_swts);
 	for (i = 0; i < num_swts; i++) {
-		log(" %d", i);
+		log("sw-thread %d\n", i);
 		reconos_thread_create_swt_sortdemo();
 	}
 	log("\n");
+        
+        fflush(stdout);
+        printf("press RETURN key to start!\n");
+        getchar();
+        printf("\n"); 
+        fflush(stdout);
+        /* ******** ******** ******** ******** ******** ******** */
 
+        
 	t_start = timer_get();
 	log("generating data ...\n");
 	data_count = num_blocks * BLOCK_SIZE;
+        
 	data = (uint32_t *)malloc(data_count * sizeof(uint32_t));
+        log("malloc'd data @0x%p\n", data);
+        
 	copy = (uint32_t *)malloc(data_count * sizeof(uint32_t));
+        log("malloc'd copy @0x%p\n", copy);
+        
 	for (i = 0; i < data_count; i++) {
 		data[i] = data_count - i - 1;
 	}
+	//data[0] = 0xDEADBEEF;
+        
 	memcpy(copy, data, data_count * sizeof(uint32_t));
 	t_gen = timer_get() - t_start;
 
-	log("putting %d blocks into job queue: ", num_blocks);
+	log("putting %d blocks into job queue: \n", num_blocks);
 	for (i = 0; i < num_blocks; i++) {
-		mbox_put(resources_address, (uint32_t)(data + i * BLOCK_SIZE));
-		log(".");
+		mbox_put(resources_address, (uint64_t)(data + i * BLOCK_SIZE));
+		log("block %d of %d (@0x%lx)\n", i, num_blocks, (uint64_t)(data + i * BLOCK_SIZE));
 	}
 	log("\n");
 
+        fflush(stdout);
+        printf("press RETURN key to get ack!\n");
+	        getchar();
+        printf("\n"); 
+        fflush(stdout);
+	        /* ******** ******** ******** ******** ******** ******** */
+        
 	t_start = timer_get();
-	log("waiting for %d acknowledgements: ", num_blocks);
-	log("[@%dMHz]", clk / 1000);
+	log("waiting for %d acknowledgements: \n", num_blocks);
+	log("[@%dMHz] \n", clk / 1000);
 	for (i = 0; i < num_blocks / 2; i++) {
 		mbox_get(resources_acknowledge);
-		log(".");
+		log("ack %d of %d\n", i, num_blocks);
 	}
 	clk = reconos_clock_threads_set(20000);
 	log("[@%dMHz]", clk / 1000);
 	for (i = 0; i < num_blocks / 2; i++) {
 		mbox_get(resources_acknowledge);
-		log(".");
+		log("ack %d of %d\n", i, num_blocks);
 	}
 
 	log("\n");
@@ -157,11 +179,21 @@ int main(int argc, char **argv) {
 	merge(data, data_count);
 	t_merge = timer_get() - t_start;
 #endif
+        
+        fflush(stdout);
+        printf("press RETURN key to compare!\n");
+        getchar();
+        printf("\n"); 
+        fflush(stdout);
+        /* ******** ******** ******** ******** ******** ******** */
 
 	t_start = timer_get();
-	log("checking sorted data ...\n");
+	log("checking sorted data (%d elements) ...\n", data_count);
 	qsort(copy, data_count, sizeof(uint32_t), cmp_uint32t);
 	for (i = 0; i < data_count; i++) {
+                if(i % 16 == 0) {
+                    log("element %d: data: 0x%x, copy: 0x%x\n", i, data[i], copy[i]);
+                }
 		if (data[i] != copy[i]) {
 			log("expected 0x%08x but found 0x%08x at %d\n", copy[i], data[i], i);
 		}

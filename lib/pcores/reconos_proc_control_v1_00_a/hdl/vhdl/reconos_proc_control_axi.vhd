@@ -592,7 +592,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
         
-            if S_AXI_ARESETN = '1' or sys_reset = '1' then
+            if S_AXI_ARESETN = '0' or sys_reset = '1' then
                 PROC_Pgf_Int <= '0';
                 pgf_int_state <= WAIT_PGF;
             elsif rising_edge(S_AXI_ACLK) then
@@ -646,7 +646,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-            if S_AXI_ARESETN = '1' or sys_reset = '1' then
+            if S_AXI_ARESETN = '0' or sys_reset = '1' then
                 hwt_reset_reg <= (others => '1');
             elsif rising_edge(S_AXI_ACLK) then
                 -- writing to hwt_reset
@@ -669,7 +669,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-            if S_AXI_ARESETN = '1' or sys_reset = '1' then
+            if S_AXI_ARESETN = '0' or sys_reset = '1' then
                 hwt_signal_reg <= (others => '0');
             elsif rising_edge(S_AXI_ACLK) then
                 -- writing to hwt_signal
@@ -692,7 +692,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-            if S_AXI_ARESETN = '1' then
+            if S_AXI_ARESETN = '0' then
                 sys_reset <= '1';
                 sys_reset_state <= PERF_RST;
                 sys_reset_counter <= (others => '0');
@@ -726,7 +726,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-            if S_AXI_ARESETN = '1' or sys_reset = '1' then
+            if S_AXI_ARESETN = '0' or sys_reset = '1' then
                 pgd(31 downto 0) <= (others => '0');
                 pgd_state <= IDLE;
             else
@@ -752,7 +752,7 @@ begin
             slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-                if S_AXI_ARESETN = '1' or sys_reset = '1' then
+                if S_AXI_ARESETN = '0' or sys_reset = '1' then
                     pgd(63 downto 32) <= (others => '0');
                     pgd_hi_state <= IDLE;
                 else

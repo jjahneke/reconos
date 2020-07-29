@@ -24,6 +24,6 @@ use ieee.numeric_std.all;
 
 package reconos_thread_pkg is
 	<<generate for RESOURCES>>
-	constant <<NameUpper>> : std_logic_vector(31 downto 0) := x"<<HexLocalId>>";
+	constant <<NameUpper>> : std_logic_vector(63 downto 0) := x"00000000" & x"<<HexLocalId>>";
 	<<end generate>>
 end package reconos_thread_pkg;

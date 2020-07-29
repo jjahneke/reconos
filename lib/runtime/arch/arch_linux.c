@@ -44,14 +44,14 @@ unsigned int NUM_HWTS = 0;
 //#define OSIF_FIFO_BASE_ADDR       0x75A00000
 #define OSIF_FIFO_BASE_ADDR       0xA0100000  //for US /lc
 #define OSIF_FIFO_BASE_SIZE       0x10000
-#define OSIF_FIFO_MEM_SIZE        0x10
+#define OSIF_FIFO_MEM_SIZE        0x20
 #define OSIF_FIFO_RECV_REG        0
 #define OSIF_FIFO_SEND_REG        1
 #define OSIF_FIFO_RECV_STATUS_REG 2
 #define OSIF_FIFO_SEND_STATUS_REG 3
 
-#define OSIF_FIFO_RECV_STATUS_EMPTY_MASK 0x80000000
-#define OSIF_FIFO_SEND_STATUS_FULL_MASK  0x80000000
+#define OSIF_FIFO_RECV_STATUS_EMPTY_MASK 0x8000000000000000
+#define OSIF_FIFO_SEND_STATUS_FULL_MASK  0x8000000000000000
 
 #define OSIF_FIFO_RECV_STATUS_FILL_MASK 0xFFFF
 #define OSIF_FIFO_SEND_STATUS_REM_MASK  0xFFFF
@@ -59,7 +59,7 @@ unsigned int NUM_HWTS = 0;
 struct osif_fifo_dev {
 	unsigned int index;
 
-	volatile uint32_t *ptr;
+	volatile uint64_t *ptr;
 
 	unsigned int fifo_fill;
 	unsigned int fifo_rem;
@@ -79,7 +79,7 @@ int reconos_osif_open(int num) {
 }
 
 static inline unsigned int osif_fifo_hw2sw_fill(struct osif_fifo_dev *dev) {
-	uint32_t reg;
+	uint64_t reg;
 
 	reg = dev->ptr[OSIF_FIFO_RECV_STATUS_REG];
 	if (reg & OSIF_FIFO_RECV_STATUS_EMPTY_MASK)
@@ -89,7 +89,7 @@ static inline unsigned int osif_fifo_hw2sw_fill(struct osif_fifo_dev *dev) {
 }
 
 static inline unsigned int osif_fifo_sw2hw_rem(struct osif_fifo_dev *dev) {
-	uint32_t reg;
+	uint64_t reg;
 
 	reg = dev->ptr[OSIF_FIFO_SEND_STATUS_REG];
 
@@ -99,9 +99,9 @@ static inline unsigned int osif_fifo_sw2hw_rem(struct osif_fifo_dev *dev) {
 		return (reg & OSIF_FIFO_SEND_STATUS_REM_MASK) + 1;
 }
 
-uint32_t reconos_osif_read(int fd) {
+uint64_t reconos_osif_read(int fd) {
 	struct osif_fifo_dev *dev = &osif_fifo_dev[fd];
-	uint32_t data;
+	uint64_t data;
 
 	if (dev->fifo_fill == 0) {
 		debug("[reconos-osif-%d] "
@@ -123,17 +123,17 @@ uint32_t reconos_osif_read(int fd) {
 	dev->fifo_fill--;
 
 	debug("[reconos-osif-%d] "
-	      "reading finished 0x%x\n", fd, data);
+	      "reading finished 0x%lx\n", fd, data);
 
 
 	return data;
 }
 
-void reconos_osif_write(int fd, uint32_t data) {
+void reconos_osif_write(int fd, uint64_t data) {
 	struct osif_fifo_dev *dev = &osif_fifo_dev[fd];
 
 	debug("[reconos-osif-%d] "
-	      "writing 0x%x ...\n", fd, data);
+	      "writing 0x%lx ...\n", fd, data);
 
 	// do busy waiting here
 	do {
@@ -425,7 +425,7 @@ void reconos_drv_init() {
 
 	for (i = 0; i < NUM_HWTS; i++) {
 		osif_fifo_dev[i].index = i;
-		osif_fifo_dev[i].ptr = (uint32_t *)(mem + i * OSIF_FIFO_MEM_SIZE);
+		osif_fifo_dev[i].ptr = (uint64_t *)(mem + i * OSIF_FIFO_MEM_SIZE);
 		osif_fifo_dev[i].fifo_fill = 0;
 		osif_fifo_dev[i].fifo_rem = 0;
 	}

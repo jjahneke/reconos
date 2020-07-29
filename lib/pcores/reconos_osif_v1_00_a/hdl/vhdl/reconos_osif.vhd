@@ -1,71 +1,27 @@
---                                                        ____  _____
---                            ________  _________  ____  / __ \/ ___/
---                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
---                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
---                         /_/   \___/\___/\____/_/ /_/\____//____/
--- 
--- ======================================================================
---
---   title:        IP-Core - OSIF - Top level entity
---
---   project:      ReconOS
---   author:       Christoph R??thing, University of Paderborn
---   description:  A AXI slave which maps the FIFOs of the HWTs to
---                 registers accessible from the AXI-Bus.
---                   Reg0: Read data
---                   Reg1: Write data
---                   Reg2: Fill - number of elements in receive-FIFO
---                   Reg3: Rem - free space in send-FIFO
---
--- ======================================================================
-
 <<reconos_preproc>>
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library axi_lite_ipif_v3_0_4;
-use 	 axi_lite_ipif_v3_0_4.ipif_pkg.all;
-use 	 axi_lite_ipif_v3_0_4.axi_lite_ipif;
-
 entity reconos_osif is
-	--
-	-- Generic definitions
-	--
-	--   C_S_AXI_ - @see axi bus
-	--
-	--   C_BASE_ADDR - lower address of axi slave
-	--   C_HIGH_ADDR - higher address of axi slave
-	--
-	--   C_NUM_HWTS - number of hardware threads
-	--
-	--   C_OSIF_DATA_WIDTH   - width of the osif
-	--   C_OSIF_LENGTH_WIDTH - width of the length in command word
-	--   C_OSIF_OP_WIDTH     - width of the operation in command word
-	--
 	generic (
-		C_S_AXI_ADDR_WIDTH : integer := 32;
-		C_S_AXI_DATA_WIDTH : integer := 32;
-
-		C_BASEADDR : std_logic_vector := x"FFFFFFFF";
-		C_HIGHADDR : std_logic_vector := x"00000000";
-
+		-- Users to add parameters here
 		C_NUM_HWTS : integer := 1;
 
-		C_OSIF_DATA_WIDTH   : integer := 32;
-		C_OSIF_LENGTH_WIDTH : integer := 24;
-		C_OSIF_OP_WIDTH     : integer := 8
-	);
+		C_OSIF_DATA_WIDTH   : integer := 64;
+		C_OSIF_LENGTH_WIDTH : integer := 24; --todo: maybe increase since we have more space?
+		C_OSIF_OP_WIDTH     : integer := 8;
+		-- User parameters ends
+		-- Do not modify the parameters beyond this line
 
-	--
-	-- Port defintions
-	--
-	--   OSIF_Hw2Sw_#i#_In_/OSIF_Sw2Hw_#i#_In_ - fifo signal inputs
-	--
-	--   S_AXI_ - @see axi bus
-	--
+
+		-- Parameters of Axi Slave Bus Interface S00_AXI
+		C_S00_AXI_DATA_WIDTH	: integer	:= 64;
+		C_S00_AXI_ADDR_WIDTH	: integer	:= 8 --todo: set to which width? limits num_hwts
+	);
 	port (
+		-- Users to add ports here
 		<<generate for SLOTS>>
 		OSIF_Hw2Sw_<<Id>>_In_Data  : in  std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0);
 		OSIF_Hw2Sw_<<Id>>_In_Empty : in  std_logic;
@@ -78,174 +34,171 @@ entity reconos_osif is
 		OSIF_Sw2Hw_<<Id>>_In_WE    : out std_logic;
 		<<end generate>>
 
-		S_AXI_ACLK    : in  std_logic;
-		S_AXI_ARESETN : in  std_logic;
-		S_AXI_AWADDR  : in  std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
-		S_AXI_AWVALID : in  std_logic;
-		S_AXI_WDATA   : in  std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
-		S_AXI_WSTRB   : in  std_logic_vector(C_S_AXI_DATA_WIDTH / 8 - 1 downto 0);
-		S_AXI_WVALID  : in  std_logic;
-		S_AXI_BREADY  : in  std_logic;
-		S_AXI_ARADDR  : in  std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
-		S_AXI_ARVALID : in  std_logic;
-		S_AXI_RREADY  : in  std_logic;
-		S_AXI_ARREADY : out std_logic;
-		S_AXI_RDATA   : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
-		S_AXI_RRESP   : out std_logic_vector(1 downto 0);
-		S_AXI_RVALID  : out std_logic;
-		S_AXI_WREADY  : out std_logic;
-		S_AXI_BRESP   : out std_logic_vector(1 downto 0);
-		S_AXI_BVALID  : out std_logic;
-		S_AXI_AWREADY : out std_logic
-	);
-end entity reconos_osif;
+		DEBUG : out std_logic_vector(131 downto 0); --todo: remove
+		-- User ports ends
+		-- Do not modify the ports beyond this line
 
-architecture imp of reconos_osif is
+
+		-- Ports of Axi Slave Bus Interface S00_AXI
+		s00_axi_aclk	: in std_logic;
+		s00_axi_aresetn	: in std_logic;
+		s00_axi_awaddr	: in std_logic_vector(C_S00_AXI_ADDR_WIDTH-1 downto 0);
+		s00_axi_awprot	: in std_logic_vector(2 downto 0);
+		s00_axi_awvalid	: in std_logic;
+		s00_axi_awready	: out std_logic;
+		s00_axi_wdata	: in std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+		s00_axi_wstrb	: in std_logic_vector((C_S00_AXI_DATA_WIDTH/8)-1 downto 0);
+		s00_axi_wvalid	: in std_logic;
+		s00_axi_wready	: out std_logic;
+		s00_axi_bresp	: out std_logic_vector(1 downto 0);
+		s00_axi_bvalid	: out std_logic;
+		s00_axi_bready	: in std_logic;
+		s00_axi_araddr	: in std_logic_vector(C_S00_AXI_ADDR_WIDTH-1 downto 0);
+		s00_axi_arprot	: in std_logic_vector(2 downto 0);
+		s00_axi_arvalid	: in std_logic;
+		s00_axi_arready	: out std_logic;
+		s00_axi_rdata	: out std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+		s00_axi_rresp	: out std_logic_vector(1 downto 0);
+		s00_axi_rvalid	: out std_logic;
+		s00_axi_rready	: in std_logic
+	);
+end reconos_osif;
+
+architecture arch_imp of reconos_osif is
 
 	-- Declare port attributes for the Vivado IP Packager
 	ATTRIBUTE X_INTERFACE_INFO : STRING;
 	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
 
-	ATTRIBUTE X_INTERFACE_INFO of S_AXI_ACLK: SIGNAL is "xilinx.com:signal:clock:1.0 S_AXI_ACLK CLK";
-	ATTRIBUTE X_INTERFACE_PARAMETER of S_AXI_ACLK: SIGNAL is "ASSOCIATED_BUSIF <<generate for SLOTS>>OSIF_Hw2Sw_<<Id>>:OSIF_Sw2Hw_<<Id>>:<<end generate>>S_AXI";
+	ATTRIBUTE X_INTERFACE_INFO of s00_axi_aclk: SIGNAL is "xilinx.com:signal:clock:1.0 s00_axi_aclk CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of s00_axi_aclk: SIGNAL is "ASSOCIATED_BUSIF <<generate for SLOTS>>OSIF_Hw2Sw_<<Id>>:OSIF_Sw2Hw_<<Id>>:<<end generate>>s00_axi";
 
 	<<generate for SLOTS>>
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_Data";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_Empty";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_RE:       SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_RE";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO64_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO64_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_RE:       SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO64_S_RE";
 	<<end generate>>
 
 	<<generate for SLOTS>>
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_Data";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Full:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_Full";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_WE:       SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_WE";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO64_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Full:     SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO64_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_WE:       SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO64_M_WE";
 	<<end generate>>
 
-	--
-	-- Internal ipif signals
-	--
-	--   @see axi_lite_ipif_v1_01_a
-	--
-	signal bus2ip_clk    : std_logic;
-	signal bus2ip_resetn : std_logic;
-	signal bus2ip_data   : std_logic_vector(31 downto 0);
-	signal bus2ip_cs     : std_logic_vector(C_NUM_HWTS - 1 downto 0);
-	signal bus2ip_rdce   : std_logic_vector(C_NUM_HWTS * 4 - 1 downto 0);
-	signal bus2ip_wrce   : std_logic_vector(C_NUM_HWTS * 4 - 1 downto 0);
-	signal ip2bus_data   : std_logic_vector(31 downto 0);
-	signal ip2bus_rdack  : std_logic;
-	signal ip2bus_wrack  : std_logic;
-	signal ip2bus_error  : std_logic;
+	-- component declaration
+	component reconos_osif_axi is
+		generic (
+		C_S_AXI_DATA_WIDTH	: integer	:= 64;
+		C_S_AXI_ADDR_WIDTH	: integer	:= 8 --todo: set to which width? limits num_hwts
+		);
+		port (
+		S_AXI_ACLK	: in std_logic;
+		S_AXI_ARESETN	: in std_logic;
+		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
+		S_AXI_AWPROT	: in std_logic_vector(2 downto 0);
+		S_AXI_AWVALID	: in std_logic;
+		S_AXI_AWREADY	: out std_logic;
+		S_AXI_WDATA	: in std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		S_AXI_WSTRB	: in std_logic_vector((C_S_AXI_DATA_WIDTH/8)-1 downto 0);
+		S_AXI_WVALID	: in std_logic;
+		S_AXI_WREADY	: out std_logic;
+		S_AXI_BRESP	: out std_logic_vector(1 downto 0);
+		S_AXI_BVALID	: out std_logic;
+		S_AXI_BREADY	: in std_logic;
+		S_AXI_ARADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
+		S_AXI_ARPROT	: in std_logic_vector(2 downto 0);
+		S_AXI_ARVALID	: in std_logic;
+		S_AXI_ARREADY	: out std_logic;
+		S_AXI_RDATA	: out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		S_AXI_RRESP	: out std_logic_vector(1 downto 0);
+		S_AXI_RVALID	: out std_logic;
+		S_AXI_RREADY	: in std_logic
+		);
+	end component reconos_osif_axi;
 
-	--
-	-- Constants to configure ipif
-	--
-	--   @see axi_lite_ipif_v1_01_a
-	--
-	constant C_ADDR_PAD : std_logic_vector(31 downto 0) := (others => '0');
+	--todo: remove
+	<<generate for SLOTS>>
+	--signal OSIF_Hw2Sw_<<Id>>_In_Data  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0);
+	--signal OSIF_Hw2Sw_<<Id>>_In_Empty : std_logic;
+	signal OSIF_Hw2Sw_<<Id>>_In_RE_tmp    : std_logic;
+	<<end generate>>
 
-	constant C_ARD_ADDR_RANGE_ARRAY : SLV64_ARRAY_TYPE := (
-		<<generate for SLOTS>>
-		2 * <<_i>> + 0 => C_ADDR_PAD & std_logic_vector(unsigned(C_BASEADDR) + <<_i>> * 16),
-		2 * <<_i>> + 1 => C_ADDR_PAD & std_logic_vector(unsigned(C_BASEADDR) + <<_i>> * 16 + 15)<<c,>>
-		<<end generate>>
-	);
+	<<generate for SLOTS>>
+	signal OSIF_Sw2Hw_<<Id>>_In_Data_tmp  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0);
+	--signal OSIF_Sw2Hw_<<Id>>_In_Full  : std_logic;
+	signal OSIF_Sw2Hw_<<Id>>_In_WE_tmp    : std_logic;
+	<<end generate>>
 
-	constant C_ARD_NUM_CE_ARRAY : INTEGER_ARRAY_TYPE := (
-		<<generate for SLOTS>>
-		<<_i>> => 4<<c,>>
-		<<end generate>>
-	);
 begin
 
-	-- == Instantiation of components =====================================
+	--todo: remove
+	<<generate for SLOTS>>
+	OSIF_Hw2Sw_<<Id>>_In_RE <= OSIF_Hw2Sw_<<Id>>_In_RE_tmp;
+	OSIF_Sw2Hw_<<Id>>_In_Data <= OSIF_Sw2Hw_<<Id>>_In_Data_tmp;
+	OSIF_Sw2Hw_<<Id>>_In_WE <= OSIF_Sw2Hw_<<Id>>_In_WE_tmp;
+	<<end generate>>
 
-	--
-	-- Instantiation of axi_lite_ipif_v1_01_a
-	--
-	--   @see axi_lite_ipif_ds765.pdf
-	--
+	DEBUG(63 downto 0) <= OSIF_Hw2Sw_0_In_Data;
+	DEBUG(64) <= OSIF_Hw2Sw_0_In_Empty;
+	DEBUG(65) <= OSIF_Hw2Sw_0_In_RE_tmp;
 
-        ipif : entity axi_lite_ipif_v3_0_4.axi_lite_ipif
+	DEBUG(129 downto 66) <= OSIF_Sw2Hw_0_In_Data_tmp;
+	DEBUG(130) <= OSIF_Sw2Hw_0_In_Full;
+	DEBUG(131) <= OSIF_Sw2Hw_0_In_WE_tmp;
 
-		generic map (
-			C_S_AXI_ADDR_WIDTH => C_S_AXI_ADDR_WIDTH,
-			C_S_AXI_DATA_WIDTH => C_S_AXI_DATA_WIDTH,
 
-			C_ARD_ADDR_RANGE_ARRAY => C_ARD_ADDR_RANGE_ARRAY,
-			C_ARD_NUM_CE_ARRAY     => C_ARD_NUM_CE_ARRAY
-		)
+-- Instantiation of Axi Bus Interface S00_AXI
+reconos_osif_axi_inst : entity work.reconos_osif_axi
+	generic map (
+		C_S_AXI_DATA_WIDTH	=> C_S00_AXI_DATA_WIDTH,
+		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH,
 
-		port map (
-			s_axi_aclk    => S_AXI_ACLK,
-			s_axi_aresetn => S_AXI_ARESETN,
-			s_axi_awaddr  => S_AXI_AWADDR,
-			s_axi_awvalid => S_AXI_AWVALID,
-			s_axi_wdata   => S_AXI_WDATA,
-			s_axi_wstrb   => S_AXI_WSTRB,
-			s_axi_wvalid  => S_AXI_WVALID,
-			s_axi_bready  => S_AXI_BREADY,
-			s_axi_araddr  => S_AXI_ARADDR,
-			s_axi_arvalid => S_AXI_ARVALID,
-			s_axi_rready  => S_AXI_RREADY,
-			s_axi_arready => S_AXI_ARREADY,
-			s_axi_rdata   => S_AXI_RDATA,
-			s_axi_rresp   => S_AXI_RRESP,
-			s_axi_rvalid  => S_AXI_RVALID,
-			s_axi_wready  => S_AXI_WREADY,
-			s_axi_bresp   => S_AXI_BRESP,
-			s_axi_bvalid  => S_AXI_BVALID,
-			s_axi_awready => S_AXI_AWREADY,
+		-- OSIF user parameters
+		C_NUM_HWTS => C_NUM_HWTS,
 
-			bus2ip_clk    => bus2ip_clk,
-			bus2ip_resetn => bus2ip_resetn,
-			bus2ip_data   => bus2ip_data,
-			bus2ip_cs     => bus2ip_cs,
-			bus2ip_rdce   => bus2ip_rdce,
-			bus2ip_wrce   => bus2ip_wrce,
-			ip2bus_data   => ip2bus_data,
-			ip2bus_rdack  => ip2bus_rdack,
-			ip2bus_wrack  => ip2bus_wrack,
-			ip2bus_error  => ip2bus_error
-		);
+		C_OSIF_DATA_WIDTH   => C_OSIF_DATA_WIDTH,
+		C_OSIF_LENGTH_WIDTH => C_OSIF_LENGTH_WIDTH,
+		C_OSIF_OP_WIDTH     => C_OSIF_OP_WIDTH
+	)
+	port map (
+		-- OSIF user ports
+		<<generate for SLOTS>>
+		OSIF_Hw2Sw_<<Id>>_In_Data  => OSIF_Hw2Sw_<<Id>>_In_Data,
+		OSIF_Hw2Sw_<<Id>>_In_Empty => OSIF_Hw2Sw_<<Id>>_In_Empty,
+		OSIF_Hw2Sw_<<Id>>_In_RE    => OSIF_Hw2Sw_<<Id>>_In_RE_tmp, --sdfsd
+		<<end generate>>
 
-	--
-	-- Instantiation of user logic
-	--
-	--   The user logic includes the actual implementation of the bus
-	--   attachment.
-	--
-	ul : entity work.reconos_osif_user_logic
-		generic map (
-			C_NUM_HWTS => C_NUM_HWTS,
+		<<generate for SLOTS>>
+		OSIF_Sw2Hw_<<Id>>_In_Data  => OSIF_Sw2Hw_<<Id>>_In_Data_tmp, --sdfds
+		OSIF_Sw2Hw_<<Id>>_In_Full  => OSIF_Sw2Hw_<<Id>>_In_Full,
+		OSIF_Sw2Hw_<<Id>>_In_WE    => OSIF_Sw2Hw_<<Id>>_In_WE_tmp, --sdffsd
+		<<end generate>>
 
-			C_OSIF_DATA_WIDTH   => C_OSIF_DATA_WIDTH,
-			C_OSIF_LENGTH_WIDTH => C_OSIF_LENGTH_WIDTH,
-			C_OSIF_OP_WIDTH     => C_OSIF_OP_WIDTH
-		)
+		S_AXI_ACLK	=> s00_axi_aclk,
+		S_AXI_ARESETN	=> s00_axi_aresetn,
+		S_AXI_AWADDR	=> s00_axi_awaddr,
+		S_AXI_AWPROT	=> s00_axi_awprot,
+		S_AXI_AWVALID	=> s00_axi_awvalid,
+		S_AXI_AWREADY	=> s00_axi_awready,
+		S_AXI_WDATA	=> s00_axi_wdata,
+		S_AXI_WSTRB	=> s00_axi_wstrb,
+		S_AXI_WVALID	=> s00_axi_wvalid,
+		S_AXI_WREADY	=> s00_axi_wready,
+		S_AXI_BRESP	=> s00_axi_bresp,
+		S_AXI_BVALID	=> s00_axi_bvalid,
+		S_AXI_BREADY	=> s00_axi_bready,
+		S_AXI_ARADDR	=> s00_axi_araddr,
+		S_AXI_ARPROT	=> s00_axi_arprot,
+		S_AXI_ARVALID	=> s00_axi_arvalid,
+		S_AXI_ARREADY	=> s00_axi_arready,
+		S_AXI_RDATA	=> s00_axi_rdata,
+		S_AXI_RRESP	=> s00_axi_rresp,
+		S_AXI_RVALID	=> s00_axi_rvalid,
+		S_AXI_RREADY	=> s00_axi_rready
+	);
 
-		port map (
-			<<generate for SLOTS>>
-			OSIF_Hw2Sw_<<Id>>_In_Data  => OSIF_Hw2Sw_<<Id>>_In_Data,
-			OSIF_Hw2Sw_<<Id>>_In_Empty => OSIF_Hw2Sw_<<Id>>_In_Empty,
-			OSIF_Hw2Sw_<<Id>>_In_RE    => OSIF_Hw2Sw_<<Id>>_In_RE,
-			<<end generate>>
+	-- Add user logic here
 
-			<<generate for SLOTS>>
-			OSIF_Sw2Hw_<<Id>>_In_Data  => OSIF_Sw2Hw_<<Id>>_In_Data,
-			OSIF_Sw2Hw_<<Id>>_In_Full  => OSIF_Sw2Hw_<<Id>>_In_Full,
-			OSIF_Sw2Hw_<<Id>>_In_WE    => OSIF_Sw2Hw_<<Id>>_In_WE,
-			<<end generate>>
+	-- User logic ends
 
-			BUS2IP_Clk    => bus2ip_clk,
-			BUS2IP_Resetn => bus2ip_resetn,
-			BUS2IP_Data   => bus2ip_data,
-			BUS2IP_CS     => bus2ip_cs,
-			BUS2IP_RdCE   => bus2ip_rdce,
-			BUS2IP_WrCE   => bus2ip_wrce,
-			IP2BUS_Data   => ip2bus_data,
-			IP2BUS_RdAck  => ip2bus_rdack,
-			IP2BUS_WrAck  => ip2bus_wrack,
-			IP2BUS_Error  => ip2bus_error
-		);
-end architecture imp;
+end arch_imp;

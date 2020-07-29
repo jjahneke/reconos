@@ -28,8 +28,8 @@
 /* == OSIF related functions ============================================ */
 
 extern int reconos_osif_open(int num);
-extern uint32_t reconos_osif_read(int fd);
-extern void reconos_osif_write(int fd, uint32_t data);
+extern uint64_t reconos_osif_read(int fd);
+extern void reconos_osif_write(int fd, uint64_t data);
 extern void reconos_osif_break(int fd);
 extern void reconos_osif_close(int fd);
 

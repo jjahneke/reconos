@@ -10,6 +10,7 @@
 --              Andreas Agne
 --              Christoph Rüthing
 --              Lennart Clausing
+--              Felix Jentzsch
 -- 
 -- Create Date:     05/10/2019 01:33:41 PM
 -- Design Name:     VHDL Package - ReconOS
@@ -22,6 +23,7 @@
 -- Dependencies: 
 -- 
 -- Revision:
+-- Revision 1.02 - altered OSIF data width to 64bit
 -- Revision 1.01 - altered MEMIF data width to 64bit
 -- Revision 0.01 - File Created
 -- Additional Comments:
@@ -51,7 +53,7 @@ package reconos_pkg is
 	--   C_MEMIF_LENGTH_WIDTH - width of the length in command word
 	--   C_MEMIF_OP_WIDTH     - width of the operation in command word
 	--
-	constant C_OSIF_DATA_WIDTH  : integer := 32;
+	constant C_OSIF_DATA_WIDTH  : integer := 64;
 	constant C_MEMIF_DATA_WIDTH : integer := 64;
 	
 
@@ -77,30 +79,30 @@ package reconos_pkg is
 	--
 	--   self-describing
 	--
-	constant OSIF_CMD_THREAD_GET_INIT_DATA  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000A0";
-	constant OSIF_CMD_THREAD_GET_STATE_ADDR : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000A1";
-	constant OSIF_CMD_THREAD_EXIT           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000A2";
-	constant OSIF_CMD_THREAD_YIELD          : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000A3";
-	constant OSIF_CMD_THREAD_CLEAR_SIGNAL   : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000A4";
-	constant OSIF_CMD_SEM_POST              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000B0";
-	constant OSIF_CMD_SEM_WAIT              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000B1";
-	constant OSIF_CMD_MUTEX_LOCK            : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000C0";
-	constant OSIF_CMD_MUTEX_UNLOCK          : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000C1";
-	constant OSIF_CMD_MUTEX_TRYLOCK         : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000C2";
-	constant OSIF_CMD_COND_WAIT             : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000D0";
-	constant OSIF_CMD_COND_SIGNAL           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000D1";
-	constant OSIF_CMD_COND_BROADCAST        : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000D2";
-	constant OSIF_CMD_MBOX_GET              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000F0";
-	constant OSIF_CMD_MBOX_PUT              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000F1";
-	constant OSIF_CMD_MBOX_TRYGET           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000F2";
-	constant OSIF_CMD_MBOX_TRYPUT           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000F3";
-	constant OSIF_CMD_MASK                  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000FF";
-	constant OSIF_CMD_YIELD_MASK            : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"80000000";
+	constant OSIF_CMD_THREAD_GET_INIT_DATA  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000A0";
+	constant OSIF_CMD_THREAD_GET_STATE_ADDR : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000A1";
+	constant OSIF_CMD_THREAD_EXIT           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000A2";
+	constant OSIF_CMD_THREAD_YIELD          : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000A3";
+	constant OSIF_CMD_THREAD_CLEAR_SIGNAL   : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000A4";
+	constant OSIF_CMD_SEM_POST              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000B0";
+	constant OSIF_CMD_SEM_WAIT              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000B1";
+	constant OSIF_CMD_MUTEX_LOCK            : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000C0";
+	constant OSIF_CMD_MUTEX_UNLOCK          : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000C1";
+	constant OSIF_CMD_MUTEX_TRYLOCK         : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000C2";
+	constant OSIF_CMD_COND_WAIT             : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000D0";
+	constant OSIF_CMD_COND_SIGNAL           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000D1";
+	constant OSIF_CMD_COND_BROADCAST        : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000D2";
+	constant OSIF_CMD_MBOX_GET              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000F0";
+	constant OSIF_CMD_MBOX_PUT              : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000F1";
+	constant OSIF_CMD_MBOX_TRYGET           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000F2";
+	constant OSIF_CMD_MBOX_TRYPUT           : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000F3";
+	constant OSIF_CMD_MASK                  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000FF";
+	constant OSIF_CMD_YIELD_MASK            : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"0000000080000000";
 
-	constant OSIF_SIGNAL_THREAD_START       : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"01000000";
-	constant OSIF_SIGNAL_THREAD_RESUME      : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"01000001";
+	constant OSIF_SIGNAL_THREAD_START       : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"0000000001000000";
+	constant OSIF_SIGNAL_THREAD_RESUME      : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"0000000001000001";
 
-	constant OSIF_INTERRUPTED               : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"000000FF";
+	constant OSIF_INTERRUPTED               : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0) := x"00000000000000FF";
 
 	--
 	-- Definition of memif commands

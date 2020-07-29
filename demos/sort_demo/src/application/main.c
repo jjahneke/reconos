@@ -28,14 +28,14 @@ void print_help() {
 	);
 }
 
-int cmp_uint32t(const void *a, const void *b) {
-	return *(uint32_t *)a - *(uint32_t *)b;
+int cmp_uint64t(const void *a, const void *b) {
+	return *(uint64_t *)a - *(uint64_t *)b;
 }
 
-void _merge(uint32_t *data, uint32_t *tmp,
+void _merge(uint64_t *data, uint64_t *tmp,
            int l_count, int r_count) {
 	int i;
-	uint32_t *l = data, *r = data + l_count;
+	uint64_t *l = data, *r = data + l_count;
 	int li = 0, ri = 0;
 
 	for (i = 0; i < l_count; i++) {
@@ -53,11 +53,11 @@ void _merge(uint32_t *data, uint32_t *tmp,
 	}
 }
 
-void merge(uint32_t *data, int data_count) {
+void merge(uint64_t *data, int data_count) {
 	int bs, bi;
-	uint32_t *tmp;
+	uint64_t *tmp;
 
-	tmp = (uint32_t *)malloc(data_count * sizeof(uint32_t));
+	tmp = (uint64_t *)malloc(data_count * sizeof(uint64_t));
 
 	for (bs = BLOCK_SIZE; bs < data_count; bs += bs) {
 		for (bi = 0; bi < data_count; bi += bs + bs) {
@@ -75,7 +75,7 @@ void merge(uint32_t *data, int data_count) {
 int main(int argc, char **argv) {
 	int i;
 	int num_hwts, num_swts, num_blocks;
-	uint32_t *data, *copy;
+	uint64_t *data, *copy;
 	int data_count;
 	int clk;
 
@@ -128,18 +128,18 @@ int main(int argc, char **argv) {
 	log("generating data ...\n");
 	data_count = num_blocks * BLOCK_SIZE;
         
-	data = (uint32_t *)malloc(data_count * sizeof(uint32_t));
-        log("malloc'd data @0x%p\n", data);
+	data = (uint64_t *)malloc(data_count * sizeof(uint64_t));
+        log("malloc'd data @%p\n", data);
         
-	copy = (uint32_t *)malloc(data_count * sizeof(uint32_t));
-        log("malloc'd copy @0x%p\n", copy);
+	copy = (uint64_t *)malloc(data_count * sizeof(uint64_t));
+        log("malloc'd copy @%p\n", copy);
         
 	for (i = 0; i < data_count; i++) {
 		data[i] = data_count - i - 1;
 	}
 	//data[0] = 0xDEADBEEF;
         
-	memcpy(copy, data, data_count * sizeof(uint32_t));
+	memcpy(copy, data, data_count * sizeof(uint64_t));
 	t_gen = timer_get() - t_start;
 
 	log("putting %d blocks into job queue: \n", num_blocks);
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
 		mbox_get(resources_acknowledge);
 		log("ack %d of %d\n", i, num_blocks);
 	}
-	clk = reconos_clock_threads_set(20000);
+	//clk = reconos_clock_threads_set(20000);
 	log("[@%dMHz]", clk / 1000);
 	for (i = 0; i < num_blocks / 2; i++) {
 		mbox_get(resources_acknowledge);
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
 
 	t_start = timer_get();
 	log("checking sorted data (%d elements) ...\n", data_count);
-	qsort(copy, data_count, sizeof(uint32_t), cmp_uint32t);
+	qsort(copy, data_count, sizeof(uint64_t), cmp_uint64t);
 	for (i = 0; i < data_count; i++) {
                 if(i % 16 == 0) {
                     log("element %d: data: 0x%x, copy: 0x%x\n", i, data[i], copy[i]);
@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
 	log("sending terminate message:");
 	for (i = 0; i < num_hwts + num_swts; i++) {
 		log(" %d", i);
-		mbox_put(resources_address, 0xffffffff);
+		mbox_put(resources_address, 0xffffffffffffffff);
 	}
 	log("\n");
 #endif

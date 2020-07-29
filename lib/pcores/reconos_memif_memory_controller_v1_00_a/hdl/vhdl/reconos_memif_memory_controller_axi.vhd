@@ -908,7 +908,7 @@ begin
 
                               memif_state <= STATE_READ_ADDR;
                               
-                              init_txn_pulse <= '1';
+                              --init_txn_pulse <= '1'; todo: removed again for testing
                           end if;
       
                       when STATE_READ_ADDR =>
@@ -947,9 +947,9 @@ begin
       
                       when STATE_PROCESS_WRITE_1 =>
                           if wnext = '1' and MEMIF64_Hwt2Mem_In_Empty = '0' then
-                              mem_count_bytes <= mem_count_bytes - 4;
+                              mem_count_bytes <= mem_count_bytes - 8;
       
-                              if mem_count_bytes - 4 = 0 then
+                              if mem_count_bytes - 8 = 0 then
                                   memif_state <= STATE_CMPLT;
                               end if;
                           end if;
@@ -973,9 +973,9 @@ begin
                       when STATE_PROCESS_READ_1 =>
                       
                           if rnext = '1' and MEMIF64_Mem2Hwt_In_Full = '0' then
-                              mem_count_bytes <= mem_count_bytes - 4;
+                              mem_count_bytes <= mem_count_bytes - 8;
       
-                              if mem_count_bytes - 4 = 0 then
+                              if mem_count_bytes - 8 = 0 then
                                   memif_state <= STATE_CMPLT;
                               end if;
                           end if;

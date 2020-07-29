@@ -362,11 +362,11 @@ begin
 	-- == Multiplexing signals ============================================
 	                               
     MEMIF64_Hwt2Mem_Out_Data  <= MEMIF64_Hwt2Mem_In_Data   when state = STATE_PROCESS else
-                                  x"0000000000000004"     when state = STATE_READ_L1_0 else
+                                  x"0000000000000008"     when state = STATE_READ_L1_0 else
                                   x"0000" & l1_descr_addr when state = STATE_READ_L1_1 else -- added front padding
-                                  x"0000000000000004"     when state = STATE_READ_L2_0 else
+                                  x"0000000000000008"     when state = STATE_READ_L2_0 else
                                   x"0000" & l2_descr_addr when state = STATE_READ_L2_1 else -- added front padding
-                                  x"0000000000000004"     when state = STATE_READ_L3_0 else
+                                  x"0000000000000008"     when state = STATE_READ_L3_0 else
                                   x"0000" & l3_descr_addr when state = STATE_READ_L3_1 else -- added front padding
                                   mem_cmd                 when state = STATE_WRITE_CMD else 
                                   x"0000" & physical_addr when state = STATE_WRITE_ADDR else -- added front padding

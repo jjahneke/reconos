@@ -179,6 +179,9 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     set_property -dict [list CONFIG.PSU__USE__M_AXI_GP0 {1} CONFIG.PSU__MAXIGP0__DATA_WIDTH {64} CONFIG.PSU__USE__M_AXI_GP2 {0}] [get_bd_cells zynq_ultra_ps_e_0]
     set_property -dict [list CONFIG.PSU__USE__M_AXI_GP1 {0}] [get_bd_cells zynq_ultra_ps_e_0]
 
+    # Enable high address fragmentation to allow access to upper 2GB of DRAM (enabled by default in newer Vivado versions)
+    set_property -dict [list CONFIG.PSU__HIGH_ADDRESS__ENABLE {1}] [get_bd_cells zynq_ultra_ps_e_0]
+
     # Add interrupt port 
     set_property -dict [list CONFIG.PSU__USE__IRQ0 {1}] [get_bd_cells zynq_ultra_ps_e_0]
 
@@ -404,7 +407,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
 
     #
-    # Memory Map of peripheperals
+    # Memory Map of peripherals
     #
     set_property -dict [list CONFIG.C_BASEADDR {0xA0100000} CONFIG.C_HIGHADDR {0xA010FFFF}] [get_bd_cells reconos_osif_0]
     set_property -dict [list CONFIG.C_BASEADDR {0xA0130000} CONFIG.C_HIGHADDR {0xA013FFFF}] [get_bd_cells timer_0]
@@ -412,6 +415,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     set_property -dict [list CONFIG.C_BASEADDR {0xA0040000} CONFIG.C_HIGHADDR {0xA004FFFF}] [get_bd_cells reconos_clock_0]
 
     create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_DDR_LOW] SEG_zynq_ultra_ps_e_0_ACP_DDR_LOW
+    create_bd_addr_seg -range 0x0800000000 -offset 0x0800000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_DDR_HIGH] SEG_zynq_ultra_ps_e_0_ACP_DDR_HIGH
     create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_LPS_OCM] SEG_zynq_ultra_ps_e_0_ACP_LPS_OCM
     create_bd_addr_seg -range 0x10000000 -offset 0xE0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_PCIE_LOW] SEG_zynq_ultra_ps_e_0_ACP_PCIE_LOW
     create_bd_addr_seg -range 0x20000000 -offset 0xC0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_QSPI] SEG_zynq_ultra_ps_e_0_ACP_QSPI

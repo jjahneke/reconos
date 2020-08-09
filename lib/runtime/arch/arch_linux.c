@@ -190,11 +190,11 @@ int reconos_proc_control_get_tlb_misses(int fd) {
 	return data;
 }
 
-uint32_t reconos_proc_control_get_fault_addr(int fd) {
+uint64_t reconos_proc_control_get_fault_addr(int fd) {
     
         
     
-	uint32_t data;
+	uint64_t data;
 
 	ioctl(fd, RECONOS_PROC_CONTROL_GET_FAULT_ADDR, &data);
 

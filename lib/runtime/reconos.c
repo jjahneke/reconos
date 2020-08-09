@@ -443,19 +443,17 @@ void reconos_cache_flush() {
  */
 void *proc_pgfhandler(void *arg) {
 	while (1) {
-		uint32_t *addr;
+		uint64_t *addr;
 
-		addr = (uint32_t *)reconos_proc_control_get_fault_addr(_proc_control);
+		addr = (uint64_t *)reconos_proc_control_get_fault_addr(_proc_control);
 
-		printf("[reconos_core] "
-		       "page fault occured at address %x\n", (unsigned int)addr);
-                fflush(stdout);
+		printf("[reconos_core] page fault occured at address %#.16lx\n", (uint64_t)addr);
+        fflush(stdout);
 
 		*addr = 0;
                 
-                printf("[reconos_core] "
-		       "page fault address reset\n", (unsigned int)addr);
-                fflush(stdout);
+		printf("[reconos_core] page fault address reset\n");
+		fflush(stdout);
 
 		reconos_proc_control_clear_page_fault(_proc_control);
 	}
@@ -995,7 +993,7 @@ void *dt_delegate(void *arg) {
 		slot->dt_state = DELEGATE_STATE_BLOCKED_OSIF;
 		cmd = reconos_osif_read(slot->osif);
 		slot->dt_state = DELEGATE_STATE_PROCESSING;
-		debug("[reconos-dt-%d] received command 0x%x\n", slot->id, cmd);
+		debug("[reconos-dt-%d] received command %#.16lx\n", slot->id, cmd);
 
 		switch (cmd & OSIF_CMD_MASK) {
 			case OSIF_CMD_MBOX_PUT:
@@ -1070,11 +1068,11 @@ void *dt_delegate(void *arg) {
 				break;
 
 			default:
-				panic("[reconos-dt-%d] ERROR received unknown command 0x%08x\n", slot->id, cmd);
+				panic("[reconos-dt-%d] ERROR received unknown command %#.16lx\n", slot->id, cmd);
 				break;
 		}
 
-		debug("[reconos-dt-%d] executed command 0x%x\n", slot->id, cmd);
+		debug("[reconos-dt-%d] executed command %#.16lx\n", slot->id, cmd);
 	}
 
 return NULL;

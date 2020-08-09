@@ -124,14 +124,15 @@ static struct proc_control_dev proc_control;
  *   @returns read data
  */
 static inline uint32_t read_reg32(struct proc_control_dev *dev, unsigned int reg) {
-        printk(KERN_INFO "[reconos-proc-control] read_reg32 @offset %#016llx\n", reg);
+        printk(KERN_INFO "[reconos-proc-control] read_reg32 @offset %#.16lx\n", reg);
 	return ioread32(dev->mem + reg);
 }
 
 static inline uint64_t read_reg64(struct proc_control_dev *dev, unsigned int reg) {
-        printk(KERN_INFO "[reconos-proc-control] read_reg64 @offset %#016llx\n", reg);
-	return ioread64(dev->mem + reg);
-        //return ((ioread32(dev->mem + reg) << 32) + ioread32(dev->mem + reg + 4));
+        printk(KERN_INFO "[reconos-proc-control] read_reg64 @offset %#.16lx\n", reg);
+        return ( (((uint64_t)ioread32(dev->mem + reg)) << 32) + (uint64_t) ioread32(dev->mem + reg + 4) );
+		//this approach reads 2x 32bit from proc_control, but in the wrong order (low|high)!
+		//return ioread64(dev->mem + reg); 
 }
 
 /*
@@ -142,15 +143,16 @@ static inline uint64_t read_reg64(struct proc_control_dev *dev, unsigned int reg
  *   data - data to write
  */
 static inline void write_reg32(struct proc_control_dev *dev, unsigned int reg, uint32_t data) {
-        printk(KERN_INFO "[reconos-proc-control] write_reg64 @offset %#016llx\n", reg);
+        printk(KERN_INFO "[reconos-proc-control] write_reg64 @offset %#.16lx\n", reg);
 	iowrite32(data, dev->mem + reg);
 }
 
 static inline void write_reg64(struct proc_control_dev *dev, unsigned int reg, uint64_t data) {
-        printk(KERN_INFO "[reconos-proc-control] write_reg64 @offset %#016llx\n", reg);
-        iowrite64(data, dev->mem + reg);
-        //iowrite32((uint32_t) ((data >> 32) & 0xFFFFFFFF), dev->mem + reg);
-        //iowrite32((uint32_t) (data & 0xFFFFFFFF), dev->mem + reg + 4);
+        printk(KERN_INFO "[reconos-proc-control] write_reg64 @offset %#.16lx\n", reg);     
+        iowrite32((uint32_t) ((data >> 32) & 0xFFFFFFFF), dev->mem + reg);
+        iowrite32((uint32_t) (data & 0xFFFFFFFF), dev->mem + reg + 4);
+		//this approach is possibly incompatible with the current proc_control implementation
+		//iowrite64(data, dev->mem + reg);
 }
 
 /*
@@ -236,7 +238,7 @@ static long proc_control_ioctl(struct file *filp, unsigned int cmd,
 			} while (!dev->page_fault);
 
 			disable_irq(dev->irq);
-			ret = copy_to_user((uint32_t *)arg, &dev->page_fault_addr, sizeof(uint64_t));
+			ret = copy_to_user((uint64_t *)arg, &dev->page_fault_addr, sizeof(uint64_t));
 			break;
 
 		case RECONOS_PROC_CONTROL_CLEAR_PAGE_FAULT:
@@ -247,9 +249,9 @@ static long proc_control_ioctl(struct file *filp, unsigned int cmd,
 		case RECONOS_PROC_CONTROL_SET_PGD_ADDR:
 			data64 = (uint64_t) virt_to_phys(current->mm->pgd);
 			printk(KERN_INFO "[reconos-proc-control] "
-						"set_pgd_address: %#016llx\n", data64);
+						"set_pgd_address: %#.16lx\n", data64);
                         printk(KERN_INFO "[reconos-proc-control] "
-                                                "(mem hardware base: %#016llx)\n", (dev->mem));
+                                                "(mem hardware base: %#.16lx)\n", (dev->mem));
 			write_reg64(dev, PGD_ADDR_REG, data64);
 			break;
 
@@ -361,9 +363,9 @@ static irqreturn_t interrupt(int irq, void *data) {
         printk(KERN_INFO "[reconos-proc-control] "
 	                   "INTERRUPT: IRQ %d, CALLER: \n", irq, (void *)_RET_IP_);
         printk(KERN_INFO "[reconos-proc-control] "
-	                   "proc_control_dev data: base: %#016llx size: %#x irq: %d page_fault_addr: %#016llx  \n", dev->base_addr, dev->mem_size, dev->irq, dev->page_fault_addr);
+	                   "proc_control_dev data: base: %#.16lx size: %#x irq: %d page_fault_addr: %#.16lx  \n", dev->base_addr, dev->mem_size, dev->irq, dev->page_fault_addr);
         printk(KERN_INFO "[reconos-proc-control] "
-	                   "PAGE_FAULT_ADDR_REG: 0x%llx \n", read_reg64(dev, PAGE_FAULT_ADDR_REG));
+	                   "PAGE_FAULT_ADDR_REG: %#.16lx \n", read_reg64(dev, PAGE_FAULT_ADDR_REG));
 	printk(KERN_INFO "[reconos-proc-control] "
 	                   "page fault occured\n");
 
@@ -421,7 +423,7 @@ int proc_control_num_hwts_static(void) {
 	base_addr = res.start;
 	mem_size = res.end - res.start + 1;
 	printk(KERN_INFO "[reconos-proc-control-STATIC] "
-	                   "found memory at %#016llx with size %#x\n",
+	                   "found memory at %#.16lx with size %#x\n",
 	                   base_addr, mem_size);
 
 	// allocation io memory to read proc control registers

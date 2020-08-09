@@ -40,7 +40,7 @@ extern int reconos_proc_control_open();
 extern int reconos_proc_control_get_num_hwts(int fd);
 extern int reconos_proc_control_get_tlb_hits(int fd);
 extern int reconos_proc_control_get_tlb_misses(int fd);
-extern uint32_t reconos_proc_control_get_fault_addr(int fd);
+extern uint64_t reconos_proc_control_get_fault_addr(int fd);
 extern void reconos_proc_control_clear_page_fault(int fd);
 extern void reconos_proc_control_set_pgd(int fd);
 extern void reconos_proc_control_sys_reset(int fd);

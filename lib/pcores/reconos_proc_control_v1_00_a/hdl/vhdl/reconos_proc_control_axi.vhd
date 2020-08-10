@@ -118,12 +118,13 @@ architecture arch_imp of ProcControlAXI_S00_AXI is
 	signal sys_reset_counter : std_logic_vector(3 downto 0);
 	
     type BUS_WAIT_STATE_TYPE is (IDLE, WAIT_DATA);
-    signal pgd_state         : BUS_WAIT_STATE_TYPE;
-    signal pgd_hi_state      : BUS_WAIT_STATE_TYPE;
+    --signal pgd_state         : BUS_WAIT_STATE_TYPE;
+    --signal pgd_hi_state      : BUS_WAIT_STATE_TYPE;
     signal hwt_reset_state   : BUS_WAIT_STATE_TYPE;
     signal hwt_signal_state  : BUS_WAIT_STATE_TYPE;
 
-	signal pgd                 : std_logic_vector(63 downto 0);
+	--signal pgd                 : std_logic_vector(63 downto 0);
+	signal mmu_retry_flag      : std_logic;
 	signal fault_addr          : std_logic_vector(63 downto 0);
 	signal tlb_hits            : std_logic_vector(31 downto 0);
 	signal tlb_misses          : std_logic_vector(31 downto 0);
@@ -188,6 +189,8 @@ begin
 	fault_addr      <= MMU_Fault_Addr;
 	tlb_hits        <= MMU_Tlb_Hits;
 	tlb_misses      <= MMU_Tlb_Misses;
+	
+	MMU_Retry       <= mmu_retry_flag;
 
 	PROC_Hwt_Rst    <= hwt_reset;
 	PROC_Hwt_Signal <= hwt_signal;
@@ -196,7 +199,10 @@ begin
 	hwt_reset       <= hwt_reset_reg(C_NUM_HWTS - 1 downto 0);
 	hwt_signal      <= hwt_signal_reg(C_NUM_HWTS - 1 downto 0);
 
-	MMU_Pgd         <= pgd;
+	-- attach Pgd output directly to slave registers and remove respective processes from old 32bit implementation
+	--MMU_Pgd         <= pgd;
+	MMU_Pgd(31 downto 0)  <= slv_reg3;
+	MMU_Pgd(63 downto 32) <= slv_reg2;
 
 	-- I/O Connections assignments
 	S_AXI_AWREADY	<= axi_awready;
@@ -538,11 +544,12 @@ begin
 	      when b"0010" =>
 	        reg_data_out <= slv_reg2;  -- pgd_hi
 	      when b"0011" =>
-	        reg_data_out <= slv_reg3;  -- pgd
+			reg_data_out <= slv_reg3;  -- pgd
+		  -- hotfix: read directly from fault_addr signal
 	      when b"0100" =>
-	        reg_data_out <= slv_reg4;  -- fault_addr_hi
+	        reg_data_out <= fault_addr(63 downto 32);  -- fault_addr_hi
 	      when b"0101" =>
-	        reg_data_out <= slv_reg5;  -- fault_addr
+	        reg_data_out <= fault_addr(31 downto 0);   -- fault_addr
 	      when b"0110" =>
 	        reg_data_out <= slv_reg6;  -- tlb_hits
 	      when b"0111" =>
@@ -596,11 +603,12 @@ begin
                 PROC_Pgf_Int <= '0';
                 pgf_int_state <= WAIT_PGF;
             elsif rising_edge(S_AXI_ACLK) then
-                MMU_Retry <= '0';
+                mmu_retry_flag <= '0';
     
                 case pgf_int_state is
-                    when WAIT_PGF =>
-                        if MMU_Pgf = '1' then
+					when WAIT_PGF =>
+						-- do not enter interrupt state if MMU_Retry was just triggered, as MMU takes a cycle to deassert Pgf flag
+                        if MMU_Pgf = '1' and mmu_retry_flag = '0' then
                             PROC_Pgf_Int <= '1';
                             pgf_int_state <= WAIT_CLEAR;
                         end if;
@@ -631,7 +639,7 @@ begin
                     when WAIT_READY =>
                         -- writing to page_fault_addr register
                         if slv_write_reg = b"0101" or slv_write_reg = b"0100" then
-                            MMU_Retry <= '1';
+                            mmu_retry_flag <= '1';
                             pgf_int_state <= WAIT_PGF;
                         end if;
                 end case;
@@ -719,56 +727,56 @@ begin
         end process sys_reset_proc;
     
     
-        pgd_proc : process(S_AXI_ACLK,S_AXI_ARESETN) is
-            variable slv_read_reg  : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
-            variable slv_write_reg : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
-        begin
-            slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
-            slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+        -- pgd_proc : process(S_AXI_ACLK,S_AXI_ARESETN) is
+        --     variable slv_read_reg  : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
+        --     variable slv_write_reg : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
+        -- begin
+        --     slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+        --     slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-            if S_AXI_ARESETN = '0' or sys_reset = '1' then
-                pgd(31 downto 0) <= (others => '0');
-                pgd_state <= IDLE;
-            else
-                if rising_edge(S_AXI_ACLK) then
-                    case pgd_state is
-                        when IDLE =>
-                            if slv_write_reg = b"0011" then
-                                pgd_state <= WAIT_DATA;
-                            end if;
-                        when WAIT_DATA =>
-                            pgd(31 downto 0) <= slv_reg3;
-                            pgd_state <= IDLE;
-                    end case;
-                end if;
-            end if;
-        end process pgd_proc;
+        --     if S_AXI_ARESETN = '0' or sys_reset = '1' then
+        --         pgd(31 downto 0) <= (others => '0');
+        --         pgd_state <= IDLE;
+        --     else
+        --         if rising_edge(S_AXI_ACLK) then
+        --             case pgd_state is
+        --                 when IDLE =>
+        --                     if slv_write_reg = b"0011" then
+        --                         pgd_state <= WAIT_DATA;
+        --                     end if;
+        --                 when WAIT_DATA =>
+        --                     pgd(31 downto 0) <= slv_reg3;
+        --                     pgd_state <= IDLE;
+        --             end case;
+        --         end if;
+        --     end if;
+        -- end process pgd_proc;
         
         
-        pgd_hi_proc : process(S_AXI_ACLK,S_AXI_ARESETN) is
-            variable slv_read_reg  : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
-            variable slv_write_reg : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
-        begin
-            slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
-            slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+        -- pgd_hi_proc : process(S_AXI_ACLK,S_AXI_ARESETN) is
+        --     variable slv_read_reg  : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
+        --     variable slv_write_reg : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
+        -- begin
+        --     slv_read_reg  := axi_araddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+        --     slv_write_reg := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
             
-                if S_AXI_ARESETN = '0' or sys_reset = '1' then
-                    pgd(63 downto 32) <= (others => '0');
-                    pgd_hi_state <= IDLE;
-                else
-                    if rising_edge(S_AXI_ACLK) then
-                        case pgd_hi_state is
-                            when IDLE =>
-                                if slv_write_reg = b"0010" then
-                                    pgd_hi_state <= WAIT_DATA;
-                                end if;
-                            when WAIT_DATA =>
-                                pgd(63 downto 32) <= slv_reg2;
-                                pgd_hi_state <= IDLE;
-                        end case;
-                    end if;
-                end if;
-            end process pgd_hi_proc;
+        --         if S_AXI_ARESETN = '0' or sys_reset = '1' then
+        --             pgd(63 downto 32) <= (others => '0');
+        --             pgd_hi_state <= IDLE;
+        --         else
+        --             if rising_edge(S_AXI_ACLK) then
+        --                 case pgd_hi_state is
+        --                     when IDLE =>
+        --                         if slv_write_reg = b"0010" then
+        --                             pgd_hi_state <= WAIT_DATA;
+        --                         end if;
+        --                     when WAIT_DATA =>
+        --                         pgd(63 downto 32) <= slv_reg2;
+        --                         pgd_hi_state <= IDLE;
+        --                 end case;
+        --             end if;
+        --         end if;
+        --     end process pgd_hi_proc;
 
 	-- User logic ends
 

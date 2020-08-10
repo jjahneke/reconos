@@ -154,7 +154,8 @@ ProcControlAXI_v0_91_S00_AXI_inst : entity work.ProcControlAXI_S00_AXI
 	    PROC_Sys_Rst    => PROC_Sys_Rst,
 
 	    PROC_Hwt_Rst    => hwt_rst,
-	    PROC_Hwt_Signal => hwt_sig,
+		PROC_Hwt_Signal => hwt_sig,
+		PROC_Pgf_Int    => PROC_Pgf_Int,
 
 		S_AXI_ACLK	    => s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,

@@ -175,7 +175,14 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" }  [get_bd_cells zynq_ultra_ps_e_0]
     
     # Make sure required AXI ports are active
-    set_property -dict [list CONFIG.PSU__USE__S_AXI_ACP {1}] [get_bd_cells zynq_ultra_ps_e_0]
+
+    # Use HPC0 port instead of ACP
+    #set_property -dict [list CONFIG.PSU__USE__S_AXI_ACP {1}] [get_bd_cells zynq_ultra_ps_e_0]
+    set_property -dict [list CONFIG.PSU__USE__S_AXI_ACP {0}] [get_bd_cells zynq_ultra_ps_e_0]
+    set_property -dict [list CONFIG.PSU__USE__S_AXI_GP0 {1}] [get_bd_cells zynq_ultra_ps_e_0]
+    set_property -dict [list CONFIG.PSU__SAXIGP0__DATA_WIDTH {128}] [get_bd_cells zynq_ultra_ps_e_0]
+    set_property -dict [list CONFIG.PSU__AFI0_COHERENCY {1}] [get_bd_cells zynq_ultra_ps_e_0]
+
     set_property -dict [list CONFIG.PSU__USE__M_AXI_GP0 {1} CONFIG.PSU__MAXIGP0__DATA_WIDTH {64} CONFIG.PSU__USE__M_AXI_GP2 {0}] [get_bd_cells zynq_ultra_ps_e_0]
     set_property -dict [list CONFIG.PSU__USE__M_AXI_GP1 {0}] [get_bd_cells zynq_ultra_ps_e_0]
 
@@ -305,7 +312,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
     # AXI
     connect_bd_intf_net -intf_net reconos_memif_memory_controller_0_M_AXI [get_bd_intf_pins reconos_memif_memory_controller_0/M00_AXI] [get_bd_intf_pins axi_mem/S00_AXI]
-    connect_bd_intf_net -intf_net reconos_memif_memory_controller_0_S_AXI [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_ACP_FPD] [get_bd_intf_pins axi_mem/M00_AXI]
+    connect_bd_intf_net -intf_net reconos_memif_memory_controller_0_S_AXI [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HPC0_FPD] [get_bd_intf_pins axi_mem/M00_AXI]
 
     connect_bd_intf_net -intf_net axi_hwt_S00_AXI [get_bd_intf_pins axi_hwt/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_FPD] 
     connect_bd_intf_net -intf_net axi_hwt_M00_AXI [get_bd_intf_pins axi_hwt/M00_AXI] [get_bd_intf_pins reconos_clock_0/S_AXI] 
@@ -334,7 +341,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
     connect_bd_net [get_bd_pins reconos_clock_0/CLK<<SYSCLK>>_Out] \
                             [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk] \
-                            [get_bd_pins zynq_ultra_ps_e_0/saxiacp_fpd_aclk] \
+                            [get_bd_pins zynq_ultra_ps_e_0/saxihpc0_fpd_aclk] \
                             [get_bd_pins reconos_clock_0/S_AXI_ACLK] \
                             [get_bd_pins reconos_memif_memory_controller_0/M00_AXI_ACLK] \
                             [get_bd_pins reconos_memif_mmu_usp_0/SYS_Clk] \
@@ -409,16 +416,15 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     #
     # Memory Map of peripherals
     #
-    set_property -dict [list CONFIG.C_BASEADDR {0xA0100000} CONFIG.C_HIGHADDR {0xA010FFFF}] [get_bd_cells reconos_osif_0]
     set_property -dict [list CONFIG.C_BASEADDR {0xA0130000} CONFIG.C_HIGHADDR {0xA013FFFF}] [get_bd_cells timer_0]
     set_property -dict [list CONFIG.C_BASEADDR {0xA0110000} CONFIG.C_HIGHADDR {0xA011FFFF}] [get_bd_cells reconos_osif_intc_0]
     set_property -dict [list CONFIG.C_BASEADDR {0xA0040000} CONFIG.C_HIGHADDR {0xA004FFFF}] [get_bd_cells reconos_clock_0]
 
-    create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_DDR_LOW] SEG_zynq_ultra_ps_e_0_ACP_DDR_LOW
-    create_bd_addr_seg -range 0x0800000000 -offset 0x0800000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_DDR_HIGH] SEG_zynq_ultra_ps_e_0_ACP_DDR_HIGH
-    create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_LPS_OCM] SEG_zynq_ultra_ps_e_0_ACP_LPS_OCM
-    create_bd_addr_seg -range 0x10000000 -offset 0xE0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_PCIE_LOW] SEG_zynq_ultra_ps_e_0_ACP_PCIE_LOW
-    create_bd_addr_seg -range 0x20000000 -offset 0xC0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIACP/ACP_QSPI] SEG_zynq_ultra_ps_e_0_ACP_QSPI
+    create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_LOW] SEG_zynq_ultra_ps_e_0_HPC0_DDR_LOW
+    create_bd_addr_seg -range 0x0800000000 -offset 0x0800000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH] SEG_zynq_ultra_ps_e_0_HPC0_DDR_HIGH
+    create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_LPS_OCM] SEG_zynq_ultra_ps_e_0_HPC0_LPS_OCM
+    create_bd_addr_seg -range 0x10000000 -offset 0xE0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_PCIE_LOW] SEG_zynq_ultra_ps_e_0_HPC0_PCIE_LOW
+    create_bd_addr_seg -range 0x20000000 -offset 0xC0000000 [get_bd_addr_spaces reconos_memif_memory_controller_0/M00_AXI] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_QSPI] SEG_zynq_ultra_ps_e_0_HPC0_QSPI
     create_bd_addr_seg -range 0x00010000 -offset 0xA0120000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs reconos_proc_control_0/S00_AXI/reg0] SEG_reconos_proc_control_0_S00_AXI_reg
     create_bd_addr_seg -range 0x00010000 -offset 0xA0040000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs reconos_clock_0/S_AXI/reg0] SEG_reconos_clock_0_reg0
     create_bd_addr_seg -range 0x00010000 -offset 0xA0100000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs reconos_osif_0/s00_axi/reg0] SEG_reconos_osif_0_reg0

@@ -287,10 +287,10 @@ architecture implementation of reconos64_memif_axicontroller_v0_91_M00_AXI is
 	
 	signal error_reg	: std_logic;
 	signal transmit_done	: std_logic;
-	signal read_mismatch	: std_logic;
+	--signal read_mismatch	: std_logic;
 	signal burst_write_active	: std_logic;
 	signal burst_read_active	: std_logic;
-	signal expected_rdata	: std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
+	--signal expected_rdata	: std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
 	--Interface response error flags
 	signal write_resp_error	: std_logic;
 	signal read_resp_error	: std_logic;
@@ -342,10 +342,10 @@ begin
 	M_AXI_AWBURST	<= "01";
 	M_AXI_AWLOCK	<= '0';
 	--Update value to 4'b0011 if coherent accesses to be used via the Zynq ACP port. Not Allocated, Modifiable, not Bufferable. Not Bufferable since this example is meant to test memory, not intermediate cache. 
-	M_AXI_AWCACHE	<= "0010";
-	M_AXI_AWPROT	<= "000";
+	M_AXI_AWCACHE	<= "1111"; --coherent transactions (write-back or write-through?)
+	M_AXI_AWPROT	<= "010"; --unprivileged, non-secure, data access
 	M_AXI_AWQOS	<= x"0";
-	M_AXI_AWUSER	<= (others => '1');
+	M_AXI_AWUSER	<= "01"; --(others => '1');   inner shareable
 	M_AXI_AWVALID	<= axi_awvalid;
 	
 	--Write Data(W)
@@ -353,7 +353,7 @@ begin
 	--All bursts are complete and aligned in this example
 	M_AXI_WSTRB	<= (others => '1');
 	M_AXI_WLAST	<= axi_wlast;
-	M_AXI_WUSER	<= (others => '0');
+	M_AXI_WUSER	<= "01"; --(others => '0');   inner shareable
 	M_AXI_WVALID	<= axi_wvalid;
 	
 	--Write Response (B)
@@ -371,10 +371,10 @@ begin
 	M_AXI_ARBURST	<= "01";
 	M_AXI_ARLOCK	<= '0';
 	--Update value to 4'b0011 if coherent accesses to be used via the Zynq ACP port. Not Allocated, Modifiable, not Bufferable. Not Bufferable since this example is meant to test memory, not intermediate cache. 
-	M_AXI_ARCACHE	<= "0010";
-	M_AXI_ARPROT	<= "000";
+	M_AXI_ARCACHE	<= "1111";
+	M_AXI_ARPROT	<= "010";
 	M_AXI_ARQOS	<= x"0";
-	M_AXI_ARUSER	<= (others => '1');
+	M_AXI_ARUSER	<= "01"; --(others => '1');   inner shareable
 	M_AXI_ARVALID	<= axi_arvalid;
 	
 	--Read and Read Response (R)
@@ -688,21 +688,21 @@ begin
 	  end process;                                               
 	                                                                        
 	--Check received read data against data generator                       
-	  process(M_AXI_ACLK)                                                   
-	  begin                                                                 
-	    if (rising_edge (M_AXI_ACLK)) then                                  
-	      if (M_AXI_ARESETN = '0' or init_txn_pulse = '1') then             
-	        read_mismatch <= '0';                                           
-	      --Only check data when RVALID is active                           
-	      else                                                              
-	        if (rnext = '1' and (M_AXI_RDATA /= expected_rdata)) then       
-	          read_mismatch <= '1';                                         
-	        else                                                            
-	          read_mismatch <= '0';                                         
-	        end if;                                                         
-	      end if;                                                           
-	    end if;                                                             
-	  end process;                                                          
+	--   process(M_AXI_ACLK)                                                   
+	--   begin                                                                 
+	--     if (rising_edge (M_AXI_ACLK)) then                                  
+	--       if (M_AXI_ARESETN = '0' or init_txn_pulse = '1') then             
+	--         read_mismatch <= '0';                                           
+	--       --Only check data when RVALID is active                           
+	--       else                                                              
+	--         if (rnext = '1' and (M_AXI_RDATA /= expected_rdata)) then       
+	--           read_mismatch <= '1';                                         
+	--         else                                                            
+	--           read_mismatch <= '0';                                         
+	--         end if;                                                         
+	--       end if;                                                           
+	--     end if;                                                             
+	--   end process;                                                          
 	                                                                        
 	--Flag any read response errors                                         
 	  read_resp_error <= axi_rready and M_AXI_RVALID and M_AXI_RRESP(1);    
@@ -714,19 +714,19 @@ begin
 
 	--Generate expected read data to check against actual read data
 
-	  process(M_AXI_ACLK)
-	  variable  sig_one : integer := 1;
-	  begin
-	    if (rising_edge (M_AXI_ACLK)) then
-	      if (M_AXI_ARESETN = '0' or init_txn_pulse = '1') then
-	        expected_rdata <= std_logic_vector (to_unsigned(sig_one, C_M_AXI_DATA_WIDTH));
-	      else
-	        if (M_AXI_RVALID = '1' and axi_rready = '1') then
-	          expected_rdata <= std_logic_vector(unsigned(expected_rdata) + 1);
-	        end if;
-	      end if;
-	    end if;
-	  end process;
+	--   process(M_AXI_ACLK)
+	--   variable  sig_one : integer := 1;
+	--   begin
+	--     if (rising_edge (M_AXI_ACLK)) then
+	--       if (M_AXI_ARESETN = '0' or init_txn_pulse = '1') then
+	--         expected_rdata <= std_logic_vector (to_unsigned(sig_one, C_M_AXI_DATA_WIDTH));
+	--       else
+	--         if (M_AXI_RVALID = '1' and axi_rready = '1') then
+	--           expected_rdata <= std_logic_vector(unsigned(expected_rdata) + 1);
+	--         end if;
+	--       end if;
+	--     end if;
+	--   end process;
 
 
 	------------------------------------
@@ -741,7 +741,8 @@ begin
 	      if (M_AXI_ARESETN = '0' or init_txn_pulse = '1') then
 	        error_reg <= '0';
 	      else
-	        if (read_mismatch = '1' or write_resp_error = '1' or read_resp_error = '1') then
+			--if (read_mismatch = '1' or write_resp_error = '1' or read_resp_error = '1') then
+			if (write_resp_error = '1' or read_resp_error = '1') then
 	          error_reg <= '1';
 	        end if;
 	      end if;
@@ -908,13 +909,13 @@ begin
 
                               memif_state <= STATE_READ_ADDR;
                               
-                              --init_txn_pulse <= '1'; todo: removed again for testing
+                              init_txn_pulse <= '1';
                           end if;
       
                       when STATE_READ_ADDR =>
                           init_txn_pulse <= '0';
                           
-                          if MEMIF64_Hwt2Mem_In_Empty = '0' and init_txn_pulse /= '1' then  --ToDo added pulse forming for test
+                          if MEMIF64_Hwt2Mem_In_Empty = '0' then 
                               mem_addr <= MEMIF64_Hwt2Mem_In_Data((C_M_AXI_ADDR_WIDTH-1) downto 0);
       
                               case mem_op is

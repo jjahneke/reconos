@@ -220,7 +220,7 @@ begin
 		o_RAMWE_reconos
 	);
 	
-	o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
+	o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((64-C_LOCAL_RAM_ADDRESS_WIDTH) to 63);
 		
 	-- os and memory synchronisation state machine
 	reconos_fsm: process (HWT_Clk,HWT_Rst,o_osif,o_memif,o_ram) is

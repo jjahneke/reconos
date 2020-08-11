@@ -7,7 +7,7 @@ use ieee.numeric_std.all;
 entity reconos_memif_memory_controller is
 	generic (
 		-- Users to add parameters here
-        C_MAX_BURST_LEN : integer := 32;
+        C_MAX_BURST_LEN : integer := 1;
         C_MEMIF_DATA_WIDTH : integer := 64;
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
@@ -15,15 +15,15 @@ entity reconos_memif_memory_controller is
 
 		-- Parameters of Axi Master Bus Interface M00_AXI
 --		C_M00_AXI_TARGET_SLAVE_BASE_ADDR	: std_logic_vector	:= x"40000000";
-		C_M00_AXI_BURST_LEN	: integer	:= 32;
+		C_M00_AXI_BURST_LEN	: integer	:= 1;
 		C_M00_AXI_ID_WIDTH	: integer	:= 1;
 		C_M00_AXI_ADDR_WIDTH	: integer	:= 40;
 		C_M00_AXI_DATA_WIDTH	: integer	:= 64;
-		C_M00_AXI_AWUSER_WIDTH	: integer	:= 1;
-		C_M00_AXI_ARUSER_WIDTH	: integer	:= 1;
-		C_M00_AXI_WUSER_WIDTH	: integer	:= 1;
-		C_M00_AXI_RUSER_WIDTH	: integer	:= 1;
-		C_M00_AXI_BUSER_WIDTH	: integer	:= 1
+		C_M00_AXI_AWUSER_WIDTH	: integer	:= 2;
+		C_M00_AXI_ARUSER_WIDTH	: integer	:= 2;
+		C_M00_AXI_WUSER_WIDTH	: integer	:= 2;
+		C_M00_AXI_RUSER_WIDTH	: integer	:= 2;
+		C_M00_AXI_BUSER_WIDTH	: integer	:= 2
 	);
 	port (
 		-- Users to add ports here

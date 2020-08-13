@@ -57,9 +57,9 @@ package reconos_pkg is
 	constant C_MEMIF_DATA_WIDTH : integer := 64;
 	
 
-	constant C_MEMIF_CHUNK_WORDS  : integer := 1; --DEBUG!!! TODO
+	constant C_MEMIF_CHUNK_WORDS  : integer := 32;
 	constant C_MEMIF_CHUNK_BYTES  : integer := C_MEMIF_CHUNK_WORDS * 8;
-	constant C_MEMIF_CHUNK_WIDTH  : integer := 3; --DEBUG!!! TODO
+	constant C_MEMIF_CHUNK_WIDTH  : integer := 8;
 	constant C_MEMIF_LENGTH_WIDTH : integer := 56;
 	constant C_MEMIF_OP_WIDTH     : integer := 8;
 

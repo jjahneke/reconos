@@ -1,3 +1,35 @@
+--                                                        ____  _____
+--                            ________  _________  ____  / __ \/ ___/64
+--                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
+--                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
+--                         /_/   \___/\___/\____/_/ /_/\____//____/
+-- 
+-- ======================================================================
+--
+-- Company:  CEG UPB
+-- Engineer: Christoph Rüthing
+--           Lennart Clausing
+--           Felix Jentzsch
+-- 
+-- Module Name:    reconos_memif_memory_controller
+-- Project Name:   ReconOS64
+-- Target Devices: Zynq UltraScale+
+-- Tool Versions:  2018.2
+-- Description:    A memory controller connecting the memory fifos with
+--                 the axi bus of the system.
+-- 
+-- Dependencies:        "..._axi.vhd" submodule contains all AXI/user logic
+-- 
+-- Revision:            -1.0 First working 64-bit version
+--                      -1.1 Burst transfer support
+--
+-- Additional Comments: -Based on Vivado AXI master template (create new peripheral wizard)
+--                      -Supports variable burst length up to specified maximum
+--                      -MEMIF read/write functions handle alignment to chunk borders to avoid crossing 4K boundaries with a burst
+--                      -Designed to connect to 128bit HPC0 slave port of PS via Interconnect (or Smartconnect) with width conversion
+-- 
+-- ======================================================================
+
 <<reconos_preproc>>
 
 library ieee;
@@ -7,15 +39,12 @@ use ieee.numeric_std.all;
 entity reconos_memif_memory_controller is
 	generic (
 		-- Users to add parameters here
-        C_MAX_BURST_LEN : integer := 1;
+        C_MAX_BURST_LEN : integer := 32;
         C_MEMIF_DATA_WIDTH : integer := 64;
 		-- User parameters ends
-		-- Do not modify the parameters beyond this line
-
 
 		-- Parameters of Axi Master Bus Interface M00_AXI
---		C_M00_AXI_TARGET_SLAVE_BASE_ADDR	: std_logic_vector	:= x"40000000";
-		C_M00_AXI_BURST_LEN	: integer	:= 1;
+		C_M00_AXI_BURST_LEN	: integer	:= 32;
 		C_M00_AXI_ID_WIDTH	: integer	:= 1;
 		C_M00_AXI_ADDR_WIDTH	: integer	:= 40;
 		C_M00_AXI_DATA_WIDTH	: integer	:= 64;
@@ -35,17 +64,10 @@ entity reconos_memif_memory_controller is
         MEMIF64_Mem2Hwt_In_Full  : in  std_logic;
         MEMIF64_Mem2Hwt_In_WE    : out std_logic;
 
-
         debug                    : out std_logic_vector(63 downto 0);
 		-- User ports ends
-		-- Do not modify the ports beyond this line
-
 
 		-- Ports of Axi Master Bus Interface M00_AXI
---		m00_axi_init_axi_txn	: in std_logic;
-		m00_axi_txn_done	: out std_logic;
-		m00_axi_error	: out std_logic;
-		
 		m00_axi_aclk	: in std_logic;
 		m00_axi_aresetn	: in std_logic;
 		
@@ -120,21 +142,20 @@ architecture arch_imp of reconos_memif_memory_controller is
 	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_In_Full:     SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Mem2Hwt_In FIFO64_M_Full";
 	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_In_WE:       SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Mem2Hwt_In FIFO64_M_WE";
 
-	-- component declaration
+	-- Component declaration
 	component reconos64_memif_axicontroller_v0_91_M00_AXI is
 		generic (
-		C_MAX_BURST_LEN : integer := 64;
-        C_MEMIF_DATA_WIDTH : integer := 32;
---		C_M_TARGET_SLAVE_BASE_ADDR	: std_logic_vector	:= x"40000000";
+		C_MEMIF_DATA_WIDTH : integer := 64;
+		
 		C_M_AXI_BURST_LEN	: integer	:= 16;
 		C_M_AXI_ID_WIDTH	: integer	:= 1;
-		C_M_AXI_ADDR_WIDTH	: integer	:= 32;
-		C_M_AXI_DATA_WIDTH	: integer	:= 32;
-		C_M_AXI_AWUSER_WIDTH	: integer	:= 0;
-		C_M_AXI_ARUSER_WIDTH	: integer	:= 0;
-		C_M_AXI_WUSER_WIDTH	: integer	:= 0;
-		C_M_AXI_RUSER_WIDTH	: integer	:= 0;
-		C_M_AXI_BUSER_WIDTH	: integer	:= 0
+		C_M_AXI_ADDR_WIDTH	: integer	:= 40;
+		C_M_AXI_DATA_WIDTH	: integer	:= 64;
+		C_M_AXI_AWUSER_WIDTH	: integer	:= 2;
+		C_M_AXI_ARUSER_WIDTH	: integer	:= 2;
+		C_M_AXI_WUSER_WIDTH	: integer	:= 2;
+		C_M_AXI_RUSER_WIDTH	: integer	:= 2;
+		C_M_AXI_BUSER_WIDTH	: integer	:= 2
 		);
 		port (
 		MEMIF64_Hwt2Mem_In_Data  : in  std_logic_vector(C_MEMIF_DATA_WIDTH - 1 downto 0);
@@ -146,10 +167,6 @@ architecture arch_imp of reconos_memif_memory_controller is
         MEMIF64_Mem2Hwt_In_WE    : out std_logic;
         
         DEBUG                    : out std_logic_vector(63 downto 0);
-        
---		INIT_AXI_TXN	: in std_logic;
-		TXN_DONE	: out std_logic;
-		ERROR	: out std_logic;
 		
 		M_AXI_ACLK	: in std_logic;
 		M_AXI_ARESETN	: in std_logic;
@@ -210,13 +227,11 @@ architecture arch_imp of reconos_memif_memory_controller is
 
 begin
 
--- Instantiation of Axi Bus Interface M00_AXI
+-- Instantiation of AXI/user logic submodule
 reconos64_memif_axicontroller_v0_91_M00_AXI_inst : entity work.reconos64_memif_axicontroller_v0_91_M00_AXI
 	generic map (
-        C_MAX_BURST_LEN             => C_MAX_BURST_LEN,
         C_MEMIF_DATA_WIDTH          => C_MEMIF_DATA_WIDTH,
         
---		C_M_TARGET_SLAVE_BASE_ADDR	=> C_M00_AXI_TARGET_SLAVE_BASE_ADDR,
 		C_M_AXI_BURST_LEN	        => C_M00_AXI_BURST_LEN,
 		C_M_AXI_ID_WIDTH	        => C_M00_AXI_ID_WIDTH,
 		C_M_AXI_ADDR_WIDTH	        => C_M00_AXI_ADDR_WIDTH,
@@ -238,9 +253,6 @@ reconos64_memif_axicontroller_v0_91_M00_AXI_inst : entity work.reconos64_memif_a
         
         DEBUG           => debug,
         
---		INIT_AXI_TXN	=> m00_axi_init_axi_txn,
-		TXN_DONE	    => m00_axi_txn_done,
-		ERROR	        => m00_axi_error,
 		M_AXI_ACLK	    => m00_axi_aclk,
 		M_AXI_ARESETN	=> m00_axi_aresetn,
 		M_AXI_AWID	    => m00_axi_awid,
@@ -286,9 +298,5 @@ reconos64_memif_axicontroller_v0_91_M00_AXI_inst : entity work.reconos64_memif_a
 		M_AXI_RVALID	=> m00_axi_rvalid,
 		M_AXI_RREADY	=> m00_axi_rready
 	);
-
-	-- Add user logic here
-
-	-- User logic ends
 
 end arch_imp;

@@ -1,6 +1,6 @@
 /*
  *                                                        ____  _____
- *                            ________  _________  ____  / __ \/ ___/
+ *                            ________  _________  ____  / __ \/ ___/64
  *                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
  *                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
  *                         /_/   \___/\___/\____/_/ /_/\____//____/
@@ -32,9 +32,9 @@
  *   MEMIF_CHUNK_WORDS - size of one memory request in words
  *                       (a request might be split up to meet this)
  */
-#define MEMIF_CHUNK_WORDS 64
-#define MEMIF_CHUNK_BYTES (MEMIF_CHUNK_WORDS * 4)
-#define MEMIF_CHUNK_MASK  0x000000FF
+#define MEMIF_CHUNK_WORDS 32
+#define MEMIF_CHUNK_BYTES (MEMIF_CHUNK_WORDS * 8)
+#define MEMIF_CHUNK_MASK  0x00000000000000FF
 
 /*
  * Definition of the osif commands
@@ -42,38 +42,38 @@
  *   self-describing
  *
  */
-#define OSIF_CMD_THREAD_GET_INIT_DATA  0x000000A0
-#define OSIF_CMD_THREAD_GET_STATE_ADDR 0x000000A1
-#define OSIF_CMD_THREAD_EXIT           0x000000A2
-#define OSIF_CMD_THREAD_YIELD          0x000000A3
-#define OSIF_CMD_THREAD_CLEAR_SIGNAL   0x000000A4
-#define OSIF_CMD_SEM_POST              0x000000B0
-#define OSIF_CMD_SEM_WAIT              0x000000B1
-#define OSIF_CMD_MUTEX_LOCK            0x000000C0
-#define OSIF_CMD_MUTEX_UNLOCK          0x000000C1
-#define OSIF_CMD_MUTEX_TRYLOCK         0x000000C2
-#define OSIF_CMD_COND_WAIT             0x000000D0
-#define OSIF_CMD_COND_SIGNAL           0x000000D1
-#define OSIF_CMD_COND_BROADCAST        0x000000D2
-#define OSIF_CMD_MBOX_GET              0x000000F0
-#define OSIF_CMD_MBOX_PUT              0x000000F1
-#define OSIF_CMD_MBOX_TRYGET           0x000000F2
-#define OSIF_CMD_MBOX_TRYPUT           0x000000F3
-#define OSIF_CMD_MASK                  0x000000FF
-#define OSIF_CMD_YIELD_MASK            0x80000000
+#define OSIF_CMD_THREAD_GET_INIT_DATA  0x00000000000000A0
+#define OSIF_CMD_THREAD_GET_STATE_ADDR 0x00000000000000A1
+#define OSIF_CMD_THREAD_EXIT           0x00000000000000A2
+#define OSIF_CMD_THREAD_YIELD          0x00000000000000A3
+#define OSIF_CMD_THREAD_CLEAR_SIGNAL   0x00000000000000A4
+#define OSIF_CMD_SEM_POST              0x00000000000000B0
+#define OSIF_CMD_SEM_WAIT              0x00000000000000B1
+#define OSIF_CMD_MUTEX_LOCK            0x00000000000000C0
+#define OSIF_CMD_MUTEX_UNLOCK          0x00000000000000C1
+#define OSIF_CMD_MUTEX_TRYLOCK         0x00000000000000C2
+#define OSIF_CMD_COND_WAIT             0x00000000000000D0
+#define OSIF_CMD_COND_SIGNAL           0x00000000000000D1
+#define OSIF_CMD_COND_BROADCAST        0x00000000000000D2
+#define OSIF_CMD_MBOX_GET              0x00000000000000F0
+#define OSIF_CMD_MBOX_PUT              0x00000000000000F1
+#define OSIF_CMD_MBOX_TRYGET           0x00000000000000F2
+#define OSIF_CMD_MBOX_TRYPUT           0x00000000000000F3
+#define OSIF_CMD_MASK                  0x00000000000000FF
+#define OSIF_CMD_YIELD_MASK            0x0000000080000000
 
-#define OSIF_SIGNAL_THREAD_START       0x01000000
-#define OSIF_SIGNAL_THREAD_RESUME      0x01000001
+#define OSIF_SIGNAL_THREAD_START       0x0000000001000000
+#define OSIF_SIGNAL_THREAD_RESUME      0x0000000001000001
 
-#define OSIF_INTERRUPTED               0x000000FF
+#define OSIF_INTERRUPTED               0x00000000000000FF
 
 /*
  * Definition of memif commands
  *
  *   self-describing
  */
-#define MEMIF_CMD_READ 0x00000000
-#define MEMIF_CMD_WRITE 0xF0000000
+#define MEMIF_CMD_READ 0x0000000000000000
+#define MEMIF_CMD_WRITE 0xF000000000000000
 
 
 /* == Internal functions =============================================== */
@@ -86,7 +86,7 @@
  *   stream - reference to stream
  *   data   - data to write
  */
-inline void stream_write(hls::stream<uint32_t> &stream, uint32_t data) {
+inline void stream_write(hls::stream<uint64_t> &stream, uint64_t data) {
 #pragma HLS inline
 	while (!stream.write_nb(data)){}
 }
@@ -100,9 +100,9 @@ inline void stream_write(hls::stream<uint32_t> &stream, uint32_t data) {
  *
  *   @returns read data
  */
-inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
+inline uint64_t stream_read(hls::stream<uint64_t> &stream) {
 #pragma HLS inline
-	uint32_t data;
+	uint64_t data;
 	while (!stream.read_nb(data)){}
 	return data;
 }
@@ -271,11 +271,11 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
  *   
  */
 #define MEM_READ(src,dst,len){\
-	uint32_t __len, __rem;\
-	uint32_t __addr = (src), __i = 0;\
+	uint64_t __len, __rem;\
+	uint64_t __addr = (src), __i = 0;\
 	for (__rem = (len); __rem > 0;) {\
-		uint32_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
-		uint32_t __to_rem = __rem;\
+		uint64_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
+		uint64_t __to_rem = __rem;\
 		if (__to_rem < __to_border)\
 			__len = __to_rem;\
 		else\
@@ -284,10 +284,10 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 		stream_write(memif_hwt2mem, MEMIF_CMD_READ | __len);\
 		stream_write(memif_hwt2mem, __addr);\
 		\
-		for (; __len > 0; __len -= 4) {\
+		for (; __len > 0; __len -= 8) {\
 			(dst)[__i++] = stream_read(memif_mem2hwt);\
-			__addr += 4;\
-			__rem -= 4;\
+			__addr += 8;\
+			__rem -= 8;\
 		}\
 	}}
 
@@ -302,11 +302,11 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
  *   len - number of bytes to transmit (bytes)
  */
 #define MEM_WRITE(src,dst,len){\
-	uint32_t __len, __rem;\
-	uint32_t __addr = (dst), __i = 0;\
+	uint64_t __len, __rem;\
+	uint64_t __addr = (dst), __i = 0;\
 	for (__rem = (len); __rem > 0;) {\
-		uint32_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
-		uint32_t __to_rem = __rem;\
+		uint64_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
+		uint64_t __to_rem = __rem;\
 		if (__to_rem < __to_border)\
 			__len = __to_rem;\
 		else\
@@ -315,10 +315,10 @@ inline uint32_t stream_read(hls::stream<uint32_t> &stream) {
 		stream_write(memif_hwt2mem, MEMIF_CMD_WRITE | __len);\
 		stream_write(memif_hwt2mem, __addr);\
 		\
-		for (; __len > 0; __len -= 4) {\
+		for (; __len > 0; __len -= 8) {\
 			stream_write(memif_hwt2mem, (src)[__i++]);\
-			__addr += 4;\
-			__rem -= 4;\
+			__addr += 8;\
+			__rem -= 8;\
 		}\
 	}}
 

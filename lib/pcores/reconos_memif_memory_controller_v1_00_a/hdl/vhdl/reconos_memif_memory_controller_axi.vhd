@@ -22,6 +22,7 @@
 -- 
 -- Revision:            -1.0 First working 64-bit version
 --                      -1.1 Burst transfer support
+--                      -1.2 Added WVALID throttling if (HLS-based) HWT sends data too slowly
 --
 -- Additional Comments: -Based on Vivado AXI master template (create new peripheral wizard)
 --                      -Supports variable burst length up to specified maximum
@@ -348,7 +349,7 @@ begin
 	M_AXI_WSTRB	    <= (others => '1');
 	M_AXI_WLAST	    <= axi_wlast;
 	M_AXI_WUSER	    <= "01";   -- mark accessed memory as inner shareable (required at least for ACP port..)
-	M_AXI_WVALID	<= axi_wvalid;
+	M_AXI_WVALID	<= axi_wvalid and (not MEMIF64_Hwt2Mem_In_Empty); -- throttle if no data is available
 	
 	--Write Response (B)
 	M_AXI_BREADY	<= axi_bready;
@@ -453,7 +454,7 @@ begin
 
 	--Forward movement occurs when the write channel is valid and ready
 
-	  wnext <= M_AXI_WREADY and axi_wvalid;
+	  wnext <= M_AXI_WREADY and (axi_wvalid and (not MEMIF64_Hwt2Mem_In_Empty)); -- throttle if no data is available
 
 	-- WVALID logic, similar to the axi_awvalid always block above                      
 	  process(M_AXI_ACLK)

@@ -22,6 +22,7 @@
 -- 
 -- Revision:            -1.0 First working 64-bit version
 --                      -1.1 Burst transfer support
+--                      -1.2 Added WVALID throttling if (HLS-based) HWT sends data too slowly
 --
 -- Additional Comments: -Based on Vivado AXI master template (create new peripheral wizard)
 --                      -Supports variable burst length up to specified maximum

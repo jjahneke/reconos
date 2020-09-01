@@ -1,0 +1,54 @@
+Steps for PetaLinux project
+
+petalinux-create --type project --template zynqMP --name RECONOS
+
+petalinux-config --get-hw-description <PATH-TO-XSA Directory>
+//XSA exported from tf-reconos build.hw (2020.1 toolchain)
+adjust DTG->Machine name to zcu102 board
+
+adjust petalinux-config by hand (following previous design)
+    enable kernel autoconfig, uboot autoconfig
+    manual kernel boot args: "earlycon clk_ignore_unused root=/dev/nfs nfsroot=192.168.2.41:/home/fepaje/WD/reconos64/nfs,tcp,nfsvers=3 ip=dhcp rw"
+    enable fpga-manager
+    (?)leave uboot config target on default (other, xilinx_zynqmp_virt_defconfig), previous project was different (zcu102 target)
+    image packing: switch to NFS with corresponding path/ip, disable tftpboot copy
+
+//create kernel module
+petalinux-create -t modules --name reconosmod64 --enable
+
+copy in driver source code
+adjust makefile (copy from previous)
+adjust recipe file .bb (copy from previous)
+
+//configure device-tree
+
+    ??? not needed ???
+    auto devictree inferred from hw platform is put into pl.dtbo overlay (support for overlays not enabled by default)
+    -> modify system-user.dtsi (copy from previous)
+        -> "amba" instead of "amba_pl@0" !! change of naming convention!!
+
+//configure kernel
+petalinux-config -c kernel
+    leave default for now
+
+//configure rootfs
+petalinux-config -c rootfs
+    leave default (module was already enabled)
+
+//build
+petalinux-build
+
+    or only for module: petalinux-build -c reconosmod64
+
+//package
+use shellscript for petalinux-package command
+
+//deploy
+copy to SD: BOOT.BIN, boot.scr, image.ub
+copy to NFS, then "chmod 777 -R *" to avoid permission errors
+
+
+//clean (before checkin)
+petalinux-build -f -x mrproper
+
+    or only for module: petalinux-build -c reconosmod64 -x clean

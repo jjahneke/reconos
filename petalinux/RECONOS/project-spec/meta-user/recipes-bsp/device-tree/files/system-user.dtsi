@@ -1,0 +1,24 @@
+/include/ "system-conf.dtsi"
+/ {
+	amba: amba {
+		reconos_osif_0: reconos_osif@a0100000 {
+			compatible = "upb,reconos-osif-3.1";
+			reg = <0x0 0xa0100000 0x0 0x10000>;
+		};
+		reconos_osif_intc_0: reconos_osif_intc@a0110000 {
+			compatible = "upb,reconos-osif-intc-3.1";
+			reg = <0x0 0xa0110000 0x0 0x10000>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 95 4>;
+			/* 0 58 4 */
+		};
+		reconos_proc_control_0: reconos_proc_control@a0120000 {
+			compatible = "upb,reconos-proc-control-3.1";
+			reg = <0x0 0xa0120000 0x0 0x10000>;
+			interrupt-parent = <&gic>;
+                        interrupts = <0 96 4>;
+                        /* 0 59 4 */
+		};
+	
+	};
+};

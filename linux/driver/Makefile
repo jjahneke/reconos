@@ -1,17 +1,16 @@
-# needed environment variables
-# (shold be set by the reconos toolchain)
-# ARCH, CROSS_COMPILE, KDIR
+obj-m := reconosmod64.o
 
-obj-m := mreconos.o
-mreconos-objs := reconos.o osif_intc.o proc_control.o
+SRC := $(shell pwd)
 
-module:
-	$(MAKE) -C $(KDIR) M=$(PWD) CFLAGS_MODULE=-D"RECONOS_ARCH_$(RECONOS_ARCH)" modules
+reconosmod64-objs := reconos.o osif_intc.o proc_control.o
 
-install: module
-	cp mreconos.ko $(PREFIX)
-	cp ../scripts/reconos_init.sh $(PREFIX)
+all:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) CFLAGS_MODULE=-D"RECONOS_ARCH_zynq64"
+
+modules_install:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) CFLAGS_MODULE=-D"RECONOS_ARCH_zynq64" modules_install
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
-
+	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c
+	rm -f Module.markers Module.symvers modules.order
+	rm -rf .tmp_versions Modules.symvers

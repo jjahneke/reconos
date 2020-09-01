@@ -4216,12 +4216,6 @@ CONFIG_imagefeature-debug-tweaks=y
 # CONFIG_auto-login is not set
 
 #
-# apps 
-#
-# CONFIG_gpio-demo is not set
-# CONFIG_peekpoke is not set
-
-#
 # modules 
 #
 CONFIG_reconosmod64=y

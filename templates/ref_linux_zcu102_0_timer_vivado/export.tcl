@@ -171,7 +171,7 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset_0
 
     # Add processing system for ZCU102 Board (Zynq UltraScale+ MPSoC) - also apply board preset settings
-    create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.2 zynq_ultra_ps_e_0
+    create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.3 zynq_ultra_ps_e_0
     apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" }  [get_bd_cells zynq_ultra_ps_e_0]
     
     # Make sure required AXI ports are active

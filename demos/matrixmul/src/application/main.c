@@ -107,9 +107,9 @@ int main(int argc, char **argv) {
 	printf("Size of mailboxes: %i\n", mbox_size);
 	printf("Address of mb_start: %p\n", &mb_start);
 
-	int *i_matrixes[2]	= {NULL, NULL};
-	int *o_matrix		= NULL;
-	int *compare		= NULL;
+	int64_t *i_matrixes[2]	= {NULL, NULL};
+	int64_t *o_matrix		= NULL;
+	int64_t *compare		= NULL;
 
 	MATRIXES* std_mmp_matrixes = NULL;
 
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 
 	for (i=0; i<mbox_size; ++i) {
 		printf("Putting pointer to matrixes into mbox: %p, %p, %p\n", ptr->matrixes[0],ptr->matrixes[1],ptr->matrixes[2]);
-		mbox_put(resources_address,(unsigned int)(ptr->matrixes));
+		mbox_put(resources_address,(uint64_t)(ptr->matrixes));
 		ptr = ptr->next;
 	}
 	log("Waiting for acknowledgements...\n");
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
 	terminate_swt_time = terminate_hwt_time;
 	for (i = 0; i < hw_threads + sw_threads; i++) {
 		log("Putting a stop message into MBOX...\n");
-		mbox_put(resources_address,UINT_MAX);
+		mbox_put(resources_address,(uint64_t)0xffffffffffffffff);
 	}
 
 	// well, this will now measure termination time of all threads....

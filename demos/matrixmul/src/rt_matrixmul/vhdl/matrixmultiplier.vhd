@@ -38,13 +38,13 @@ entity matrixmultiplier is
 		done	: out std_logic;
 		
 		o_RAM_A_Addr	: out std_logic_vector(0 to G_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-		i_RAM_A_Data	: in std_logic_vector(0 to 31);
+		i_RAM_A_Data	: in std_logic_vector(0 to 63);
 		
 		o_RAM_B_Addr	: out std_logic_vector(0 to G_RAM_ADDR_WIDTH_MATRIX_B   - 1);
-		i_RAM_B_Data	: in std_logic_vector(0 to 31);
+		i_RAM_B_Data	: in std_logic_vector(0 to 63);
 		
 		o_RAM_C_Addr	: out std_logic_vector(0 to G_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-		o_RAM_C_Data	: out std_logic_vector(0 to 31);
+		o_RAM_C_Data	: out std_logic_vector(0 to 63);
 		o_RAM_C_WE		: out std_logic
 	);
 end matrixmultiplier;

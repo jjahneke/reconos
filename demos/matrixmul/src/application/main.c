@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
 		log("\nResult is correct.\n\n");
 	} else {
 		log("\nBad result.\n");
-		printf("Comparison failed at index %i.Correct: %i, Actual result: %i.\n", correct_result, compare[correct_result], o_matrix[correct_result] );
+		printf("Comparison failed at index %i.Correct: %li, Actual result: %li.\n", correct_result, compare[correct_result], o_matrix[correct_result] );
 #if 1
 		print_matrix(i_matrixes[0], 'A', str_matrix_size);
 		print_matrix(i_matrixes[1], 'B', str_matrix_size);

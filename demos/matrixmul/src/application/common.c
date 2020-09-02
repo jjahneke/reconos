@@ -95,7 +95,7 @@ void print_matrix(int64_t *matrix, char matrix_name, int matrix_size) {
 		printf("\t[ ");
 		int pos = i*matrix_size;
 		for (j=0; j<matrix_size; ++j) {
-			printf("%8i ", matrix[pos+j]);
+			printf("%8li ", matrix[pos+j]);
 		}
 		printf("]\n");
 	}

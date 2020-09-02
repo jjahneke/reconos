@@ -1,8 +1,42 @@
+--                                                        ____  _____
+--                            ________  _________  ____  / __ \/ ___/64
+--                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
+--                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
+--                         /_/   \___/\___/\____/_/ /_/\____//____/
+-- 
+-- ======================================================================
+--
+-- Company:  CEG UPB
+-- Engineer: Christoph Rüthing
+--           Felix Jentzsch
+-- 
+-- Module Name:    reconos_osif
+-- Project Name:   ReconOS64
+-- Target Devices: Zynq UltraScale+
+-- Tool Versions:  2018.2, 2020.1
+-- Description:    An AXI slave which maps the FIFOs of the HWTs to
+--                 registers accessible from the AXI-Bus.
+-- 
+-- Dependencies:        "..._axi.vhd" submodule contains all AXI/user logic
+-- 
+-- Revision:            -1.0 First working 64-bit version
+--
+-- Additional Comments: -Based on Vivado AXI slave template (create new peripheral wizard)
+--                      -Slave registers (per HWT):
+--							Reg0: Read data
+--                   		Reg1: Write data
+--                   		Reg2: Fill - number of elements in receive-FIFO
+--                   		Reg3: Rem - free space in send-FIFO
+-- 
+-- ======================================================================
+
 <<reconos_preproc>>
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.math_real."ceil";
+use ieee.math_real."log2";
 
 entity reconos_osif_axi is
 	generic (
@@ -13,7 +47,6 @@ entity reconos_osif_axi is
 		C_OSIF_LENGTH_WIDTH : integer := 24; --todo: maybe increase since we have more space?
 		C_OSIF_OP_WIDTH     : integer := 8;
 		-- User parameters ends
-		-- Do not modify the parameters beyond this line
 
 		-- Width of S_AXI data bus
 		C_S_AXI_DATA_WIDTH	: integer	:= 64;
@@ -34,7 +67,6 @@ entity reconos_osif_axi is
 		OSIF_Sw2Hw_<<Id>>_In_WE    : out std_logic;
 		<<end generate>>
 		-- User ports ends
-		-- Do not modify the ports beyond this line
 
 		-- Global Clock Signal
 		S_AXI_ACLK	: in std_logic;
@@ -119,7 +151,7 @@ architecture arch_imp of reconos_osif_axi is
 	-- ADDR_LSB = 2 for 32 bits (n downto 2)
 	-- ADDR_LSB = 3 for 64 bits (n downto 3)
 	constant ADDR_LSB  : integer := (C_S_AXI_DATA_WIDTH/32)+ 1;
-	constant OPT_MEM_ADDR_BITS : integer := 2; -- means a 3 bit word address for 8 registers (2 slots) todo: depend on num_hwt
+	constant OPT_MEM_ADDR_BITS : integer := integer(ceil(log2(real(C_NUM_HWTS*4)))-real(1)); -- # of bits needed to address all registers (4 per HWT) -1
 	------------------------------------------------
 	---- Signals for user logic register space example
 	--------------------------------------------------
@@ -420,10 +452,5 @@ begin
 	    end if;
 	  end if;
 	end process;
-
-
-	-- Add user logic here
-
-	-- User logic ends
 
 end arch_imp;

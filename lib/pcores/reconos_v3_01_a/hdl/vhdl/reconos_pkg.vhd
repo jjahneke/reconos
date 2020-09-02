@@ -1378,7 +1378,7 @@ package body reconos_pkg is
 		case i_memif.step is
 			when 0 =>
 				o_memif.hwt2mem_we <= '1';
-				o_memif.hwt2mem_data <= MEMIF_CMD_WRITE & X"00000000000004";
+				o_memif.hwt2mem_data <= MEMIF_CMD_WRITE & X"00000000000008";
 
 				o_memif.step <= 1;
 
@@ -1424,7 +1424,7 @@ package body reconos_pkg is
                 case i_memif.step is
                     when 0 =>
                         o_memif.hwt2mem_we <= '1';
-                        o_memif.hwt2mem_data <= MEMIF_CMD_READ & X"00000000000004";
+                        o_memif.hwt2mem_data <= MEMIF_CMD_READ & X"00000000000008";
 
                         o_memif.step <= 1;
 

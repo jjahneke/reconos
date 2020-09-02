@@ -1,3 +1,35 @@
+--                                                        ____  _____
+--                            ________  _________  ____  / __ \/ ___/64
+--                           / ___/ _ \/ ___/ __ \/ __ \/ / / /\__ \
+--                          / /  /  __/ /__/ /_/ / / / / /_/ /___/ /
+--                         /_/   \___/\___/\____/_/ /_/\____//____/
+-- 
+-- ======================================================================
+--
+-- Company:  CEG UPB
+-- Engineer: Christoph Rüthing
+--           Felix Jentzsch
+-- 
+-- Module Name:    reconos_osif
+-- Project Name:   ReconOS64
+-- Target Devices: Zynq UltraScale+
+-- Tool Versions:  2018.2, 2020.1
+-- Description:    An AXI slave which maps the FIFOs of the HWTs to
+--                 registers accessible from the AXI-Bus.
+-- 
+-- Dependencies:        "..._axi.vhd" submodule contains all AXI/user logic
+-- 
+-- Revision:            -1.0 First working 64-bit version
+--
+-- Additional Comments: -Based on Vivado AXI slave template (create new peripheral wizard)
+--                      -Slave registers (per HWT):
+--							Reg0: Read data
+--                   		Reg1: Write data
+--                   		Reg2: Fill - number of elements in receive-FIFO
+--                   		Reg3: Rem - free space in send-FIFO
+-- 
+-- ======================================================================
+
 <<reconos_preproc>>
 
 library ieee;
@@ -10,15 +42,13 @@ entity reconos_osif is
 		C_NUM_HWTS : integer := 1;
 
 		C_OSIF_DATA_WIDTH   : integer := 64;
-		C_OSIF_LENGTH_WIDTH : integer := 24; --todo: maybe increase since we have more space?
+		C_OSIF_LENGTH_WIDTH : integer := 24;
 		C_OSIF_OP_WIDTH     : integer := 8;
 		-- User parameters ends
-		-- Do not modify the parameters beyond this line
-
 
 		-- Parameters of Axi Slave Bus Interface S00_AXI
 		C_S00_AXI_DATA_WIDTH	: integer	:= 64;
-		C_S00_AXI_ADDR_WIDTH	: integer	:= 8 --todo: set to which width? limits num_hwts
+		C_S00_AXI_ADDR_WIDTH	: integer	:= 8
 	);
 	port (
 		-- Users to add ports here
@@ -33,11 +63,7 @@ entity reconos_osif is
 		OSIF_Sw2Hw_<<Id>>_In_Full  : in  std_logic;
 		OSIF_Sw2Hw_<<Id>>_In_WE    : out std_logic;
 		<<end generate>>
-
-		DEBUG : out std_logic_vector(131 downto 0); --todo: remove
 		-- User ports ends
-		-- Do not modify the ports beyond this line
-
 
 		-- Ports of Axi Slave Bus Interface S00_AXI
 		s00_axi_aclk	: in std_logic;
@@ -89,7 +115,7 @@ architecture arch_imp of reconos_osif is
 	component reconos_osif_axi is
 		generic (
 		C_S_AXI_DATA_WIDTH	: integer	:= 64;
-		C_S_AXI_ADDR_WIDTH	: integer	:= 8 --todo: set to which width? limits num_hwts
+		C_S_AXI_ADDR_WIDTH	: integer	:= 8
 		);
 		port (
 		S_AXI_ACLK	: in std_logic;
@@ -116,36 +142,7 @@ architecture arch_imp of reconos_osif is
 		);
 	end component reconos_osif_axi;
 
-	--todo: remove
-	<<generate for SLOTS>>
-	--signal OSIF_Hw2Sw_<<Id>>_In_Data  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0);
-	--signal OSIF_Hw2Sw_<<Id>>_In_Empty : std_logic;
-	signal OSIF_Hw2Sw_<<Id>>_In_RE_tmp    : std_logic;
-	<<end generate>>
-
-	<<generate for SLOTS>>
-	signal OSIF_Sw2Hw_<<Id>>_In_Data_tmp  : std_logic_vector(C_OSIF_DATA_WIDTH - 1 downto 0);
-	--signal OSIF_Sw2Hw_<<Id>>_In_Full  : std_logic;
-	signal OSIF_Sw2Hw_<<Id>>_In_WE_tmp    : std_logic;
-	<<end generate>>
-
 begin
-
-	--todo: remove
-	<<generate for SLOTS>>
-	OSIF_Hw2Sw_<<Id>>_In_RE <= OSIF_Hw2Sw_<<Id>>_In_RE_tmp;
-	OSIF_Sw2Hw_<<Id>>_In_Data <= OSIF_Sw2Hw_<<Id>>_In_Data_tmp;
-	OSIF_Sw2Hw_<<Id>>_In_WE <= OSIF_Sw2Hw_<<Id>>_In_WE_tmp;
-	<<end generate>>
-
-	DEBUG(63 downto 0) <= OSIF_Hw2Sw_0_In_Data;
-	DEBUG(64) <= OSIF_Hw2Sw_0_In_Empty;
-	DEBUG(65) <= OSIF_Hw2Sw_0_In_RE_tmp;
-
-	DEBUG(129 downto 66) <= OSIF_Sw2Hw_0_In_Data_tmp;
-	DEBUG(130) <= OSIF_Sw2Hw_0_In_Full;
-	DEBUG(131) <= OSIF_Sw2Hw_0_In_WE_tmp;
-
 
 -- Instantiation of Axi Bus Interface S00_AXI
 reconos_osif_axi_inst : entity work.reconos_osif_axi
@@ -165,13 +162,13 @@ reconos_osif_axi_inst : entity work.reconos_osif_axi
 		<<generate for SLOTS>>
 		OSIF_Hw2Sw_<<Id>>_In_Data  => OSIF_Hw2Sw_<<Id>>_In_Data,
 		OSIF_Hw2Sw_<<Id>>_In_Empty => OSIF_Hw2Sw_<<Id>>_In_Empty,
-		OSIF_Hw2Sw_<<Id>>_In_RE    => OSIF_Hw2Sw_<<Id>>_In_RE_tmp, --sdfsd
+		OSIF_Hw2Sw_<<Id>>_In_RE    => OSIF_Hw2Sw_<<Id>>_In_RE,
 		<<end generate>>
 
 		<<generate for SLOTS>>
-		OSIF_Sw2Hw_<<Id>>_In_Data  => OSIF_Sw2Hw_<<Id>>_In_Data_tmp, --sdfds
+		OSIF_Sw2Hw_<<Id>>_In_Data  => OSIF_Sw2Hw_<<Id>>_In_Data,
 		OSIF_Sw2Hw_<<Id>>_In_Full  => OSIF_Sw2Hw_<<Id>>_In_Full,
-		OSIF_Sw2Hw_<<Id>>_In_WE    => OSIF_Sw2Hw_<<Id>>_In_WE_tmp, --sdffsd
+		OSIF_Sw2Hw_<<Id>>_In_WE    => OSIF_Sw2Hw_<<Id>>_In_WE,
 		<<end generate>>
 
 		S_AXI_ACLK	=> s00_axi_aclk,
@@ -196,9 +193,5 @@ reconos_osif_axi_inst : entity work.reconos_osif_axi
 		S_AXI_RVALID	=> s00_axi_rvalid,
 		S_AXI_RREADY	=> s00_axi_rready
 	);
-
-	-- Add user logic here
-
-	-- User logic ends
 
 end arch_imp;

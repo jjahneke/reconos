@@ -192,10 +192,10 @@ int main(int argc, char **argv) {
 	qsort(copy, data_count, sizeof(uint64_t), cmp_uint64t);
 	for (i = 0; i < data_count; i++) {
                 if(i % 16 == 0) {
-                    log("element %d: data: 0x%x, copy: 0x%x\n", i, data[i], copy[i]);
+                    log("element %d: data: %#lx, copy: %#lx\n", i, data[i], copy[i]);
                 }
 		if (data[i] != copy[i]) {
-			log("expected 0x%08x but found 0x%08x at %d\n", copy[i], data[i], i);
+			log("expected %#.16lx but found %#.16lx at %d\n", copy[i], data[i], i);
 		}
 	}
 	t_check = timer_get() - t_start;

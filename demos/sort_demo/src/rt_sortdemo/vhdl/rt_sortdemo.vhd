@@ -258,9 +258,7 @@ begin
 					
 					-- copy data from main memory to local memory
 					when STATE_READ =>
-						memif_read(i_ram,o_ram,i_memif,o_memif,addr,X"00000000",len,done);
-						--memif_read(i_ram,o_ram,i_memif,o_memif,X"7F" & addr(31 downto 2) & "00",X"00000000",len,done);
-					--ToDo: hardcoded offset                     xx
+						memif_read(i_ram,o_ram,i_memif,o_memif,addr,X"0000000000000000",len,done);
 						if done then
 							sort_start <= '1';
 							state <= STATE_SORTING;
@@ -278,9 +276,7 @@ begin
 						
 					-- copy data from local memory to main memory
 					when STATE_WRITE =>
-						memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",addr,len,done);
-						--memif_write(i_ram,o_ram,i_memif,o_memif,X"00000000",X"7F" & addr,len,done);
-						--ToDo: hardcoded offset                              xx
+						memif_write(i_ram,o_ram,i_memif,o_memif,X"0000000000000000",addr,len,done);
 						if done then
 							state <= STATE_ACK;
 						end if;

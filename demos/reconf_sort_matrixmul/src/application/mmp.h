@@ -16,19 +16,19 @@
 //#define MBOX_SIZE 49
 
 typedef struct matrix_list {
-	int *matrixes[3];
+	int64_t *matrixes[3];
 	int pos;
 	struct matrix_list* next;
 } MATRIXES;
 
-void std_matrix_mul(int *i_matrix_a, int *i_matrix_b, int *o_matrix_c, int matrix_size);
+void std_matrix_mul(int64_t *i_matrix_a, int64_t *i_matrix_b, int64_t *o_matrix_c, int matrix_size);
 
-void get_matrix(int *i_matrix, int **o_matrix, int posY, int posX, int i_matrix_size);
-void set_matrix(int *o_matrix, int *i_matrix, int posY, int posX, int i_matrix_size);
+void get_matrix(int64_t *i_matrix, int64_t **o_matrix, int posY, int posX, int i_matrix_size);
+void set_matrix(int64_t *o_matrix, int64_t *i_matrix, int posY, int posX, int i_matrix_size);
 
-void str_matrix_split(int *i_matrix_a, int *i_matrix_b, MATRIXES **std_mmp_matrixes, int i_matrix_size);
+void str_matrix_split(int64_t *i_matrix_a, int64_t *i_matrix_b, MATRIXES **std_mmp_matrixes, int i_matrix_size);
 int str_matrix_combine_step(MATRIXES **str_mmp_matrixes, MATRIXES **std_mmp_matrixes, int i_matrix_size);
-int *str_matrix_combine(MATRIXES **std_mmp_matrixes, int i_matrix_size, int o_matrix_size);
+int64_t *str_matrix_combine(MATRIXES **std_mmp_matrixes, int i_matrix_size, int o_matrix_size);
 
 void print_matrixes(MATRIXES **std_mmp_matrixes, int matrix_size);
 #endif /* __MMP_H__ */

@@ -7,6 +7,7 @@ source $tclDir/synthesize.tcl
 ### Parse PRJ and add all files 
 ###############################################################
 proc add_prj { prj } {
+   upvar resultDir resultDir
    global srcDir
 
    if {[file exists $prj]} {
@@ -28,17 +29,18 @@ proc add_prj { prj } {
             }
             lassign $line type lib file
             if {![string match -nocase $type "dcp"]     && \
+                ![string match -nocase $type "xci"]     && \
                 ![string match -nocase $type "header"]  && \
                 ![string match -nocase $type "system"]  && \
                 ![string match -nocase $type "verilog"] && \
                 ![string match -nocase $type "vhdl"]} {
                set errMsg "\nERROR: File type $type is not a supported value.\n"
-               append errMsg "Supported types are:\n\tdcp\n\theader\n\tsystem\n\tverilog\n\tvhdl\n\t"
+               append errMsg "Supported types are:\n\tdcp\n\txci\n\theader\n\tsystem\n\tverilog\n\tvhdl\n\t"
                error $errMsg
             }
             if {[file exists ${srcDir}/$file]} {
                set file ${srcDir}/$file
-               command "add_files $file"
+               command "add_files $file" "$resultDir/add_files.log"
                if {[string match -nocase $type "vhdl"]} {
                   command "set_property LIBRARY $lib \[get_files $file\]"
                }
@@ -47,6 +49,7 @@ proc add_prj { prj } {
                }
                if {[string match -nocase $type "header"]} {
                    command "set_property FILE_TYPE {Verilog Header} \[get_files $file\]"
+                   command "set_property IS_GLOBAL_INCLUDE TRUE \[get_files $file\]"
                }
             } elseif {[file exists $file]} {
                command "add_files $file"

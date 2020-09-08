@@ -3,9 +3,9 @@
 
 #define BLOCK_SIZE 2048
 
-void bubblesort(uint32_t *data, int data_count) {
+void bubblesort(uint64_t *data, int data_count) {
 	int i;
-	uint32_t tmp;
+	uint64_t tmp;
 	int s, n, newn;
 
 	s = 1;
@@ -29,20 +29,16 @@ void bubblesort(uint32_t *data, int data_count) {
 }
 
 THREAD_ENTRY() {
-	uint32_t ret;
-	int flag;
+	uint64_t ret;
 
 	while (1) {
-		flag = 0;
-		while(!flag){
-			flag = MBOX_TRYGET(resources_address,ret);
-		}
+		ret = MBOX_GET(resources_address);
 
-		if (ret == 0xffffffff) {
+		if (ret == 0xffffffffffffffff) {
 			THREAD_EXIT();
 		}
 
-		bubblesort((uint32_t *)ret, BLOCK_SIZE);
+		bubblesort((uint64_t *)ret, BLOCK_SIZE);
 		MBOX_PUT(resources_acknowledge, ret);
 	}
 }

@@ -7,62 +7,64 @@ use ieee.math_real.all;
 library reconos_v3_01_a;
 use reconos_v3_01_a.reconos_pkg.all;
 
+use work.reconos_thread_pkg.all;
+
 entity rt_reconf is
 	port (
 		-- OSIF FIFO ports
-		OSIF_Sw2Hw_Data    : in  std_logic_vector(31 downto 0);
+		OSIF_Sw2Hw_Data    : in  std_logic_vector(63 downto 0);
 		OSIF_Sw2Hw_Empty   : in  std_logic;
 		OSIF_Sw2Hw_RE      : out std_logic;
 
-		OSIF_Hw2Sw_Data    : out std_logic_vector(31 downto 0);
+		OSIF_Hw2Sw_Data    : out std_logic_vector(63 downto 0);
 		OSIF_Hw2Sw_Full    : in  std_logic;
 		OSIF_Hw2Sw_WE      : out std_logic;
 
 		-- MEMIF FIFO ports
-		MEMIF_Hwt2Mem_Data    : out std_logic_vector(31 downto 0);
-		MEMIF_Hwt2Mem_Full    : in  std_logic;
-		MEMIF_Hwt2Mem_WE      : out std_logic;
+		MEMIF64_Hwt2Mem_Data    : out std_logic_vector(63 downto 0);
+		MEMIF64_Hwt2Mem_Full    : in  std_logic;
+		MEMIF64_Hwt2Mem_WE      : out std_logic;
 
-		MEMIF_Mem2Hwt_Data    : in  std_logic_vector(31 downto 0);
-		MEMIF_Mem2Hwt_Empty   : in  std_logic;
-		MEMIF_Mem2Hwt_RE      : out std_logic;
+		MEMIF64_Mem2Hwt_Data    : in  std_logic_vector(63 downto 0);
+		MEMIF64_Mem2Hwt_Empty   : in  std_logic;
+		MEMIF64_Mem2Hwt_RE      : out std_logic;
 
 		HWT_Clk    : in  std_logic;
 		HWT_Rst    : in  std_logic;
 		HWT_Signal : in  std_logic;
-
-		DEBUG : out std_logic_vector(110 downto 0)
+		
+		DEBUG : out std_logic_vector(70 downto 0)
 	);
 
 end rt_reconf;
 
-architecture matrixmul of rt_reconf is
+architecture implementation of rt_reconf is
 
 	-- Declare port attributes for the Vivado IP Packager
 	ATTRIBUTE X_INTERFACE_INFO : STRING;
 	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
 
 	ATTRIBUTE X_INTERFACE_INFO of HWT_Clk: SIGNAL is "xilinx.com:signal:clock:1.0 HWT_Clk CLK";
-	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Clk: SIGNAL is "ASSOCIATED_RESET HWT_Rst, ASSOCIATED_BUSIF OSIF_Sw2Hw:OSIF_Hw2Sw:MEMIF_Hwt2Mem:MEMIF_Mem2Hwt";
+	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Clk: SIGNAL is "ASSOCIATED_RESET HWT_Rst, ASSOCIATED_BUSIF OSIF_Sw2Hw:OSIF_Hw2Sw:MEMIF64_Hwt2Mem:MEMIF64_Mem2Hwt";
 
 	ATTRIBUTE X_INTERFACE_INFO of HWT_Rst: SIGNAL is "xilinx.com:signal:reset:1.0 HWT_Rst RST";
 	ATTRIBUTE X_INTERFACE_PARAMETER of HWT_Rst: SIGNAL is "POLARITY ACTIVE_HIGH";
 
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Sw2Hw FIFO_S_Data";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Sw2Hw FIFO_S_Empty";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_RE:       SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Sw2Hw FIFO_S_RE";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_Data:     SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Sw2Hw FIFO64_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Sw2Hw FIFO64_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_RE:       SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 OSIF_Sw2Hw FIFO64_S_RE";
 
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Hw2Sw FIFO_M_Data";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_Full:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Hw2Sw FIFO_M_Full";
-	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_WE:       SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Hw2Sw FIFO_M_WE";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_Data:     SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Hw2Sw FIFO64_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_Full:     SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Hw2Sw FIFO64_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_WE:       SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 OSIF_Hw2Sw FIFO64_M_WE";
 
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_Data";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_Full:  SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_Full";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Hwt2Mem_WE:    SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 MEMIF_Hwt2Mem FIFO_M_WE";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_Data:  SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_Full:  SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Hwt2Mem_WE:    SIGNAL is "cs.upb.de:reconos:FIFO64_M:1.0 MEMIF64_Hwt2Mem FIFO64_M_WE";
 
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_Data:  SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_Data";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_Empty: SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_Empty";
-	ATTRIBUTE X_INTERFACE_INFO of MEMIF_Mem2Hwt_RE:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 MEMIF_Mem2Hwt FIFO_S_RE";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_Data:  SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_Empty: SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of MEMIF64_Mem2Hwt_RE:    SIGNAL is "cs.upb.de:reconos:FIFO64_S:1.0 MEMIF64_Mem2Hwt FIFO64_S_RE";
 
 	type STATE_TYPE is (
 		STATE_INIT,
@@ -110,31 +112,26 @@ architecture matrixmul of rt_reconf is
 	-- const for matrixes A and C
 	constant C_LOCAL_RAM_SIZE_MATRIX_A_C          : integer := C_LINE_LEN_MATRIX;
 	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C    : integer := integer(ceil(log2(real(C_LOCAL_RAM_SIZE_MATRIX_A_C))));
-	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_A_C : integer := 4 * C_LOCAL_RAM_SIZE_MATRIX_A_C;
-	type LOCAL_MEMORY_TYPE_MATRIX_A_C is array(0 to C_LOCAL_RAM_SIZE_MATRIX_A_C - 1) of std_logic_vector(31 downto 0);
+	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_A_C : integer := 8 * C_LOCAL_RAM_SIZE_MATRIX_A_C;
+	type LOCAL_MEMORY_TYPE_MATRIX_A_C is array(0 to C_LOCAL_RAM_SIZE_MATRIX_A_C - 1) of std_logic_vector(63 downto 0);
 	
 	-- const for matrix B
 	constant C_LOCAL_RAM_SIZE_MATRIX_B            : integer := C_LINE_LEN_MATRIX*C_LINE_LEN_MATRIX;
 	constant C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B      : integer := integer(ceil(log2(real(C_LOCAL_RAM_SIZE_MATRIX_B))));
-	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B   : integer := 4 * C_LOCAL_RAM_SIZE_MATRIX_B;
-	type LOCAL_MEMORY_TYPE_MATRIX_B is array(0 to C_LOCAL_RAM_SIZE_MATRIX_B   - 1) of std_logic_vector(31 downto 0);
-	
-	-- communication with microblaze core
-	constant MBOX_RECV : std_logic_vector(31 downto 0) := x"00000000";
-	constant MBOX_SEND : std_logic_vector(31 downto 0) := x"00000001";
-	signal ignore : std_logic_vector(31 downto 0);
+	constant C_LOCAL_RAM_SIZE_IN_BYTES_MATRIX_B   : integer := 8 * C_LOCAL_RAM_SIZE_MATRIX_B;
+	type LOCAL_MEMORY_TYPE_MATRIX_B is array(0 to C_LOCAL_RAM_SIZE_MATRIX_B   - 1) of std_logic_vector(63 downto 0);
 	
 	-- maddr is an acronym for "matrix address" (address that points to a matrix)
 	constant C_MADDRS : integer	:= 3;
-	type MADDR_BOX_TYPE is array(0 to C_MADDRS-1) of std_logic_vector(31 downto 0);
+	type MADDR_BOX_TYPE is array(0 to C_MADDRS-1) of std_logic_vector(63 downto 0);
 	-- container for adresses pointing to the first element of matrixes A, B and C
 	signal maddrs : MADDR_BOX_TYPE;
 	-- points to pointers to the matrixes
-	signal addr2maddrs : std_logic_vector(31 downto 0);
+	signal addr2maddrs : std_logic_vector(63 downto 0);
 	
 	-- temporary signals
-	signal temp_addr_A : std_logic_vector(31 downto 0);
-	signal temp_addr_C : std_logic_vector(31 downto 0);
+	signal temp_addr_A : std_logic_vector(63 downto 0);
+	signal temp_addr_C : std_logic_vector(63 downto 0);
 	
 	-- fsm state
 	signal state : STATE_TYPE;
@@ -156,31 +153,31 @@ architecture matrixmul of rt_reconf is
 	signal o_ram_C : o_ram_t;
 	
 	signal o_RAM_A_Addr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-	signal o_RAM_A_Addr_reconos_2 : std_logic_vector(0 to 31);
-	signal o_RAM_A_Data_reconos   : std_logic_vector(0 to 31);
+	signal o_RAM_A_Addr_reconos_2 : std_logic_vector(0 to 63);
+	signal o_RAM_A_Data_reconos   : std_logic_vector(0 to 63);
 	signal o_RAM_A_WE_reconos     : std_logic;
-	signal i_RAM_A_Data_reconos   : std_logic_vector(0 to 31);
+	signal i_RAM_A_Data_reconos   : std_logic_vector(0 to 63);
 	
 	signal o_RAM_B_Addr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B   - 1);
-	signal o_RAM_B_Addr_reconos_2 : std_logic_vector(0 to 31);
-	signal o_RAM_B_Data_reconos   : std_logic_vector(0 to 31);
+	signal o_RAM_B_Addr_reconos_2 : std_logic_vector(0 to 63);
+	signal o_RAM_B_Data_reconos   : std_logic_vector(0 to 63);
 	signal o_RAM_B_WE_reconos     : std_logic;
-	signal i_RAM_B_Data_reconos   : std_logic_vector(0 to 31);
+	signal i_RAM_B_Data_reconos   : std_logic_vector(0 to 63);
 	
 	signal o_RAM_C_Addr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-	signal o_RAM_C_Addr_reconos_2 : std_logic_vector(0 to 31);
-	signal o_RAM_C_Data_reconos   : std_logic_vector(0 to 31);
+	signal o_RAM_C_Addr_reconos_2 : std_logic_vector(0 to 63);
+	signal o_RAM_C_Data_reconos   : std_logic_vector(0 to 63);
 	signal o_RAM_C_WE_reconos     : std_logic;
-	signal i_RAM_C_Data_reconos   : std_logic_vector(0 to 31);
+	signal i_RAM_C_Data_reconos   : std_logic_vector(0 to 63);
 	
 	signal o_RAM_A_Addr_mul : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-	signal i_RAM_A_Data_mul : std_logic_vector(0 to 31);
+	signal i_RAM_A_Data_mul : std_logic_vector(0 to 63);
 	
 	signal o_RAM_B_Addr_mul : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B - 1);
-	signal i_RAM_B_Data_mul : std_logic_vector(0 to 31);
+	signal i_RAM_B_Data_mul : std_logic_vector(0 to 63);
 	
 	signal o_RAM_C_Addr_mul : std_logic_vector(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1);
-	signal o_RAM_C_Data_mul : std_logic_vector(0 to 31);
+	signal o_RAM_C_Data_mul : std_logic_vector(0 to 63);
 	signal o_RAM_C_WE_mul   : std_logic;
 	
 	shared variable local_ram_a : LOCAL_MEMORY_TYPE_MATRIX_A_C;
@@ -189,7 +186,8 @@ architecture matrixmul of rt_reconf is
 	
 	signal multiplier_start : std_logic;
 	signal multiplier_done  : std_logic;
-	signal status : std_logic_vector(31 downto 0);
+	
+	signal ignore : std_logic_vector(63 downto 0);
 begin
 	-- local BRAM read and write access
 	local_ram_ctrl_1 : process (HWT_Clk) is
@@ -223,7 +221,7 @@ begin
 	matrixmultiplier_i : matrixmultiplier
 		generic map(
 			G_LINE_LEN_MATRIX => C_LINE_LEN_MATRIX,
-			G_RAM_DATA_WIDTH  => 32,
+			G_RAM_DATA_WIDTH  => 64,
 			
 			G_RAM_SIZE_MATRIX_A_C       => C_LOCAL_RAM_SIZE_MATRIX_A_C,
 			G_RAM_ADDR_WIDTH_MATRIX_A_C => C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C,
@@ -263,12 +261,12 @@ begin
 	memif_setup (
 		i_memif,
 		o_memif,
-		MEMIF_Mem2Hwt_Data,
-		MEMIF_Mem2Hwt_Empty,
-		MEMIF_Mem2Hwt_RE,
-		MEMIF_Hwt2Mem_Data,
-		MEMIF_Hwt2Mem_Full,
-		MEMIF_Hwt2Mem_WE
+		MEMIF64_Mem2Hwt_Data,
+		MEMIF64_Mem2Hwt_Empty,
+		MEMIF64_Mem2Hwt_RE,
+		MEMIF64_Hwt2Mem_Data,
+		MEMIF64_Hwt2Mem_Full,
+		MEMIF64_Hwt2Mem_WE
 	);
 	
 	ram_setup (
@@ -298,9 +296,9 @@ begin
 		o_RAM_C_WE_reconos
 	);
 	
-	o_RAM_A_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1) <= o_RAM_A_Addr_reconos_2((32-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C) to 31);
-	o_RAM_B_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B - 1)   <= o_RAM_B_Addr_reconos_2((32-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B  ) to 31);
-	o_RAM_C_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1) <= o_RAM_C_Addr_reconos_2((32-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C) to 31);
+	o_RAM_A_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1) <= o_RAM_A_Addr_reconos_2((64-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C) to 63);
+	o_RAM_B_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B - 1)   <= o_RAM_B_Addr_reconos_2((64-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_B  ) to 63);
+	o_RAM_C_Addr_reconos(0 to C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C - 1) <= o_RAM_C_Addr_reconos_2((64-C_LOCAL_RAM_ADDR_WIDTH_MATRIX_A_C) to 63);
 	
 	-- os and memory synchronisation state machine
 	reconos_fsm	: process(HWT_Clk,o_osif,o_memif,o_ram_a,o_ram_b,o_ram_c) is
@@ -309,7 +307,7 @@ begin
 		variable calculated_rows : integer;
 	begin
 		if rising_edge(HWT_Clk) then
-			if HWT_Rst = '1' then
+			if (HWT_Rst = '1') then
 				osif_reset(o_osif);
 				memif_reset(o_memif);
 				ram_reset(o_ram_A);
@@ -335,139 +333,90 @@ begin
 				temp_addr_C <= (others => '0');
 				
 				state <= STATE_INIT;
-
+			
 			else
 				case state is
 					when STATE_INIT =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							osif_read(i_osif, o_osif, ignore, done);
-							if done then
-								state <= STATE_GET_ADDR2MADDRS;
-							end if;
+						osif_read(i_osif, o_osif, ignore, done);
+						if done then
+							state <= STATE_GET_ADDR2MADDRS;
 						end if;
 
 					-- Get address pointing to the addresses pointing to the 3 matrixes via FSL.
 					when STATE_GET_ADDR2MADDRS =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							--osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr2maddrs, done);
-							osif_mbox_tryget(i_osif, o_osif, MBOX_RECV, addr2maddrs, status, done);
-							if (done) then
-								if status = x"00000000" then
-									state <= STATE_GET_ADDR2MADDRS;
-								else
-									addr2maddrs <= addr2maddrs(31 downto 2) & "00";
-									addr_pos := C_MADDRS - 1;
-									state <= STATE_READ_MADDRS;
-								end if;
+						osif_mbox_get(i_osif, o_osif, RESOURCES_ADDRESS, addr2maddrs, done);
+						if (done) then
+							if (addr2maddrs = x"FFFFFFFFFFFFFFFF") then
+								state <= STATE_THREAD_EXIT;
+							else
+								addr2maddrs <= addr2maddrs(63 downto 3) & "000";
+								addr_pos := C_MADDRS - 1;
+								state <= STATE_READ_MADDRS;
 							end if;
 						end if;
 					
 					-- Read addresses pointing to input matrixes A, B and output matrix C from main memory.
 					when STATE_READ_MADDRS =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							memif_read_word(i_memif, o_memif, addr2maddrs, maddrs(addr_pos), done);
-							if done then
-								if (addr_pos = 0) then
-									state <= STATE_READ_MATRIX_B;
-								else
-									addr_pos := addr_pos - 1;
-									addr2maddrs <= conv_std_logic_vector(unsigned(addr2maddrs) + 4, 32);
-								end if;
+						memif_read_word(i_memif, o_memif, addr2maddrs, maddrs(addr_pos), done);
+						if done then
+							if (addr_pos = 0) then
+								state <= STATE_READ_MATRIX_B;
+							else
+								addr_pos := addr_pos - 1;
+								addr2maddrs <= conv_std_logic_vector(unsigned(addr2maddrs) + 8, 64);
 							end if;
 						end if;
 					
 					-- Read matrix B from main memory.
 					when STATE_READ_MATRIX_B =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							memif_read(i_ram_B, o_ram_B, i_memif, o_memif, maddrs(1), X"00000000", len_data_MATRIX_B, done);
-							if done then
-								temp_addr_A <= maddrs(2);
-								temp_addr_C <= maddrs(0);
-								state <= STATE_READ_MATRIX_ROW_FROM_A;
-							end if;
+						memif_read(i_ram_B, o_ram_B, i_memif, o_memif, maddrs(1), X"0000000000000000", len_data_MATRIX_B, done);
+						if done then
+							temp_addr_A <= maddrs(2);
+							temp_addr_C <= maddrs(0);
+							state <= STATE_READ_MATRIX_ROW_FROM_A;
 						end if;
 					
 					-- Read a row of matrix A.
 					when STATE_READ_MATRIX_ROW_FROM_A =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							memif_read(i_ram_A, o_ram_A, i_memif, o_memif, temp_addr_A, X"00000000", len_data_MATRIX_A_C, done);
-							if done then
-								multiplier_start <= '1';
-								state <= STATE_MULTIPLY_MATRIX_ROW;
-							end if;
+						memif_read(i_ram_A, o_ram_A, i_memif, o_memif, temp_addr_A, X"0000000000000000", len_data_MATRIX_A_C, done);
+						if done then
+							multiplier_start <= '1';
+							state <= STATE_MULTIPLY_MATRIX_ROW;
 						end if;
 					
 					-- Multiply row of matrix A with matrix B.
 					when STATE_MULTIPLY_MATRIX_ROW =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							multiplier_start <= '0';
-							if (multiplier_done = '1') then
-								calculated_rows := calculated_rows + 1;
-								state <= STATE_WRITE_MATRIX_ROW_TO_C;
-							end if;
+						multiplier_start <= '0';
+						if (multiplier_done = '1') then
+							calculated_rows := calculated_rows + 1;
+							state <= STATE_WRITE_MATRIX_ROW_TO_C;
 						end if;
 					
 					-- Write multiplication result (row of matrix C) to main memory.
 					when STATE_WRITE_MATRIX_ROW_TO_C =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							memif_write(i_ram_C, o_ram_C, i_memif, o_memif, X"00000000", temp_addr_C, len_data_MATRIX_A_C, done);
-							if (done) then
-								if (calculated_rows < C_LINE_LEN_MATRIX) then
-									-- Calculate new temporary addresses
-									-- => to fetch next matrix row of matrix A
-									-- => to store calculated values to next matrix row of matrix C
-									temp_addr_A <= conv_std_logic_vector(unsigned(temp_addr_A) + C_LINE_LEN_MATRIX*4, 32);
-									temp_addr_C <= conv_std_logic_vector(unsigned(temp_addr_C) + C_LINE_LEN_MATRIX*4, 32);
-									state <= STATE_READ_MATRIX_ROW_FROM_A;
-								else
-									state <= STATE_ACK;
-								end if;
+						memif_write(i_ram_C, o_ram_C, i_memif, o_memif, X"0000000000000000", temp_addr_C, len_data_MATRIX_A_C, done);
+						if (done) then
+							if (calculated_rows < C_LINE_LEN_MATRIX) then
+								-- Calculate new temporary addresses
+								-- => to fetch next matrix row of matrix A
+								-- => to store calculated values to next matrix row of matrix C
+								temp_addr_A <= conv_std_logic_vector(unsigned(temp_addr_A) + C_LINE_LEN_MATRIX*8, 64);
+								temp_addr_C <= conv_std_logic_vector(unsigned(temp_addr_C) + C_LINE_LEN_MATRIX*8, 64);
+								state <= STATE_READ_MATRIX_ROW_FROM_A;
+							else
+								state <= STATE_ACK;
 							end if;
 						end if;
 					
 					-- We finished calculating matrix multiplication A * B = C.
 					when STATE_ACK =>
-						if HWT_SIGNAL = '1' then
-							osif_reset(o_osif);
-							memif_reset(o_memif);
-							state <= STATE_THREAD_EXIT;					
-						else
-							osif_mbox_put(i_osif, o_osif, MBOX_SEND, maddrs(addr_pos), ignore, done);
-							if (done) then
-								calculated_rows	:= 0;
-								addr_pos := C_MADDRS - 1;
-								temp_addr_A <= (others => '0');
-								temp_addr_C	 <= (others => '0');
-								state <= STATE_GET_ADDR2MADDRS;
-							end if;
+						osif_mbox_put(i_osif, o_osif, RESOURCES_ACKNOWLEDGE, maddrs(addr_pos), ignore, done);
+						if (done) then
+							calculated_rows	:= 0;
+							addr_pos := C_MADDRS - 1;
+							temp_addr_A <= (others => '0');
+							temp_addr_C	 <= (others => '0');
+							state <= STATE_GET_ADDR2MADDRS;
 						end if;
 					
 					-- Terminate hardware thread.
@@ -478,4 +427,4 @@ begin
 		end if;
 	end process;
 	
-end architecture matrixmul;
+end architecture implementation;

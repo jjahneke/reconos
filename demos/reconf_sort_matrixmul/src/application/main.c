@@ -37,7 +37,7 @@ void print_help() {
 	       "Sorts a buffer full of data with a variable number of sw and hw threads, reconfigures the sortdemo hw threads to matrixmul threads, and runs the matrixmul demo.\n"
 	       "\n"
 	       "Usage:\n"
-	       "    sort_demo <num_hw_threads> <num_sw_threads> <num_of_blocks>\n"
+	       "    reconfsortmatrixmul <num_hw_threads> <num_sw_threads> <num_of_blocks> <num_of_blocks_matrix>\n"
 	       "\n"
 	       "    <num_hw_threads> - Number of hardware threads to create. The maximum number is\n"
 	       "                       limited by the hardware design.\n"
@@ -49,69 +49,35 @@ void print_help() {
 }
 
 /* functions for the reconfiguration */
+int program_fpga(char* bitstream_file, unsigned partial)
+{
+  printf ("Programming FPGA with bitstream %s..\n", bitstream_file);
 
-int reconfigure_xdevcfg(char* filename,unsigned int partial){
+  char cmd[128];
+  if(partial)
+	sprintf(cmd, "fpgautil -b %s -f Partial", bitstream_file);
+  else
+    sprintf(cmd, "fpgautil -b %s -f Full", bitstream_file);
 
-	FILE *bitfile;
-	unsigned int size;
-	char *bitstream;
+  FILE *fd = popen(cmd, "r");
 
-	bitfile = fopen(filename, "rb");
-	if(!bitfile){
-		log("Error opening bitstream file %s\n",filename);
-		return -1;
-	}
+  char buf[256];
+  if (fread (buf, 1, sizeof (buf), fd) > 0)
+  {
+    printf ("Result:\n%s", buf);
+  }
+  else
+  {
+    fprintf(stderr, "ERROR programming FPGA\n");
+    return -1;
+  }
 
-	fseek(bitfile,0L,SEEK_END);
-	size=ftell(bitfile);
-	rewind(bitfile);
-
-	bitstream = (char *)malloc(size*sizeof(char));
-	if(!bitstream){
-		log("Error allocating memory for bitstream %s\n",filename);
-		return -1;
-	}
-	fread(bitstream, sizeof(char), size, bitfile);
-	fclose(bitfile);
-
-	int fd_partial = open("/sys/devices/soc0/amba/f8007000.devcfg/is_partial_bitstream", O_RDWR);
-	if(fd_partial < 0){
-		log("Failed to open xdevcfg attribute 'is_partial_bitstream' when configuring %s\n",filename);
-		return -1;
-	}
-
-	char partial_flag[2];
-	if(!partial) {
-		strcpy(partial_flag,"0");
-	}
-	else {
-		strcpy(partial_flag,"1");
-	}
-	write(fd_partial, partial_flag, 2);
-	close(fd_partial);
-
-	fd_partial = open("/dev/xdevcfg", O_RDWR);
-	if(fd_partial < 0){
-		log("Failed to open xdevcfg device when configuring %s\n",filename);
-		return -1;
-	}
-	log("Opened xdevcfg. Configuring with %u bytes\n",size);
-	write(fd_partial, bitstream, size);
-	int fd_finish_flag = open("/sys/devices/soc0/amba/f8007000.devcfg/prog_done", O_RDWR);
-	char finish_flag = '0';
-
-	/* wait until reconfiguration is finished */
-	while(finish_flag != '1'){
-		read(fd_finish_flag,&finish_flag,1);
-	}
-	log("Reconfiguration with bitfile %s finished\n",filename);
-	close(fd_partial);
-	close(fd_finish_flag);
-
-	return 0;
+  fclose(fd);
+  return 0;
 }
 
-int reconfigure_fpga_manager(char* filename,unsigned int partial){
+//no longer required if fpgautil is installed
+int reconfigure_fpga_manager(char* filename, unsigned partial){
 
 	//Check if bitstream file exists. For the FPGA Manager, it needs to be located at /lib/firmware/
 	char path [114] = "/lib/firmware/";
@@ -160,28 +126,20 @@ int reconfigure_fpga_manager(char* filename,unsigned int partial){
 	return 0;
 }
 
-int reconfigure(char* filename,unsigned int partial){
-	struct stat buffer;
-	if (stat("/dev/xdevcfg", &buffer) == 0){
-		//Xilinx xdevcfg driver found (older kernel versions)
-		return reconfigure_xdevcfg(filename, partial);
-	}
-	else{
-		//Xilinx xdevcfg driver NOT found. Use FPGA Manager (newer kernel versions)
-		return reconfigure_fpga_manager(filename, partial);
-	}
+int reconfigure(char* filename, unsigned partial){
+	return program_fpga(filename, partial);
 }
 
 /* functions for sortdemo */
 
-int cmp_uint32t(const void *a, const void *b) {
-	return *(uint32_t *)a - *(uint32_t *)b;
+int cmp_uint64t(const void *a, const void *b) {
+	return *(uint64_t *)a - *(uint64_t *)b;
 }
 
-void _merge(uint32_t *data, uint32_t *tmp,
+void _merge(uint64_t *data, uint64_t *tmp,
            int l_count, int r_count) {
 	int i;
-	uint32_t *l = data, *r = data + l_count;
+	uint64_t *l = data, *r = data + l_count;
 	int li = 0, ri = 0;
 
 	for (i = 0; i < l_count; i++) {
@@ -199,11 +157,11 @@ void _merge(uint32_t *data, uint32_t *tmp,
 	}
 }
 
-void merge(uint32_t *data, int data_count) {
+void merge(uint64_t *data, int data_count) {
 	int bs, bi;
-	uint32_t *tmp;
+	uint64_t *tmp;
 
-	tmp = (uint32_t *)malloc(data_count * sizeof(uint32_t));
+	tmp = (uint64_t *)malloc(data_count * sizeof(uint64_t));
 
 	for (bs = BLOCK_SIZE; bs < data_count; bs += bs) {
 		for (bi = 0; bi < data_count; bi += bs + bs) {
@@ -221,7 +179,7 @@ void merge(uint32_t *data, int data_count) {
 int main(int argc, char **argv) {
 	int i;
 	int num_hwts, num_swts, num_blocks, str_matrix_size;
-	uint32_t *data, *copy;
+	uint64_t *data, *copy;
 	int data_count;
 
 	if (argc != 5) {
@@ -235,12 +193,12 @@ int main(int argc, char **argv) {
 	str_matrix_size = atoi(argv[4]);
 
 	unsigned int t_start, t_gen, t_sort, t_merge, t_check;
-	unsigned int t_reconfiguration_full;
+	unsigned int t_reconfiguration_full = 0;
 	unsigned int *t_suspend = (unsigned int *) malloc(num_hwts * sizeof(unsigned int));
 	unsigned int *t_reconfiguration = (unsigned int *) malloc(num_hwts * sizeof(unsigned int));
 	unsigned int *t_resume = (unsigned int *) malloc(num_hwts * sizeof(unsigned int));
 
-	timer_init(); 
+	//timer_init(); 
 
 	//check if num_blocks (sortdemo) is a power of 2. Multiple of 2 also works, but leads to segmentation faults for some values.
 	if (((num_blocks & (num_blocks-1)) != 0) || (num_blocks == 0))
@@ -255,15 +213,16 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	t_reconfiguration_full = timer_get();
-	if(reconfigure("config_sortdemo.bit.bin",0) < 0){
+	//t_reconfiguration_full = timer_get();
+	if(reconfigure("Config_sortdemo_hwt0_sortdemo_hwt1_implement_full.bit",0) < 0){
 		printf("Failed to load static bitfile of sortdemo\n");
 		return -1;
 	}
-	t_reconfiguration_full = timer_get() - t_reconfiguration_full;
+	//t_reconfiguration_full = timer_get() - t_reconfiguration_full;
 
 	reconos_init();
 	reconos_app_init();
+	timer_init(); 
 
 	reconos_clock_threads_set(100000); //set dynamic clock "threads" to 100MHz
 
@@ -292,17 +251,17 @@ int main(int argc, char **argv) {
 	t_start = timer_get();
 	log("generating data ...\n");
 	data_count = num_blocks * BLOCK_SIZE;
-	data = (uint32_t *)malloc(data_count * sizeof(uint32_t));
-	copy = (uint32_t *)malloc(data_count * sizeof(uint32_t));
+	data = (uint64_t *)malloc(data_count * sizeof(uint64_t));
+	copy = (uint64_t *)malloc(data_count * sizeof(uint64_t));
 	for (i = 0; i < data_count; i++) {
 		data[i] = data_count - i - 1;
 	}
-	memcpy(copy, data, data_count * sizeof(uint32_t));
+	memcpy(copy, data, data_count * sizeof(uint64_t));
 	t_gen = timer_get() - t_start;
 
 	log("putting %d blocks into job queue: ", num_blocks);
 	for (i = 0; i < num_blocks; i++) {
-		mbox_put(resources_address, (uint32_t)(data + i * BLOCK_SIZE));
+		mbox_put(resources_address, (uint64_t)(data + i * BLOCK_SIZE));
 		log(".");
 	}
 	log("\n");
@@ -326,26 +285,33 @@ int main(int argc, char **argv) {
 
 	t_start = timer_get();
 	log("checking sorted data ...\n");
-	qsort(copy, data_count, sizeof(uint32_t), cmp_uint32t);
+	qsort(copy, data_count, sizeof(uint64_t), cmp_uint64t);
 	for (i = 0; i < data_count; i++) {
 		if (data[i] != copy[i]) {
-			log("expected 0x%08x but found 0x%08x at %d\n", copy[i], data[i], i);
+			log("expected %#.16lx but found %#.16lx at %d\n", copy[i], data[i], i);
 		}
 	}
 	t_check = timer_get() - t_start;
 
-
+	log("sending terminate message to sortdemo HWTs and SWTs:");
+	for (i = 0; i < num_hwts + num_swts; i++) {
+		log(" %d", i);
+		mbox_put(resources_address, 0xffffffffffffffff);
+	}
+	log("\n");
 
 	/* reconfiguration */
 
 	for(i = 0; i < num_hwts; i++){
 		/*construct name of bitfile*/
-		
-		char filename[100] = "config_matrixmul_pblock_slot_";
+		char filename[100] = "pblock_slot_";
+		char filename_2[100] = "_matrixmul_hwt";
 		char id[10];
 		sprintf(id, "%d",i);
 		strcat(filename,id);
-		strcat(filename,"_partial.bit.bin");
+		strcat(filename,filename_2);
+		strcat(filename,id);
+		strcat(filename,"_partial.bit");
 
 		/*suspend each thread and reconfigure */
 		log("Suspending HWT %d\n",i);
@@ -361,9 +327,9 @@ int main(int argc, char **argv) {
 	}
 
 	/* terminate sortdemo software threads */
-	for(i = 0; i < num_swts;i++){
-		mbox_put(resources_address,UINT_MAX);
-	}
+	//for(i = 0; i < num_swts;i++){
+	//	mbox_put(resources_address,0xffffffffffffffff);
+	//}
 
 	for(i=0; i< num_swts; i++){
 		pthread_join(reconos_swts[i]->swslot,NULL);
@@ -404,9 +370,9 @@ int main(int argc, char **argv) {
 	int mbox_size = (int) pow(7, ((int)log2(str_matrix_size)) - ((int)log2(STD_MMP_MATRIX_SIZE)));
 	printf("Size of mailboxes: %i\n", mbox_size);
 
-	int *i_matrixes[2]	= {NULL, NULL};
-	int *o_matrix		= NULL;
-	int *compare		= NULL;
+	int64_t *i_matrixes[2]	= {NULL, NULL};
+	int64_t *o_matrix		= NULL;
+	int64_t *compare		= NULL;
 
 	MATRIXES* std_mmp_matrixes = NULL;
 
@@ -433,7 +399,7 @@ int main(int argc, char **argv) {
 
 	for (i=0; i<mbox_size; ++i) {
 		printf("Putting pointer to matrixes into mbox: %p, %p, %p\n", ptr->matrixes[0],ptr->matrixes[1],ptr->matrixes[2]);
-		mbox_put(resources_address,(unsigned int)(ptr->matrixes));
+		mbox_put(resources_address,(int64_t)(ptr->matrixes));
 		ptr = ptr->next;
 	}
 	log("Waiting for acknowledgements...\n");
@@ -458,7 +424,7 @@ int main(int argc, char **argv) {
 		log("\nResult is correct.\n\n");
 	} else {
 		log("\nBad result.\n");
-		printf("Comparison failed at index %i.Correct: %i, Actual result: %i.\n", correct_result, compare[correct_result], o_matrix[correct_result] );
+		printf("Comparison failed at index %i.Correct: %li, Actual result: %li.\n", correct_result, compare[correct_result], o_matrix[correct_result] );
 #if 1
 		print_matrix(i_matrixes[0], 'A', str_matrix_size);
 		print_matrix(i_matrixes[1], 'B', str_matrix_size);

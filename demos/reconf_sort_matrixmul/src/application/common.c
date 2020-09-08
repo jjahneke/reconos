@@ -24,10 +24,10 @@ void *xmalloc_aligned(size_t size, size_t alignment)
 }
 
 
-void generate_data(int *input_matrixes[2], int **output_matrix, int matrix_size) {
-	input_matrixes[0]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
-	input_matrixes[1]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
-	*output_matrix		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
+void generate_data(int64_t *input_matrixes[2], int64_t **output_matrix, int matrix_size) {
+	input_matrixes[0]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
+	input_matrixes[1]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
+	*output_matrix		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
 
 	int i;
 	for (i=0; i<matrix_size*matrix_size; ++i) {
@@ -37,17 +37,17 @@ void generate_data(int *input_matrixes[2], int **output_matrix, int matrix_size)
 	}
 }
 
-void generate_result(int *input_matrixes[2], int **res, int matrix_size) {
-	*res = xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
+void generate_result(int64_t *input_matrixes[2], int64_t **res, int matrix_size) {
+	*res = xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
 
 	std_matrix_mul(input_matrixes[0], input_matrixes[1], *res, matrix_size);
 }
 
 
-void read_data(int *input_matrixes[2], int **output_matrix, int matrix_size) {
-	input_matrixes[0]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
-	input_matrixes[1]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
-	*output_matrix		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
+void read_data(int64_t *input_matrixes[2], int64_t **output_matrix, int matrix_size) {
+	input_matrixes[0]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
+	input_matrixes[1]	= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
+	*output_matrix		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
 
 	char in0[32];
 	char in1[32];
@@ -61,15 +61,15 @@ void read_data(int *input_matrixes[2], int **output_matrix, int matrix_size) {
 
 }
 
-void read_result(int **res, int matrix_size){
-	*res  		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int), PAGE_SIZE);
+void read_result(int64_t **res, int matrix_size){
+	*res  		= xmalloc_aligned(matrix_size*matrix_size*sizeof(int64_t), PAGE_SIZE);
 
 	char res_path[32];
 	snprintf(res_path, sizeof(res_path), "matrixmul_compare_%06d.dat", matrix_size);
 	assert(read_matrix(*res, res_path, matrix_size));
 }
 
-void write_data(int *input_matrixes[2], int **output_matrix, int matrix_size) {
+void write_data(int64_t *input_matrixes[2], int64_t **output_matrix, int matrix_size) {
 	char in0[32];
 	char in1[32];
 	char out[32];
@@ -82,20 +82,20 @@ void write_data(int *input_matrixes[2], int **output_matrix, int matrix_size) {
 	write_matrix(*output_matrix, out, matrix_size);
 }
 
-void write_result(int **res, int matrix_size) {
+void write_result(int64_t **res, int matrix_size) {
 	char res_path[32];
 	snprintf(res_path, sizeof(res_path), "matrixmul_compare_%06d.dat", matrix_size);
 	write_matrix(*res, res_path, matrix_size);
 }
 
-void print_matrix(int *matrix, char matrix_name, int matrix_size) {
+void print_matrix(int64_t *matrix, char matrix_name, int matrix_size) {
 	int i, j;
 	printf("%c =\n", matrix_name);
 	for (i=0; i<matrix_size; ++i) {
 		printf("\t[ ");
 		int pos = i*matrix_size;
 		for (j=0; j<matrix_size; ++j) {
-			printf("%8i ", matrix[pos+j]);
+			printf("%8li ", matrix[pos+j]);
 		}
 		printf("]\n");
 	}
@@ -105,7 +105,7 @@ void print_matrix(int *matrix, char matrix_name, int matrix_size) {
  * Compares two matrixes for equality.
  * Return value is -1 if equal, else it returns the index where comparison failed.
  */
-int compare_result(int *result, int *compare, int matrix_size) {
+int compare_result(int64_t *result, int64_t *compare, int matrix_size) {
 	int i;
 	for (i=0; i<matrix_size*matrix_size; ++i) {
 		if (result[i] != compare[i]) {
@@ -115,7 +115,7 @@ int compare_result(int *result, int *compare, int matrix_size) {
 	return -1;
 }
 
-void append_list(MATRIXES **std_mmp_matrixes, int *i_matrixes[7][3]) {
+void append_list(MATRIXES **std_mmp_matrixes, int64_t *i_matrixes[7][3]) {
 	MATRIXES *ptr = *std_mmp_matrixes;
 	int pos = -1;
 	int i;
@@ -140,7 +140,7 @@ void append_list(MATRIXES **std_mmp_matrixes, int *i_matrixes[7][3]) {
 	}
 }
 
-void append_list_single(MATRIXES **str_mmp_matrixes, int *i_matrix) {
+void append_list_single(MATRIXES **str_mmp_matrixes, int64_t *i_matrix) {
 	MATRIXES *ptr = *str_mmp_matrixes;
 	int pos = -1;
 

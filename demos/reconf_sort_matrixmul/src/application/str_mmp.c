@@ -9,11 +9,11 @@
 
 //#define xmalloc_aligned(a,b) malloc(a)
 
-void get_matrix(int *i_matrix, int **o_matrix, int posY, int posX, int i_matrix_size) {
+void get_matrix(int64_t *i_matrix, int64_t **o_matrix, int posY, int posX, int i_matrix_size) {
 	int o_matrix_size = i_matrix_size/2;
 	--posY;--posX;
 
-	*o_matrix = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int), PAGE_SIZE);
+	*o_matrix = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int64_t), PAGE_SIZE);
 
 	int i, j, k = 0;
 	int temp1 = (posY*i_matrix_size + posX) * o_matrix_size;
@@ -25,7 +25,7 @@ void get_matrix(int *i_matrix, int **o_matrix, int posY, int posX, int i_matrix_
 	}
 }
 
-void set_matrix(int *o_matrix, int *i_matrix, int posY, int posX, int i_matrix_size) {
+void set_matrix(int64_t *o_matrix, int64_t *i_matrix, int posY, int posX, int i_matrix_size) {
 	int o_matrix_size = i_matrix_size*2;
 	--posY;--posX;
 
@@ -52,24 +52,24 @@ void print_matrixes(MATRIXES **std_mmp_matrixes, int matrix_size){
 
 }
 
-void str_matrix_split(int *i_matrix_a, int *i_matrix_b, MATRIXES **std_mmp_matrixes, int i_matrix_size) {
+void str_matrix_split(int64_t *i_matrix_a, int64_t *i_matrix_b, MATRIXES **std_mmp_matrixes, int i_matrix_size) {
 	int o_matrix_size = i_matrix_size/2;
-	int *o_matrixes[7][3];
+	int64_t *o_matrixes[7][3];
 
 	int i,j;
 	//printf("str_matrix_split: xmalloc_aligneding memory...\n");
 	for (i=0; i<7; ++i) {
-		o_matrixes[i][0] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int), PAGE_SIZE);
-		o_matrixes[i][1] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int), PAGE_SIZE);
-		o_matrixes[i][2] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int), PAGE_SIZE);
+		o_matrixes[i][0] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int64_t), PAGE_SIZE);
+		o_matrixes[i][1] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int64_t), PAGE_SIZE);
+		o_matrixes[i][2] = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int64_t), PAGE_SIZE);
 		for (j = 0; j < o_matrix_size*o_matrix_size; ++j) {
 			o_matrixes[i][2][j] = 55555;
 		}
 	}
 
 	// split matrix
-	int *a11, *a12, *a21, *a22;
-	int *b11, *b12, *b21, *b22;
+	int64_t *a11, *a12, *a21, *a22;
+	int64_t *b11, *b12, *b21, *b22;
 
 	//printf("str_matrix_split: getting matrixes...\n");
 	get_matrix(i_matrix_a, &a11, 1, 1, i_matrix_size);
@@ -132,17 +132,17 @@ int str_matrix_combine_step(MATRIXES **str_mmp_matrixes, MATRIXES **std_mmp_matr
 	int o_matrix_size = i_matrix_size*2;
 	MATRIXES *ptr = *std_mmp_matrixes;
 
-	int *temp1 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
-	int *temp2 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
+	int64_t *temp1 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
+	int64_t *temp2 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
 
-	int *c11 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
-	int *c12 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
-	int *c21 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
-	int *c22 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int), PAGE_SIZE);
+	int64_t *c11 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
+	int64_t *c12 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
+	int64_t *c21 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
+	int64_t *c22 = xmalloc_aligned(i_matrix_size*i_matrix_size*sizeof(int64_t), PAGE_SIZE);
 
-	int *o_matrix = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int), PAGE_SIZE);
+	int64_t *o_matrix = xmalloc_aligned(o_matrix_size*o_matrix_size*sizeof(int64_t), PAGE_SIZE);
 
-	int *std_mmp_result_matrixes[7];
+	int64_t *std_mmp_result_matrixes[7];
 	for (i=0; i<7; ++i) {
 		//printf("str_matrix_combine_step: i: %i, std_mmp_result_matrixes[i]: %p, ptr: %p, ptr->matrixes: %p, ptr->next: %p\n",
 		//		i, std_mmp_result_matrixes[i], ptr, ptr->matrixes, ptr->next);
@@ -181,7 +181,7 @@ int str_matrix_combine_step(MATRIXES **str_mmp_matrixes, MATRIXES **std_mmp_matr
 	return o_matrix_size;
 }
 
-int *str_matrix_combine(MATRIXES **std_mmp_matrixes, int i_matrix_size, int o_matrix_size) {
+int64_t *str_matrix_combine(MATRIXES **std_mmp_matrixes, int i_matrix_size, int o_matrix_size) {
 	int o_matrix_size_tmp = i_matrix_size;
 	MATRIXES *str_mmp_matrixes;
 

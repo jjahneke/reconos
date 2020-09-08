@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 
 void *matrixmul_thread(void *data);
-int limit(int var, int lower, int upper);
+int64_t limit(int64_t var, int64_t lower, int64_t upper);
 void sigsegv_handler(int sig, siginfo_t *siginfo, void * context);
 void install_sighandlers();
 void handle_commandline(int argc, char** argv);

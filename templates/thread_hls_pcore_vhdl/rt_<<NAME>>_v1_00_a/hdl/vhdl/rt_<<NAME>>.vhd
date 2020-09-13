@@ -5,7 +5,12 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
+<<if RECONFIGURABLE=="true">>
+entity rt_reconf is
+<<end if>>
+<<if RECONFIGURABLE=="false">>
 entity rt_<<NAME>> is
+<<end if>>
 	port (
 		-- OSIF FIFO ports
 		OSIF_Sw2Hw_Data    : in  std_logic_vector(63 downto 0);
@@ -27,14 +32,20 @@ entity rt_<<NAME>> is
 
 		HWT_Clk    : in  std_logic;
 		HWT_Rst    : in  std_logic;
-		HWT_Signal : in  std_logic
+		HWT_Signal : in  std_logic;
 
-		--DEBUG : out std_logic_vector(135 downto 0)
+		DEBUG : out std_logic_vector(70 downto 0)
 	);
+<<if RECONFIGURABLE=="true">>
+end entity rt_reconf;
+
+architecture implementation of rt_reconf is
+<<end if>>
+<<if RECONFIGURABLE=="false">>
 end entity rt_<<NAME>>;
 
 architecture implementation of rt_<<NAME>> is
-
+<<end if>>
 	-- Declare port attributes for the Vivado IP Packager
 	ATTRIBUTE X_INTERFACE_INFO : STRING;
 	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;

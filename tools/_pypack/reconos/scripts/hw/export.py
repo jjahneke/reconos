@@ -208,6 +208,8 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["SOURCES"] = [srcs]
 		incls = shutil2.listfiles(srcs, True)
 		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
+		#Template will change top module entity name to "rt_reconf" if PR flow is used for this HWT
+		dictionary["RECONFIGURABLE"] = thread.slots[0].reconfigurable
 
 		log.info("Generating export files ...")
 		prj.apply_template("thread_hls_pcore_vhdl", dictionary, hwdir)

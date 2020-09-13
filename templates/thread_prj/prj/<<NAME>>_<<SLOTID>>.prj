@@ -4,6 +4,10 @@
 vhdl rt_reconf_v1_00_a pcores/rt_<<NAME>>_v1_00_a/hdl/vhdl/<<File>>.vhd
 <<end generate>>
 
+<<if HWSOURCE=="hls">>
+vhdl rt_reconf_v1_00_a pcores/rt_<<NAME>>_v1_00_a/hdl/vhdl/rt_<<NAME>>.vhd
+<<end if>>
+
 <<if HWSOURCE=="vhdl">>
 vhdl rt_reconf_v1_00_a pcores/rt_<<NAME>>_v1_00_a/hdl/vhdl/reconos_thread.vhd
 <<end if>>

@@ -139,6 +139,7 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["MEM"] = thread.mem
 		dictionary["MEM_N"] = not thread.mem
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
+		dictionary["HWSOURCE"] = thread.hwsource
 		srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
 		dictionary["SOURCES"] = [srcs]
 		incls = shutil2.listfiles(srcs, True)
@@ -202,6 +203,7 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["NAME"] = thread.name.lower()
 		dictionary["MEM"] = thread.mem
 		dictionary["MEM_N"] = not thread.mem
+		dictionary["HWSOURCE"] = thread.hwsource
 		srcs = shutil2.join(tmp.name, "hls", "sol", "syn", "vhdl")
 		dictionary["SOURCES"] = [srcs]
 		incls = shutil2.listfiles(srcs, True)

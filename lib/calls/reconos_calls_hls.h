@@ -257,7 +257,7 @@ inline uint64_t stream_read(hls::stream<uint64_t> &stream) {
  */
 #define GET_INIT_DATA()(\
 	stream_write(osif_hw2sw, OSIF_CMD_THREAD_GET_INIT_DATA),\
-	stream_read(osif_hw2sw))
+	stream_read(osif_sw2hw))
 
 /*
  * Reads several words from the main memory into the local ram. Therefore,

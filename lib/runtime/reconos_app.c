@@ -134,6 +134,25 @@ struct reconos_thread *reconos_thread_create_hwt_<<Name>>() {
 
 	return rt;
 }
+
+/*
+ * @see header
+ */
+struct reconos_thread *reconos_thread_create_hwt_in_slot_<<Name>>(int slot, void* init_data) {
+	struct reconos_thread *rt = (struct reconos_thread *)malloc(sizeof(struct reconos_thread));
+	if (!rt) {
+		panic("[reconos-core] ERROR: failed to allocate memory for thread\n");
+	}
+
+	int slots[] = {slot};
+	reconos_thread_init(rt, "<<Name>>", 0);
+	reconos_thread_setinitdata(rt, init_data);
+	reconos_thread_setallowedslots(rt, slots, 1);
+	reconos_thread_setresourcepointers(rt, resources_<<Name>>, <<ResourceCount>>);
+	reconos_thread_create_auto(rt, RECONOS_THREAD_HW);
+
+	return rt;
+}
 <<=end generate=>>
 
 <<=generate for HasSw=>>
@@ -152,6 +171,26 @@ struct reconos_thread *reconos_thread_create_swt_<<Name>>() {
 	reconos_thread_init(rt, "<<Name>>", 0);
 	reconos_thread_setinitdata(rt, 0);
 	reconos_thread_setallowedslots(rt, slots, <<SlotCount>>);
+	reconos_thread_setresourcepointers(rt, resources_<<Name>>, <<ResourceCount>>);
+	reconos_thread_setswentry(rt, rt_<<Name>>);
+	reconos_thread_create_auto(rt, RECONOS_THREAD_SW);
+
+	return rt;
+}
+
+/*
+ * @see header
+ */
+struct reconos_thread *reconos_thread_create_swt_in_slot_<<Name>>(int slot, void* init_data) {
+	struct reconos_thread *rt = (struct reconos_thread *)malloc(sizeof(struct reconos_thread));
+	if (!rt) {
+		panic("[reconos-core] ERROR: failed to allocate memory for thread\n");
+	}
+
+	int slots[] = {slot};
+	reconos_thread_init(rt, "<<Name>>", 0);
+	reconos_thread_setinitdata(rt, init_data);
+	reconos_thread_setallowedslots(rt, slots, 1);
 	reconos_thread_setresourcepointers(rt, resources_<<Name>>, <<ResourceCount>>);
 	reconos_thread_setswentry(rt, rt_<<Name>>);
 	reconos_thread_create_auto(rt, RECONOS_THREAD_SW);

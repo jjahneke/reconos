@@ -3,8 +3,8 @@
 ###############################################################
 # Load utilities
 #Define location for "Tcl" directory. Defaults to "./tcl_HD"
-if {[file exists "./scripts/Tcl_HD"]} { 
-   set tclDir  "./scripts/Tcl_HD"
+if {[file exists "./pr_flow/Tcl_HD"]} { 
+   set tclDir  "./pr_flow/Tcl_HD"
 } else {
    error "ERROR: No valid location found for required Tcl scripts. Set \$tclDir in design.tcl to a valid location."
 }
@@ -42,6 +42,7 @@ zcu102 {
  set device       "xczu9eg"
  set package      "-ffvb1156"
  set speed        "-2-e"
+ set board        "xilinx.com:zcu102:3.2"
 }
 default {
  #kcu105
@@ -72,8 +73,11 @@ set_attribute module $static top_level     1
 #} else {
 #   set_attribute module $static vlog          [list [glob $rtlDir/$top/*.v]]
 #}
-set_attribute module $static synthCheckpoint ./build.hw/myReconOS.runs/synth_1/design_1_wrapper.dcp
-set_attribute module $static synth         ${run.topSynth}
+#set_attribute module $static synthCheckpoint ./myReconOS.runs/synth_1/design_1_wrapper.dcp
+set_attribute module $static ipRepo          ./pcores
+set_attribute module $static bd              ./myReconOS.srcs/sources_1/bd/design_1/design_1.bd
+set_attribute module $static vhdl            [list ./myReconOS.srcs/sources_1/bd/design_1/hdl/design_1_wrapper.vhd xil_defaultLib]
+set_attribute module $static synth           ${run.topSynth}
 
 ####################################################################
 ### RP Module Definitions
@@ -110,12 +114,14 @@ foreach cfg_name [array names rm_config] {
   add_implementation $config
   set_attribute impl $config top             $top
   #set_attribute impl $config implXDC         [list $xdcDir/${top}_$xboard.xdc]
-  set_attribute impl $config implXDC         [list ./build.hw/myReconOS.srcs/constrs_1/new/design_1_pblocks.xdc]
+  set_attribute impl $config implXDC         [list pr_flow/pblocks.xdc]
 
   set_attribute impl $config partitions      $partition_list
   set_attribute impl $config pr.impl         1 
   set_attribute impl $config impl            ${run.prImpl} 
   set_attribute impl $config verify     	    ${run.prVerify} 
   set_attribute impl $config bitstream  	    ${run.writeBitstream} 
-  #set_attribute impl $config bitstream_settings [list <options_go_here>]
+  #bitstream_options are given to write_bitstream command, bitstream_settings are set as property
+  set_attribute impl $config bitstream_options [list "-bin_file"]
+  #set_attribute impl $config bitstream_settings [list <settings_go_here>]
 }

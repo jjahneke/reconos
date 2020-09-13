@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 	}
 
 	//t_reconfiguration_full = timer_get();
-	if(reconfigure("Config_sortdemo_hwt0_sortdemo_hwt1_implement_full.bit",0) < 0){
+	if(reconfigure("Config_sortdemo_0_sortdemo_1_implement_full.bin",0) < 0){
 		printf("Failed to load static bitfile of sortdemo\n");
 		return -1;
 	}
@@ -305,13 +305,13 @@ int main(int argc, char **argv) {
 	for(i = 0; i < num_hwts; i++){
 		/*construct name of bitfile*/
 		char filename[100] = "pblock_slot_";
-		char filename_2[100] = "_matrixmul_hwt";
+		char filename_2[100] = "_matrixmul_";
 		char id[10];
 		sprintf(id, "%d",i);
 		strcat(filename,id);
 		strcat(filename,filename_2);
 		strcat(filename,id);
-		strcat(filename,"_partial.bit");
+		strcat(filename,"_partial.bin");
 
 		/*suspend each thread and reconfigure */
 		log("Suspending HWT %d\n",i);

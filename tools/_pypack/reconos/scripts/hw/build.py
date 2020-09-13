@@ -26,7 +26,10 @@ def build_cmd(args):
 
 def build(prj, hwdir):
 	if prj.impinfo.xil[0] == "vivado":
-		_build_vivado(prj, hwdir)
+		if prj.impinfo.pr == "true":
+			_build_vivado_pr(prj, hwdir)
+		else:
+			_build_vivado(prj, hwdir)
 	else:
 		log.error("Tool not supported")
 
@@ -42,6 +45,23 @@ def _build_vivado(prj, hwdir):
 	subprocess.call("""
 					source {1}/Vivado/{0}/settings64.sh;
 					vivado -mode batch -notrace -nojournal -nolog -source build.tcl;""".format(prj.impinfo.xil[1], prj.impinfo.xil_path),
+					shell=True, executable="/bin/bash")
+	print()
+
+	shutil2.chdir(prj.dir)
+
+def _build_vivado_pr(prj, hwdir):
+	hwdir = hwdir if hwdir is not None else prj.basedir + ".hw"
+
+	try:
+		shutil2.chdir(hwdir)
+	except:
+		log.error("hardware directory '" + hwdir + "' not found")
+		return
+
+	subprocess.call("""
+					source {1}/Vivado/{0}/settings64.sh;
+					vivado -mode batch -source pr_flow/run_pr.tcl -notrace;""".format(prj.impinfo.xil[1], prj.impinfo.xil_path),
 					shell=True, executable="/bin/bash")
 	print()
 

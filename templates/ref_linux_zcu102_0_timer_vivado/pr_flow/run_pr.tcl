@@ -1,3 +1,5 @@
+<<reconos_preproc>>
+
 ###############################################################
 ###  Minimum settings required to run PR flow:
 ###  1. Specify flow steps
@@ -7,7 +9,7 @@
 ###  5. Define RPs, and their RM variants
 ###############################################################
 ####flow control (1 = run step , 0 = skip step)
-set run.topSynth       0 ;#synthesize static
+set run.topSynth       1 ;#synthesize static
 set run.rmSynth        1 ;#synthesize RM variants
 set run.prImpl         1 ;#implement each static + RM configuration
 set run.prVerify       1 ;#verify RMs are compatible with static
@@ -27,9 +29,9 @@ set xboard        "zcu102"
 #set srcDir     "./Sources"
 set srcDir     "."
 
-set prjDir     "$srcDir/prj"
+set prjDir     "$srcDir/pcores/prj"
 
-#not used, paths in advanced_settings point directly to checkpoint and constraint files!
+#not used, paths in advanced_settings point directly to relevant files
 #set rtlDir     "$srcDir/hdl"
 #set xdcDir     "$srcDir/xdc"
 #set coreDir    "$srcDir/cores"
@@ -52,30 +54,40 @@ set top "design_1_wrapper"
 ### 2. Define corresponoding top level cell (added this to work with ReconOS-generated static design)
 ### 3. Associate Reconfigurable Modules (RMs) to the RP
 ###############################################################
-set rp1 "design_1_slot_0_0"
-set rp1_inst "design_1_i/slot_0"
-set rm_variants($rp1) "sortdemo_hwt0 matrixmul_hwt0"
-set rp2 "design_1_slot_1_0"
-set rp2_inst "design_1_i/slot_1"
-set rm_variants($rp2) "sortdemo_hwt1 matrixmul_hwt1"
+#set rp1 "design_1_slot_0_0"
+#set rp1_inst "design_1_i/slot_0"
+#set rm_variants($rp1) "sortdemo_0 matrixmul_0"
+#set rp2 "design_1_slot_1_0"
+#set rp2_inst "design_1_i/slot_1"
+#set rm_variants($rp2) "sortdemo_1 matrixmul_1"
+
+<<generate for SLOTS(Reconfigurable == "true")>>
+set rp<<Id>> "design_1_slot_<<Id>>_0"
+set rp<<Id>>_inst "design_1_i/slot_<<Id>>"
+set rm_variants($rp<<Id>>) "<<Threadnames>>"
+<<end generate>>
 
 ########################################################################
 ### RM Configurations (Valid combinations of RM variants)
 ### 1. Define initial configuration: rm_config(initial)
 ### 2. Define additional configurations: rm_config(xyz)
 ########################################################################
-set module1_variant1 "sortdemo_hwt0"
-set module2_variant1 "sortdemo_hwt1"
-set rm_config(initial)   "$rp1 $rp1_inst $module1_variant1 $rp2 $rp2_inst $module2_variant1"
-set module1_variant2 "matrixmul_hwt0"
-set module2_variant2 "matrixmul_hwt1"
-set rm_config(reconfig1) "$rp1 $rp1_inst $module1_variant2 $rp2 $rp2_inst $module2_variant2"
+#set module1_variant1 "sortdemo_0"
+#set module2_variant1 "sortdemo_1"
+#set rm_config(initial)   "$rp1 $rp1_inst $module1_variant1 $rp2 $rp2_inst $module2_variant1"
+#set module1_variant2 "matrixmul_0"
+#set module2_variant2 "matrixmul_1"
+#set rm_config(reconfig1) "$rp1 $rp1_inst $module1_variant2 $rp2 $rp2_inst $module2_variant2"
+
+<<generate for THREADS>>
+<<RMConfiguration>>
+<<end generate>>
 
 ########################################################################
 ### Task / flow portion
 ########################################################################
 # Build the designs
-source ./scripts/advanced_settings.tcl
+source ./pr_flow/advanced_settings.tcl
 source $tclDir/run.tcl
 
 exit ;#uncomment if running in batch mode

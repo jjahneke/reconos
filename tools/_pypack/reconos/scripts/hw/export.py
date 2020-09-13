@@ -44,7 +44,38 @@ def get_dict(prj):
 			d["Clk"] = s.clock.id
 			d["Async"] = "sync" if s.clock == prj.clock else "async"
 			d["Ports"] = s.ports
+			d["Reconfigurable"] = s.reconfigurable
+			d["Region"] = s.region
+
+			#Workaround because template tool does not support nested generate_for loops currently
+			threadnames = ""
+			for _ in s.threads:
+				#Todo: remove this condition if dummy reconf thread is automatically generated
+				if not _.name == "Reconf":
+					threadnames += " " + _.name.lower() + "_" + str(s.id)
+			d["Threadnames"] = threadnames
+
 			dictionary["SLOTS"].append(d)
+
+	#Workaround because template tool does not support nested generate_for loops currently
+	dictionary["THREADS"] = []
+	config_id = 0
+	for t in prj.threads:
+		#Todo: remove this condition if dummy reconf thread is automatically generated
+		if not t.name == "Reconf":
+			d = {}
+			if config_id == 0:
+				rm_configuration = "set rm_config(initial) \""
+			else:
+				rm_configuration = "set rm_config(reconfig_" + str(config_id) + ") \""
+
+			for _ in t.slots:
+				rm_configuration += " $rp" + str(_.id) + " $rp" + str(_.id) + "_inst " + t.name.lower() + "_" + str(_.id)
+			rm_configuration += "\""
+			d["RMConfiguration"] = rm_configuration
+			dictionary["THREADS"].append(d)
+			config_id += 1
+
 	dictionary["CLOCKS"] = []
 	for c in prj.clocks:
 		d = {}
@@ -125,6 +156,12 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		log.info("Generating export files ...")
 		prj.apply_template("thread_vhdl_pcore", dictionary, hwdir, link)
 
+		#For each slot: Generate .prj file listing sources for PR flow
+		if thread.slots[0].reconfigurable == "true":
+			for _ in thread.slots:
+				dictionary["SLOTID"] = _.id
+				prj.apply_template("thread_prj", dictionary, hwdir, link)
+
 	elif thread.hwsource == "hls":
 		tmp = tempfile.TemporaryDirectory()
 
@@ -173,6 +210,11 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		log.info("Generating export files ...")
 		prj.apply_template("thread_hls_pcore_vhdl", dictionary, hwdir)
 
+		#For each slot: Generate .prj file listing sources for PR flow
+		if thread.slots[0].reconfigurable == "true":
+			for _ in thread.slots:
+				dictionary["SLOTID"] = _.id
+				prj.apply_template("thread_prj", dictionary, hwdir, link)
 
 		shutil2.rmtree("/tmp/test")
 		shutil2.mkdir("/tmp/test")

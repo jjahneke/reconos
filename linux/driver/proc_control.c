@@ -143,7 +143,7 @@ static inline uint64_t read_reg64(struct proc_control_dev *dev, unsigned int reg
  *   data - data to write
  */
 static inline void write_reg32(struct proc_control_dev *dev, unsigned int reg, uint32_t data) {
-        printk(KERN_INFO "[reconos-proc-control] write_reg64 @offset %#.16lx\n", reg);
+        printk(KERN_INFO "[reconos-proc-control] write_reg32 @offset %#.16lx\n", reg);
 	iowrite32(data, dev->mem + reg);
 }
 
@@ -201,7 +201,7 @@ static long proc_control_ioctl(struct file *filp, unsigned int cmd,
                                unsigned long arg) {
 	struct proc_control_dev *dev;
 	uint32_t data32;
-        uint64_t data64;
+    uint64_t data64;
 	int i, hwt;
 	unsigned long ret;
 

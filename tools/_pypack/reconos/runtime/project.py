@@ -78,13 +78,12 @@ class Resource:
 # Class representing a slot in the project.
 #
 class Slot:
-	def __init__(self, name, id_, clock, ports, reconfigurable, region):
+	def __init__(self, name, id_, clock, ports, region):
 		self.name = name
 		self.id = id_
 		self.clock = clock
 		self.threads = []
 		self.ports = ports
-		self.reconfigurable = reconfigurable
 		self.region = region
 
 	def __str__(self):
@@ -269,9 +268,9 @@ class Project:
 		else:
 			self.impinfo.xil_path = "/opt/Xilinx"
 		if cfg.has_option("General", "PartialReconfiguration"):
-			self.impinfo.pr = cfg.get("General", "PartialReconfiguration")
+			self.impinfo.pr = cfg.get("General", "PartialReconfiguration") in ["True", "true"]
 		else:
-			self.impinfo.pr = "false"
+			self.impinfo.pr = False
 
 		log.debug("Found project '" + str(self.name) + "' (" + str(self.impinfo.board) + "," + str(self.impinfo.os) + ")")
 
@@ -353,21 +352,15 @@ class Project:
 			for i in r:
 				log.debug("Found slot '" + str(name) + "(" + str(i) + ")" + "' (" + str(id_) + "," + str(clock[0]) + ")")
 
-				if cfg.has_option(s, "Reconfigurable"):
-					if cfg.get(s, "Reconfigurable") == "true":
-						reconfigurable = "true"
-						if cfg.has_option(s, "Region_" + str(i)):
-							region = cfg.get(s, "Region_" + str(i))
-						else:
-							log.error("PL region must be defined for every reconfigurable slot")
+				if self.impinfo.pr:
+					if cfg.has_option(s, "Region_" + str(i)):
+						region = cfg.get(s, "Region_" + str(i))
 					else:
-						reconfigurable = "false"
-						region = ""
+						log.error("PL region must be defined for every reconfigurable slot")
 				else:
-					reconfigurable = "false"
 					region = ""
 
-				slot = Slot(name + "(" + str(i) + ")", id_ + i, clock[0], ports, reconfigurable, region)
+				slot = Slot(name + "(" + str(i) + ")", id_ + i, clock[0], ports, region)
 				self.slots.append(slot)
 
 	#
@@ -378,7 +371,7 @@ class Project:
 	def _parse_threads(self, cfg):
 
 		# create Reconf HWT so user does not have to define it manually
-		if self.impinfo.pr == "true":
+		if self.impinfo.pr:
 			name = "Reconf"
 			# associate this thread with all slots, for now we only support a single dummy thread for all of them
 			slots = [_ for _ in self.slots]

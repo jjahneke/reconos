@@ -44,7 +44,7 @@ def get_dict(prj):
 			d["Clk"] = s.clock.id
 			d["Async"] = "sync" if s.clock == prj.clock else "async"
 			d["Ports"] = s.ports
-			d["Reconfigurable"] = s.reconfigurable
+			d["Reconfigurable"] = prj.impinfo.pr
 			d["Region"] = s.region
 			# Dict for nested generate statement
 			d["THREADS"] = []
@@ -140,7 +140,7 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
 		dictionary["HWSOURCE"] = thread.hwsource
 		# "reconf" thread for partial reconfiguration is taken from template directory
-		if prj.impinfo.pr == "true" and thread.name.lower() == "reconf":
+		if prj.impinfo.pr and thread.name.lower() == "reconf":
 			srcs = shutil2.join(prj.get_template("thread_rt_reconf"), thread.hwsource)
 		else:
 			srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
@@ -160,8 +160,8 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		log.info("Generating export files ...")
 		prj.apply_template("thread_vhdl_pcore", dictionary, hwdir, link)
 
-		#For each slot: Generate .prj file listing sources for PR flow TODO: remove slot dependent reconfigurability setting
-		if thread.slots[0].reconfigurable == "true":
+		#For each slot: Generate .prj file listing sources for PR flow
+		if prj.impinfo.pr:
 			for _ in thread.slots:
 				dictionary["SLOTID"] = _.id
 				prj.apply_template("thread_prj", dictionary, hwdir, link)
@@ -176,7 +176,7 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["MEM_N"] = not thread.mem
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
 		# "reconf" thread for partial reconfiguration is taken from template directory
-		if prj.impinfo.pr == "true" and thread.name.lower() == "reconf":
+		if prj.impinfo.pr and thread.name.lower() == "reconf":
 			srcs = shutil2.join(prj.get_template("thread_rt_reconf"), thread.hwsource)
 		else:
 			srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
@@ -216,13 +216,13 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		incls = shutil2.listfiles(srcs, True)
 		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
 		#Template will change top module entity name to "rt_reconf" if PR flow is used for this HWT
-		dictionary["RECONFIGURABLE"] = thread.slots[0].reconfigurable
+		dictionary["RECONFIGURABLE"] = prj.impinfo.pr
 
 		log.info("Generating export files ...")
 		prj.apply_template("thread_hls_pcore_vhdl", dictionary, hwdir)
 
 		#For each slot: Generate .prj file listing sources for PR flow
-		if thread.slots[0].reconfigurable == "true":
+		if prj.impinfo.pr:
 			for _ in thread.slots:
 				dictionary["SLOTID"] = _.id
 				prj.apply_template("thread_prj", dictionary, hwdir, link)

@@ -5,10 +5,10 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
-<<if RECONFIGURABLE=="true">>
+<<if RECONFIGURABLE==True>>
 entity rt_reconf is
 <<end if>>
-<<if RECONFIGURABLE=="false">>
+<<if RECONFIGURABLE==False>>
 entity rt_<<NAME>> is
 <<end if>>
 	port (
@@ -36,12 +36,12 @@ entity rt_<<NAME>> is
 
 		DEBUG : out std_logic_vector(70 downto 0)
 	);
-<<if RECONFIGURABLE=="true">>
+<<if RECONFIGURABLE==True>>
 end entity rt_reconf;
 
 architecture implementation of rt_reconf is
 <<end if>>
-<<if RECONFIGURABLE=="false">>
+<<if RECONFIGURABLE==False>>
 end entity rt_<<NAME>>;
 
 architecture implementation of rt_<<NAME>> is

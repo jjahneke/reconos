@@ -26,7 +26,7 @@ def build_cmd(args):
 
 def build(prj, hwdir):
 	if prj.impinfo.xil[0] == "vivado":
-		if prj.impinfo.pr == "true":
+		if prj.impinfo.pr:
 			_build_vivado_pr(prj, hwdir)
 		else:
 			_build_vivado(prj, hwdir)

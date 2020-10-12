@@ -46,35 +46,34 @@ def get_dict(prj):
 			d["Ports"] = s.ports
 			d["Reconfigurable"] = s.reconfigurable
 			d["Region"] = s.region
-
-			#Workaround because template tool does not support nested generate_for loops currently
-			threadnames = ""
-			for _ in s.threads:
-				#Todo: remove this condition if dummy reconf thread is automatically generated
-				if not _.name == "Reconf":
-					threadnames += " " + _.name.lower() + "_" + str(s.id)
-			d["Threadnames"] = threadnames
-
+			# Dict for nested generate statement
+			d["THREADS"] = []
+			for t in s.threads:
+				d2 = {}
+				d2["Name"] = t.name.lower()
+				d["THREADS"].append(d2)
 			dictionary["SLOTS"].append(d)
 
-	#Workaround because template tool does not support nested generate_for loops currently
+	# Prepare strings to define RM configurations because it is difficult to handle purely with template functionality
 	dictionary["THREADS"] = []
 	config_id = 0
 	for t in prj.threads:
-		#Todo: remove this condition if dummy reconf thread is automatically generated
-		if not t.name == "Reconf":
-			d = {}
-			if config_id == 0:
-				rm_configuration = "set rm_config(initial) \""
-			else:
-				rm_configuration = "set rm_config(reconfig_" + str(config_id) + ") \""
+		d = {}
+		if config_id == 0:
+			rm_configuration = "set rm_config(initial) \""
+		else:
+			rm_configuration = "set rm_config(reconfig_" + str(config_id) + ") \""
 
-			for _ in t.slots:
-				rm_configuration += " $rp" + str(_.id) + " $rp" + str(_.id) + "_inst " + t.name.lower() + "_" + str(_.id)
-			rm_configuration += "\""
-			d["RMConfiguration"] = rm_configuration
-			dictionary["THREADS"].append(d)
-			config_id += 1
+		# Configuration uses default thread in slots which are not associated with the current thread, since we need to specify a module for every partition
+		for s in prj.slots:
+			if s in t.slots:
+				rm_configuration += " $rp" + str(s.id) + " $rp" + str(s.id) + "_inst " + t.name.lower() + "_" + str(s.id)
+			else:
+				rm_configuration += " $rp" + str(s.id) + " $rp" + str(s.id) + "_inst " + "reconf" + "_" + str(s.id)
+		rm_configuration += "\""
+		d["RMConfiguration"] = rm_configuration
+		dictionary["THREADS"].append(d)
+		config_id += 1
 
 	dictionary["CLOCKS"] = []
 	for c in prj.clocks:
@@ -140,7 +139,11 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["MEM_N"] = not thread.mem
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
 		dictionary["HWSOURCE"] = thread.hwsource
-		srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
+		# "reconf" thread for partial reconfiguration is taken from template directory
+		if prj.impinfo.pr == "true" and thread.name.lower() == "reconf":
+			srcs = shutil2.join(prj.get_template("thread_rt_reconf"), thread.hwsource)
+		else:
+			srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
 		dictionary["SOURCES"] = [srcs]
 		incls = shutil2.listfiles(srcs, True)
 		dictionary["INCLUDES"] = [{"File": shutil2.trimext(_)} for _ in incls]
@@ -157,7 +160,7 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		log.info("Generating export files ...")
 		prj.apply_template("thread_vhdl_pcore", dictionary, hwdir, link)
 
-		#For each slot: Generate .prj file listing sources for PR flow
+		#For each slot: Generate .prj file listing sources for PR flow TODO: remove slot dependent reconfigurability setting
 		if thread.slots[0].reconfigurable == "true":
 			for _ in thread.slots:
 				dictionary["SLOTID"] = _.id
@@ -172,7 +175,11 @@ def _export_hw_thread_vivado(prj, hwdir, link, thread):
 		dictionary["MEM"] = thread.mem
 		dictionary["MEM_N"] = not thread.mem
 		dictionary["CLKPRD"] = min([_.clock.get_periodns() for _ in thread.slots])
-		srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
+		# "reconf" thread for partial reconfiguration is taken from template directory
+		if prj.impinfo.pr == "true" and thread.name.lower() == "reconf":
+			srcs = shutil2.join(prj.get_template("thread_rt_reconf"), thread.hwsource)
+		else:
+			srcs = shutil2.join(prj.dir, "src", "rt_" + thread.name.lower(), thread.hwsource)
 		dictionary["SOURCES"] = [srcs]
 		files = shutil2.listfiles(srcs, True)
 		dictionary["FILES"] = [{"File": _} for _ in files]

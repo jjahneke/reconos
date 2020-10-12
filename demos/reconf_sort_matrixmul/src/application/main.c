@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 	}
 
 	//t_reconfiguration_full = timer_get();
-	if(reconfigure("Config_sortdemo_0_sortdemo_1_implement_full.bin",0) < 0){
+	if(reconfigure("Config_sortdemo_0_sortdemo_1_import_full.bin",0) < 0){
 		printf("Failed to load static bitfile of sortdemo\n");
 		return -1;
 	}

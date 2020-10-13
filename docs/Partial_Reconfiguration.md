@@ -33,22 +33,22 @@ According to project settings (build.cfg), the RDK generates files from the foll
 
 * templates/thread_rt_reconf
 
-    This contains the sources of an empty dummy thread named "reconf". We need this for two reasons. Firstly, some module needs to be placed in the hardware slots for synthesis of the static design around them. We could use a black box for this purpose (as was done manually in the previous demo), but this is not easily automated and incorporated into the scripted toolflow. It is also not recommended by Xilinx, as the static design could not be optimized based on some exemplary reconfigurable logic inside the slots. While this dummy thread does nothing besides reacting to an exit signal, it is still better than a complete black box or grey box. Xilinx recommends to use the most resource-demanding or difficult to synthesize reconfigurable module for static design synthesis. Therefore, ReconOS users can overwrite this template dummy thread in the project directory (like any other template) as desired. One current limitation: There is only a single dummy thread with this exact name supported. It must fit in every slot.
+    This contains the sources of an empty dummy thread named "reconf". We need this for two reasons. Firstly, some module needs to be placed in the hardware slots for synthesis of the static design around them. We could use a black box for this purpose (as was done manually in the previous demo), but this is not easily automated and incorporated into the scripted toolflow. It is also not recommended by Xilinx, as the static design could not be optimized based on some exemplary reconfigurable logic inside the slots. While this dummy thread does nothing besides reacting to an exit signal, it is still better than a complete black box or grey box. Xilinx recommends to use the most resource-demanding or difficult to synthesize reconfigurable module for static design synthesis. Therefore, ReconOS users can overwrite this template dummy thread in the project directory (like any other template) as desired. One current limitation: There is only a single dummy thread with this exact name supported. It must fit into every slot.
 
     Secondly, there are some complications with the "link_design" command used during the toolflow, due to the way we handle the static design/black box situation. This results in unexpected behavior for the first configuration that is to be implemented. Instead of linking the respective HWT sources, the dummy module used for static synthesis seems to take priority and is inserted instead. Hence, we define a dummy configuration using the "reconf" thread first, so that all user-defined HWTs implement properly.
 
-## Setting up PR for a ReconOS project
+## Setting up PR for a ReconOS Project
 
-### In project settings (build.cfg)
+### In Project Settings (build.cfg)
 
 * Set `PartialReconfiguration = True`.
-* Define Pblock regions for each slot. These can easily be drawn in the Vivado GUI to retrieve the clock regions or tile coordinates, for example:
+* Define pblock regions for each slot. These can easily be drawn in the Vivado GUI to retrieve the clock regions or tile coordinates, for example:
     * `CLOCKREGION_X2Y2:CLOCKREGION_X2Y4`
     * or `SLICE_X56Y0:SLICE_X94Y59 DSP48E2_X12Y0:DSP48E2_X17Y23 RAMB18_X7Y0:RAMB18_X12Y23 RAMB36_X7Y0:RAMB36_X12Y11`
 * For groups of slots:
   * Define `Region_<ID>` for each ID in the defined range.
   * Make sure the IDs don't overlap, e.g. slotgroup with ID=0 and ID range (0:3) is followed by slot group with ID=4 and ID range (0:1).
-* Define threads normally. VHDL and HLS are supported as hardware source and they can also have software implementations.
+* Define threads normally. VHDL and HLS are supported as hardware source and threads can also have software implementations.
 
 ### In HWTs
 * For VHDL sources: Set top level entity name of all HWTs to `rt_reconf`.
@@ -60,7 +60,7 @@ According to project settings (build.cfg), the RDK generates files from the foll
 ## Advanced Usage
 
 ### Clocks
-There is no problem with using multiple clocks for different groups of slots. However, keep in mind that the current ReconOS implementation uses 1 MMCM per clock, which are rather scarce for UltraScale+ devices (only 1 per clock management tile). In order to avoid unnecessary blockage of these resources, it is recommended to define Pblock regions with more specific tile coordinates instead of clock region coordinates. In the future, it might be possible to change this ReconOS behavior, since a single MMCM can produce multiple clocks. PLL sites might also be used.
+There is no problem with using multiple clocks for different groups of slots. However, keep in mind that the current ReconOS implementation uses 1 MMCM per clock, which are rather scarce for UltraScale+ devices (only 1 per clock management tile). In order to avoid unnecessary blockage of these resources, it is recommended to define pblock regions with more specific tile coordinates instead of clock region coordinates. In the future, it might be possible to change this ReconOS behavior, since a single MMCM can produce multiple clocks. PLL sites might also be used.
   
 ### Resource Groups
 There is no problem with using different resource groups for each ReconOS thread. In this case, the corresponding delegate thread must be instantiated during runtime and "reconf" cannot be used.

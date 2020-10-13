@@ -5,27 +5,34 @@ Due to Vivado limitations, the new flow is still unable to operate in project mo
 
 ## Xilinx Resources
 * XAPP1231 - Partial Reconfiguration of a Hardware Accelerator with Vivado Design Suite
+
   Original PR tutorial for the Zynq-7000, accompanied by a Xilinx Wiki page that is still being updated.
 
 * UG909 - Vivado User Guide: Dynamic Function eXchange
+
   PR functionality was renamed to DFX without much change to the underlying scripts. This guide gives an overview.
 
 * UG947 - Vivado Tutorial: Dynamic Function eXchange
+
   The actual scripts used by ReconOS are taken from lab 2 of this tutorial.
 
 ## Inner Workings
 According to project settings (build.cfg), the RDK generates files from the following templates to prepare the PR toolflow:
 
 * templates/ref_linux_zcu102_0_timer_vivado/pr_flow/run_pr.tcl
+
     Main script of the toolflow. Defines settings, reconfigurable partitions (RP), reconfigurable modules (RM) and configurations that shall be implemented. The rest of the scripts, namely "advanced_settings.tcl" and "Tcl_HD/*", are not touched by the RDK preprocessor.
 
 * templates/ref_linux_zcu102_0_timer_vivado/pr_flow/pblocks.xdc
+
     Defines Pblocks for all slots.
 
 * templates/thread_prj
+
     Generates a .prj file for each possible HWT/slot combination in "build.hw/pcores/prj/". These files define the relevant sourcefiles for the script-based toolflow. The static design is synthesized from the usual ReconOS block design (BD) and requires no .prj definition.
 
 * templates/thread_rt_reconf
+
     This contains the sources of an empty dummy thread named "reconf". We need this for two reasons. Firstly, some module needs to be placed in the hardware slots for synthesis of the static design around them. We could use a black box for this purpose (as was done manually in the previous demo), but this is not easily automated and incorporated into the scripted toolflow. It is also not recommended by Xilinx, as the static design could not be optimized based on some exemplary reconfigurable logic inside the slots. While this dummy thread does nothing besides reacting to an exit signal, it is still better than a complete black box or grey box. Xilinx recommends to use the most resource-demanding or difficult to synthesize reconfigurable module for static design synthesis. Therefore, ReconOS users can overwrite this template dummy thread in the project directory (like any other template) as desired. One current limitation: There is only a single dummy thread with this exact name supported. It must fit in every slot.
 
     Secondly, there are some complications with the "link_design" command used during the toolflow, due to the way we handle the static design/black box situation. This results in unexpected behavior for the first configuration that is to be implemented. Instead of linking the respective HWT sources, the dummy module used for static synthesis seems to take priority and is inserted instead. Hence, we define a dummy configuration using the "reconf" thread first, so that all user-defined HWTs implement properly.

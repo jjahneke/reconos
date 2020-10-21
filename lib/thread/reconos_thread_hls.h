@@ -52,6 +52,8 @@
 #define THREAD_ENTRY() void rt_imp(hls::stream<uint64_t> osif_sw2hw,\
                                    hls::stream<uint64_t> osif_hw2sw,\
                                    hls::stream<uint64_t> memif_hwt2mem,\
-                                   hls::stream<uint64_t> memif_mem2hwt)
+                                   hls::stream<uint64_t> memif_mem2hwt,\
+                                   hls::stream<uint64_t> pipe_s,\
+                                   hls::stream<uint64_t> pipe_m)
 
 #endif /* RECONOS_THREAD_H */

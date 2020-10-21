@@ -52,6 +52,11 @@ def get_dict(prj):
 				d2 = {}
 				d2["Name"] = t.name.lower()
 				d["THREADS"].append(d2)
+			# Connect all slots to next one via pipe, except last one
+			if s == prj.slots[-1]:
+				d["PipeToSlot"] = -1
+			else:
+				d["PipeToSlot"] = s.id + 1
 			dictionary["SLOTS"].append(d)
 
 	# Prepare strings to define RM configurations because it is difficult to handle purely with template functionality

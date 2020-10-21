@@ -32,6 +32,15 @@ entity rt_reconf is
 		HWT_Clk    : in  std_logic;
 		HWT_Rst    : in  std_logic;
 		HWT_Signal : in  std_logic;
+
+		-- Inter-slot pipes
+		PIPE_S_tvalid : in  std_logic;
+		PIPE_S_tready : out std_logic;
+		PIPE_S_tdata  : in  std_logic_vector(63 downto 0);
+
+		PIPE_M_tvalid : out std_logic;
+		PIPE_M_tready : in  std_logic;
+		PIPE_M_tdata  : out std_logic_vector(63 downto 0);
 		
 		DEBUG : out std_logic_vector(70 downto 0)
 	);
@@ -83,6 +92,10 @@ begin
 	MEMIF64_Hwt2Mem_Data <= (others => '0');
 	MEMIF64_Hwt2Mem_WE   <= '0';
 	MEMIF64_Mem2Hwt_RE   <= '0';
+
+	PIPE_S_tready        <= '0';
+	PIPE_M_tvalid        <= '0';
+	PIPE_M_tdata         <= (others => '0');
 
 	DEBUG                <= (others => '0');
 

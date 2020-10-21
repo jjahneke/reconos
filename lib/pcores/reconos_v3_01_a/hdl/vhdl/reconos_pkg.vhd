@@ -749,6 +749,18 @@ package reconos_pkg is
 		len            : in  std_logic_vector(31 downto 0);
 		variable done  : out boolean
 	);
+
+	procedure memif_read_to_stream (
+		signal i_ram    : in  i_ram_t;
+		signal o_ram    : out o_ram_t;
+		signal i_memif  : in  i_memif_t;
+		signal o_memif  : out o_memif_t;
+		src_addr        : in  std_logic_vector(63 downto 0);
+		dst_addr        : in  std_logic_vector(63 downto 0);
+		len             : in  std_logic_vector(31 downto 0);
+		variable done   : out boolean;
+		signal pipe_write_ready : in std_logic
+	);
 	
 end package reconos_pkg;
 
@@ -1569,7 +1581,6 @@ package body reconos_pkg is
 		end case;
 	end procedure memif_write;
 
-	
 	procedure memif_read (
 		signal i_ram    : in  i_ram_t;
 		signal o_ram    : out o_ram_t;
@@ -1654,5 +1665,126 @@ package body reconos_pkg is
 
 		end case;
 	end procedure memif_read;
+
+	procedure memif_read_to_stream (
+		signal i_ram    : in  i_ram_t;
+		signal o_ram    : out o_ram_t;
+		signal i_memif  : in  i_memif_t;
+		signal o_memif  : out o_memif_t;
+		src_addr        : in  std_logic_vector(63 downto 0);
+		dst_addr        : in  std_logic_vector(63 downto 0);
+		len             : in  std_logic_vector(31 downto 0);
+		variable done   : out boolean;
+		signal pipe_write_ready : in std_logic
+	) is
+		variable to_border, to_remm : unsigned(C_MEMIF_LENGTH_WIDTH - 1 downto 0);
+
+	begin
+		done := False;
+
+		-- tValid of pipe
+		--o_ram.ram_we       <= pipe_write_enable and pipe_write_ready;
+		-- RE of MEMIF
+		--o_memif.mem2hwt_re <= mem_read_enable   and pipe_write_ready;
+
+		case i_memif.step is
+			when 0 =>
+                                -- 64bit align
+				o_ram.mem_addr <= unsigned(src_addr(63 downto 3) & "000");
+				o_ram.remm(31 downto 0) <= unsigned(len);
+
+				o_ram.ram_addr <= unsigned(dst_addr) - 1;
+
+				o_memif.step <= 1;
+
+			when 1 =>
+				o_ram.ram_we <= '0';
+
+				to_border := to_unsigned(C_MEMIF_CHUNK_BYTES, C_MEMIF_LENGTH_WIDTH) - i_ram.mem_addr(C_MEMIF_CHUNK_RANGE);
+				to_remm := i_ram.remm(C_MEMIF_LENGTH_RANGE);
+				if to_remm < to_border then
+					o_memif.hwt2mem_we <= '1';
+					o_memif.hwt2mem_data <= MEMIF_CMD_READ & std_logic_vector(to_remm);
+				else
+					o_memif.hwt2mem_we <= '1';
+					o_memif.hwt2mem_data <= MEMIF_CMD_READ & std_logic_vector(to_border);
+				end if;
+
+				o_memif.step <= 2;
+
+			when 2 =>
+				if i_memif.hwt2mem_full = '0' then
+					o_memif.hwt2mem_data <= std_logic_vector(i_ram.mem_addr);
+
+					o_memif.step <= 3;
+				end if;
+
+			when 3 =>
+				if i_memif.hwt2mem_full = '0' then
+					o_memif.hwt2mem_we <= '0';
+
+					o_memif.step <= 4;
+				end if;
+
+			-- added step to check for both conditions (memif not empty and pipe ready) before asserting RE/WE signals
+			-- previously, a non empty memif was assumed and RE set directly before entering the next step
+			when 4 =>
+				if i_memif.mem2hwt_empty = '0' and pipe_write_ready = '1' then
+					--o_ram.ram_we <= '1';
+					o_memif.mem2hwt_re <= '1'; --todo: might need to check if pipe is ready to receive, or one word might get lost
+					-- instead connect data bus directly without registering
+					o_memif.step <= 5;
+				end if;
+
+			-- step handles empty MEMIF interface itself, full pipe is handled in step 6
+			when 5 =>
+				if i_memif.mem2hwt_empty = '0' then
+					if pipe_write_ready = '1' then
+						o_ram.ram_we <= '1';
+						o_ram.ram_data <= i_memif.mem2hwt_data; --direct connect instead
+						o_memif.mem2hwt_re <= '1';
+						
+						o_ram.ram_addr <= i_ram.ram_addr + 1;
+						o_ram.mem_addr <= i_ram.mem_addr + 8;
+						o_ram.remm <= i_ram.remm - 8;
+						
+						if (i_ram.mem_addr + 8) mod C_MEMIF_CHUNK_BYTES = 0 then
+							--only set both of these to low in the following cycle, as we are 1 cycle late because RE is not set in step 3
+							o_memif.mem2hwt_re <= '0';
+							--o_ram.ram_we <= '0';
+						
+							o_memif.step <= 1;
+						end if;
+						
+						if i_ram.remm - 8 = 0 then
+							o_memif.mem2hwt_re <= '0';
+							
+							o_memif.step <= 7;
+						end if;
+					else
+						o_memif.mem2hwt_re <= '0';
+						o_ram.ram_we <= '0';	
+						o_memif.step <= 6;
+					end if;
+				else
+					--o_memif.mem2hwt_re <= '0'; --maybe do not deassert this at all...
+					o_ram.ram_we <= '0';
+				end if;
+
+			-- added step to wait until pipe is ready again. registered data word still needs to be sent before normal operation (step 5) continues
+			when 6 =>
+				if pipe_write_ready = '1' then
+					o_ram.ram_we <= '1'; --write outstanding word to pipe
+					o_memif.mem2hwt_re <= '1'; --enable read so that next word is ready in time
+					o_memif.step <= 5; --continue normally
+				end if;
+				
+			when others =>
+				o_ram.ram_we <= '0';
+				o_memif.step <= 0;
+				done := true;
+
+		end case;
+	end procedure memif_read_to_stream;
 	
 end package body reconos_pkg;

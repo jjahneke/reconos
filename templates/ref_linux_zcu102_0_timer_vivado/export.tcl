@@ -303,7 +303,13 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
 	# Misc
         connect_bd_net [get_bd_pins "reconos_proc_control_0/PROC_Hwt_Signal_<<Id>>"] [get_bd_pins "slot_<<Id>>/HWT_Signal"]
+
 	<<end generate>>
+
+    # Connect pipes between slots
+    <<generate for SLOTS(PipeToSlot != -1)>>
+       connect_bd_intf_net [get_bd_intf_pins slot_<<Id>>/PIPE_M] [get_bd_intf_pins slot_<<PipeToSlot>>/PIPE_S]
+    <<end generate>>
 
 
     #
@@ -430,6 +436,30 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     create_bd_addr_seg -range 0x00010000 -offset 0xA0100000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs reconos_osif_0/s00_axi/reg0] SEG_reconos_osif_0_reg0
     create_bd_addr_seg -range 0x00010000 -offset 0xA0110000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs reconos_osif_intc_0/S_AXI/reg0] SEG_reconos_osif_intc_0_reg0
     create_bd_addr_seg -range 0x00010000 -offset 0xA0130000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs timer_0/S_AXI/reg0] SEG_timer_0_reg0
+
+    ### DEBUG LOGIC ###
+    #create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_0
+    #set_property -dict [list CONFIG.FIFO_DEPTH {32}] [get_bd_cells axis_data_fifo_0]
+    #connect_bd_net [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins reconos_clock_0/CLK1_Out]
+    #connect_bd_net [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins reset_0/peripheral_aresetn]
+    #delete_bd_objs [get_bd_intf_nets slot_0_PIPE_M]
+    #connect_bd_intf_net [get_bd_intf_pins slot_0/PIPE_M] [get_bd_intf_pins axis_data_fifo_0/S_AXIS]
+    #connect_bd_intf_net [get_bd_intf_pins slot_1/PIPE_S] [get_bd_intf_pins axis_data_fifo_0/M_AXIS]
+
+    #set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {axis_data_fifo_0_M_AXIS}]
+    #set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_PIPE_M}]
+    ##set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_1_MEMIF64_Hwt2Mem}]
+    #set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_MEMIF64_Mem2Hwt}]
+
+    #apply_bd_automation -rule xilinx.com:bd_rule:debug -dict [list \
+    #                                                          [get_bd_intf_nets axis_data_fifo_0_M_AXIS] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
+    #                                                          [get_bd_intf_nets slot_0_PIPE_M] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
+    #                                                          [get_bd_intf_nets slot_0_MEMIF64_Mem2Hwt] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+    #                                                        ]
+
+    ##[get_bd_intf_nets slot_1_MEMIF64_Hwt2Mem] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+
+    ### END DEBUG LOGIC ###
 
     # Update layout of block design
     regenerate_bd_layout

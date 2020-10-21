@@ -34,6 +34,15 @@ entity rt_<<NAME>> is
 		HWT_Rst    : in  std_logic;
 		HWT_Signal : in  std_logic;
 
+		-- Inter-slot pipes
+		PIPE_S_tvalid : in  std_logic;
+		PIPE_S_tready : out std_logic;
+		PIPE_S_tdata  : in  std_logic_vector(63 downto 0);
+
+		PIPE_M_tvalid : out std_logic;
+		PIPE_M_tready : in  std_logic;
+		PIPE_M_tdata  : out std_logic_vector(63 downto 0);
+
 		DEBUG : out std_logic_vector(70 downto 0)
 	);
 <<if RECONFIGURABLE==True>>
@@ -75,7 +84,7 @@ architecture implementation of rt_<<NAME>> is
 	component rt_imp is
 		port (
 			ap_clk : in std_logic;
-			ap_rst : in std_logic;
+			ap_rst_n : in std_logic;
 
 			osif_sw2hw_v_dout    : in std_logic_vector (63 downto 0);
 			osif_sw2hw_v_empty_n : in std_logic;
@@ -91,9 +100,18 @@ architecture implementation of rt_<<NAME>> is
 
 			memif_mem2hwt_v_dout    : in std_logic_vector (63 downto 0);
 			memif_mem2hwt_v_empty_n : in std_logic;
-			memif_mem2hwt_v_read    : out std_logic
+			memif_mem2hwt_v_read    : out std_logic;
+
+			pipe_s_V_TDATA  : IN STD_LOGIC_VECTOR (63 downto 0);
+			pipe_s_V_TVALID : IN STD_LOGIC;
+			pipe_s_V_TREADY : OUT STD_LOGIC;
+			pipe_m_V_TDATA  : OUT STD_LOGIC_VECTOR (63 downto 0);
+			pipe_m_V_TVALID : OUT STD_LOGIC;
+			pipe_m_V_TREADY : IN STD_LOGIC
 		);
   	end component;
+
+	signal ap_rst_n             : std_logic;
 
 	signal osif_sw2hw_v_dout    : std_logic_vector(63 downto 0);
 	signal osif_sw2hw_v_empty_n : std_logic;
@@ -110,7 +128,17 @@ architecture implementation of rt_<<NAME>> is
 	signal memif_mem2hwt_v_dout    : std_logic_vector(63 downto 0);
 	signal memif_mem2hwt_v_empty_n : std_logic;
 	signal memif_mem2hwt_v_read    : std_logic;
+
+	signal pipe_s_V_TDATA  : STD_LOGIC_VECTOR (63 downto 0);
+	signal pipe_s_V_TVALID : STD_LOGIC;
+	signal pipe_s_V_TREADY : STD_LOGIC;
+	signal pipe_m_V_TDATA  : STD_LOGIC_VECTOR (63 downto 0);
+	signal pipe_m_V_TVALID : STD_LOGIC;
+	signal pipe_m_V_TREADY : STD_LOGIC;
+
 begin
+	ap_rst_n <= not HWT_Rst;
+
 	osif_sw2hw_v_dout    <= OSIF_Sw2Hw_Data;
 	osif_sw2hw_v_empty_n <= not OSIF_Sw2Hw_Empty;
 	OSIF_Sw2Hw_RE        <= osif_sw2hw_v_read;
@@ -126,6 +154,14 @@ begin
 	memif_mem2hwt_v_dout    <= MEMIF64_Mem2Hwt_Data;
 	memif_mem2hwt_v_empty_n <= not MEMIF64_Mem2Hwt_Empty;
 	MEMIF64_Mem2Hwt_RE        <= memif_mem2hwt_v_read;
+
+	pipe_s_V_TVALID <= PIPE_S_tvalid;
+	PIPE_S_tready <= pipe_s_V_TREADY;
+	pipe_s_V_TDATA <= PIPE_S_tdata;
+
+	PIPE_M_tvalid <= pipe_m_V_TVALID;
+	pipe_m_V_TREADY <= PIPE_M_tready;
+	PIPE_M_tdata <= pipe_m_V_TDATA;
 
 	-- DEBUG(135 downto 104) <= osif_sw2hw_v_dout;
 	-- DEBUG(103) <= not osif_sw2hw_v_empty_n;
@@ -143,7 +179,7 @@ begin
 	rt_imp_inst : rt_imp
 		port map (
 			ap_clk => HWT_Clk,
-			ap_rst => HWT_Rst,
+			ap_rst_n => ap_rst_n,
 
 			osif_sw2hw_v_dout    => osif_sw2hw_v_dout,
 			osif_sw2hw_v_empty_n => osif_sw2hw_v_empty_n,
@@ -159,6 +195,13 @@ begin
 
 			memif_mem2hwt_v_dout    => memif_mem2hwt_v_dout,
 			memif_mem2hwt_v_empty_n => memif_mem2hwt_v_empty_n,
-			memif_mem2hwt_v_read    => memif_mem2hwt_v_read
+			memif_mem2hwt_v_read    => memif_mem2hwt_v_read,
+
+			pipe_s_V_TDATA  => pipe_s_V_TDATA, 
+			pipe_s_V_TVALID => pipe_s_V_TVALID,
+			pipe_s_V_TREADY => pipe_s_V_TREADY,
+			pipe_m_V_TDATA  => pipe_m_V_TDATA,
+			pipe_m_V_TVALID => pipe_m_V_TVALID,
+			pipe_m_V_TREADY => pipe_m_V_TREADY
 	);	
 end architecture;

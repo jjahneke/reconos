@@ -308,7 +308,19 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
     # Connect pipes between slots
     <<generate for SLOTS(PipeToSlot != -1)>>
-       connect_bd_intf_net [get_bd_intf_pins slot_<<Id>>/PIPE_M] [get_bd_intf_pins slot_<<PipeToSlot>>/PIPE_S]
+      # directly connect slot to following slot
+      #connect_bd_intf_net [get_bd_intf_pins slot_<<Id>>/PIPE_M] [get_bd_intf_pins slot_<<PipeToSlot>>/PIPE_S]
+
+      # create AXIS register IP core in between slots (for timing/pipelining purposes)
+      create_bd_cell -type ip -vlnv xilinx.com:ip:axis_register_slice:1.1 axis_register_slice_<<Id>>
+      set_property -dict [list CONFIG.TDATA_NUM_BYTES.VALUE_SRC USER] [get_bd_cells axis_register_slice_<<Id>>]
+      set_property -dict [list CONFIG.TDATA_NUM_BYTES {8}] [get_bd_cells axis_register_slice_<<Id>>]
+      # register pipeline type: fully-registered (8), bypass (0), default (1)
+      set_property -dict [list CONFIG.REG_CONFIG {8}] [get_bd_cells axis_register_slice_<<Id>>]
+      connect_bd_net [get_bd_pins axis_register_slice_<<Id>>/aclk] [get_bd_pins reconos_clock_0/CLK<<Clk>>_Out]
+      connect_bd_net [get_bd_pins axis_register_slice_<<Id>>/aresetn] [get_bd_pins reset_0/Interconnect_aresetn]
+      connect_bd_intf_net [get_bd_intf_pins axis_register_slice_<<Id>>/M_AXIS] [get_bd_intf_pins slot_<<PipeToSlot>>/PIPE_S]
+      connect_bd_intf_net [get_bd_intf_pins axis_register_slice_<<Id>>/S_AXIS] [get_bd_intf_pins slot_<<Id>>/PIPE_M]
     <<end generate>>
 
 
@@ -458,6 +470,14 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     #                                                        ]
 
     ##[get_bd_intf_nets slot_1_MEMIF64_Hwt2Mem] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_PIPE_M}]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_3_PIPE_M}]
+
+    apply_bd_automation -rule xilinx.com:bd_rule:debug -dict [list \
+                                                          [get_bd_intf_nets slot_0_PIPE_M] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
+                                                          [get_bd_intf_nets slot_3_PIPE_M] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
+                                                         ]
 
     ### END DEBUG LOGIC ###
 

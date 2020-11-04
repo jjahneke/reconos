@@ -471,10 +471,10 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
 
     ##[get_bd_intf_nets slot_1_MEMIF64_Hwt2Mem] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
 
-    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_PIPE_M}]
-    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_3_PIPE_M}]
+    #set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_PIPE_M}]
+    #set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_3_PIPE_M}]
 
-    apply_bd_automation -rule xilinx.com:bd_rule:debug -dict [list \
+    #apply_bd_automation -rule xilinx.com:bd_rule:debug -dict [list \
                                                           [get_bd_intf_nets slot_0_PIPE_M] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
                                                           [get_bd_intf_nets slot_3_PIPE_M] {AXIS_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" APC_EN "0" } \
                                                          ]

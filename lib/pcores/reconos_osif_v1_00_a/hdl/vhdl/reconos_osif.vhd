@@ -48,7 +48,7 @@ entity reconos_osif is
 
 		-- Parameters of Axi Slave Bus Interface S00_AXI
 		C_S00_AXI_DATA_WIDTH	: integer	:= 64;
-		C_S00_AXI_ADDR_WIDTH	: integer	:= 8
+		C_S00_AXI_ADDR_WIDTH	: integer	:= 10 -- limits max number of HWTs to 16
 	);
 	port (
 		-- Users to add ports here

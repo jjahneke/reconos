@@ -50,8 +50,8 @@ entity reconos_osif_axi is
 
 		-- Width of S_AXI data bus
 		C_S_AXI_DATA_WIDTH	: integer	:= 64;
-		-- Width of S_AXI address bus
-		C_S_AXI_ADDR_WIDTH	: integer	:= 8 --todo: set to which width? limits num_hwts
+		-- Width of S_AXI address bus (limits max number of HWTs)
+		C_S_AXI_ADDR_WIDTH	: integer	:= 8
 	);
 	port (
 		-- Users to add ports here

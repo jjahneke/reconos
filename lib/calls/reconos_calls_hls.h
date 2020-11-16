@@ -291,6 +291,58 @@ inline uint64_t stream_read(hls::stream<uint64_t> &stream) {
 		}\
 	}}
 
+#define MEM_READ_UINT8(src,dst,len){\
+	uint64_t __len, __rem;\
+	uint64_t __addr = (src), __i = 0;\
+	for (__rem = (len); __rem > 0;) {\
+		uint64_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
+		uint64_t __to_rem = __rem;\
+		if (__to_rem < __to_border)\
+			__len = __to_rem;\
+		else\
+			__len = __to_border;\
+		\
+		stream_write(memif_hwt2mem, MEMIF_CMD_READ | __len);\
+		stream_write(memif_hwt2mem, __addr);\
+		\
+		for (; __len > 0; __len -= 8) {\
+			uint64_t __packed_data = stream_read(memif_mem2hwt);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >>  0) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >>  8) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 16) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 24) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 32) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 40) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 48) & 0x00000000000000ff);\
+			(dst)[__i++] = (uint8_t) ((__packed_data >> 56) & 0x00000000000000ff);\
+			__addr += 8;\
+			__rem -= 8;\
+		}\
+	}}
+
+#define MEM_READ_INT32(src,dst,len){\
+	uint64_t __len, __rem;\
+	uint64_t __addr = (src), __i = 0;\
+	for (__rem = (len); __rem > 0;) {\
+		uint64_t __to_border = MEMIF_CHUNK_BYTES - (__addr & MEMIF_CHUNK_MASK);\
+		uint64_t __to_rem = __rem;\
+		if (__to_rem < __to_border)\
+			__len = __to_rem;\
+		else\
+			__len = __to_border;\
+		\
+		stream_write(memif_hwt2mem, MEMIF_CMD_READ | __len);\
+		stream_write(memif_hwt2mem, __addr);\
+		\
+		for (; __len > 0; __len -= 8) {\
+			uint64_t __packed_data = stream_read(memif_mem2hwt);\
+			(dst)[__i++] = (int32_t) ((__packed_data >>  0) & 0x00000000ffffffff);\
+			(dst)[__i++] = (int32_t) ((__packed_data >> 32) & 0x00000000ffffffff);\
+			__addr += 8;\
+			__rem -= 8;\
+		}\
+	}}
+
 /*
  * Writes several words from the local ram into main memory. Therefore,
  * divides a large request into smaller ones of length at most

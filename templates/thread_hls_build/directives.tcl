@@ -5,3 +5,4 @@ set_directive_interface -mode ap_fifo "rt_imp" memif_mem2hwt
 set_directive_interface -mode axis "rt_imp" pipe_s
 set_directive_interface -mode axis "rt_imp" pipe_m
 set_directive_interface -mode ap_ctrl_none "rt_imp"
+set_directive_interface -mode ap_none "rt_imp" status_report

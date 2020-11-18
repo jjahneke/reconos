@@ -42,7 +42,7 @@ entity rt_reconf is
 		PIPE_M_tready : in  std_logic;
 		PIPE_M_tdata  : out std_logic_vector(63 downto 0);
 		
-		DEBUG : out std_logic_vector(70 downto 0)
+		status_report : out std_logic_vector(7 downto 0)
 	);
 end entity rt_reconf;
 
@@ -97,7 +97,7 @@ begin
 	PIPE_M_tvalid        <= '0';
 	PIPE_M_tdata         <= (others => '0');
 
-	DEBUG                <= (others => '0');
+	status_report        <= (others => '0');
 
 	osif_setup (
 		i_osif,

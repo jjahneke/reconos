@@ -54,6 +54,7 @@
                                    hls::stream<uint64_t> memif_hwt2mem,\
                                    hls::stream<uint64_t> memif_mem2hwt,\
                                    hls::stream<uint64_t> pipe_s,\
-                                   hls::stream<uint64_t> pipe_m)
+                                   hls::stream<uint64_t> pipe_m,\
+                                   uint8_t* status_report)
 
 #endif /* RECONOS_THREAD_H */

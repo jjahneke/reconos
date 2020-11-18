@@ -43,7 +43,7 @@ entity rt_<<NAME>> is
 		PIPE_M_tready : in  std_logic;
 		PIPE_M_tdata  : out std_logic_vector(63 downto 0);
 
-		DEBUG : out std_logic_vector(70 downto 0)
+		status_report : out std_logic_vector(7 downto 0)
 	);
 <<if RECONFIGURABLE==True>>
 end entity rt_reconf;
@@ -107,7 +107,9 @@ architecture implementation of rt_<<NAME>> is
 			pipe_s_V_TREADY : OUT STD_LOGIC;
 			pipe_m_V_TDATA  : OUT STD_LOGIC_VECTOR (63 downto 0);
 			pipe_m_V_TVALID : OUT STD_LOGIC;
-			pipe_m_V_TREADY : IN STD_LOGIC
+			pipe_m_V_TREADY : IN STD_LOGIC;
+
+			status_report : out std_logic_vector(7 downto 0)
 		);
   	end component;
 
@@ -163,19 +165,6 @@ begin
 	pipe_m_V_TREADY <= PIPE_M_tready;
 	PIPE_M_tdata <= pipe_m_V_TDATA;
 
-	-- DEBUG(135 downto 104) <= osif_sw2hw_v_dout;
-	-- DEBUG(103) <= not osif_sw2hw_v_empty_n;
-	-- DEBUG(102) <= osif_sw2hw_v_read;
-	-- DEBUG(101 downto 70) <= osif_hw2sw_v_din;
-	-- DEBUG(69) <= not osif_hw2sw_v_full_n;
-	-- DEBUG(68) <= osif_hw2sw_v_write;
-	-- DEBUG(67 downto 36) <= memif_hwt2mem_v_din;
-	-- DEBUG(35) <= not memif_hwt2mem_v_full_n;
-	-- DEBUG(34) <= memif_hwt2mem_v_write;
-	-- DEBUG(33 downto 2) <= memif_mem2hwt_v_dout;
-	-- DEBUG(1) <= not memif_mem2hwt_v_empty_n;
-	-- DEBUG(0) <= memif_mem2hwt_v_read;
-
 	rt_imp_inst : rt_imp
 		port map (
 			ap_clk => HWT_Clk,
@@ -202,6 +191,8 @@ begin
 			pipe_s_V_TREADY => pipe_s_V_TREADY,
 			pipe_m_V_TDATA  => pipe_m_V_TDATA,
 			pipe_m_V_TVALID => pipe_m_V_TVALID,
-			pipe_m_V_TREADY => pipe_m_V_TREADY
+			pipe_m_V_TREADY => pipe_m_V_TREADY,
+
+			status_report => status_report
 	);	
 end architecture;

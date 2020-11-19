@@ -76,7 +76,10 @@ set_attribute module $static top_level     1
 #set_attribute module $static synthCheckpoint ./myReconOS.runs/synth_1/design_1_wrapper.dcp
 set_attribute module $static ipRepo          ./pcores
 set_attribute module $static bd              ./myReconOS.srcs/sources_1/bd/design_1/design_1.bd
-set_attribute module $static vhdl            [list ./myReconOS.srcs/sources_1/bd/design_1/hdl/design_1_wrapper.vhd xil_defaultLib]
+set_attribute module $static vhdl            [list \
+                                              ./myReconOS.srcs/sources_1/bd/design_1/hdl/design_1_wrapper.vhd xil_defaultLib \
+                                              ./myReconOS.srcs/sources_1/imports/reconos_project/status_timer.vhd xil_defaultLib \
+                                             ]
 set_attribute module $static synth           ${run.topSynth}
 
 ####################################################################
@@ -124,4 +127,6 @@ foreach cfg_name [array names rm_config] {
   #bitstream_options are given to write_bitstream command, bitstream_settings are set as property
   set_attribute impl $config bitstream_options [list "-bin_file"]
   #set_attribute impl $config bitstream_settings [list <settings_go_here>]
+
+  set_attribute impl $config bitstream.pre ./pr_flow/generate_debug_info.tcl
 }

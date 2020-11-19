@@ -450,6 +450,87 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
     create_bd_addr_seg -range 0x00010000 -offset 0xA0130000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs timer_0/S_AXI/reg0] SEG_timer_0_reg0
 
     ### DEBUG LOGIC ###
+    import_files -norecurse $proj_dir/../status_timer.vhd
+    create_bd_cell -type module -reference status_timer status_timer_0
+    connect_bd_net [get_bd_pins status_timer_0/HWT_Clk] [get_bd_pins reconos_clock_0/CLK1_Out]
+    connect_bd_net [get_bd_pins status_timer_0/HWT_Rst] [get_bd_pins reconos_proc_control_0/PROC_Hwt_Rst_0]
+    connect_bd_net -net status_report [get_bd_pins status_timer_0/status_mover_mem_stream] [get_bd_pins slot_0/status_report]
+    connect_bd_net -net timer [get_bd_pins status_timer_0/timer]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {timer }]
+
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_0_MEMIF64_Mem2Hwt}]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_intf_nets {slot_14_MEMIF64_Hwt2Mem}]
+
+    #connect_bd_net -net status_report [get_bd_pins slot_0/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report }]
+
+    connect_bd_net -net status_report_1 [get_bd_pins slot_1/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_1 }]
+
+    connect_bd_net -net status_report_2 [get_bd_pins slot_2/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_2 }]
+
+    connect_bd_net -net status_report_3 [get_bd_pins slot_3/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_3 }]
+
+    connect_bd_net -net status_report_4 [get_bd_pins slot_4/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_4 }]
+
+    connect_bd_net -net status_report_5 [get_bd_pins slot_5/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_5 }]
+
+    connect_bd_net -net status_report_6 [get_bd_pins slot_6/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_6 }]
+
+    connect_bd_net -net status_report_7 [get_bd_pins slot_7/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_7 }]
+
+    connect_bd_net -net status_report_8 [get_bd_pins slot_8/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_8 }]
+
+    connect_bd_net -net status_report_9 [get_bd_pins slot_9/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_9 }]
+
+    connect_bd_net -net status_report_10 [get_bd_pins slot_10/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_10 }]
+
+    connect_bd_net -net status_report_11 [get_bd_pins slot_11/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_11 }]
+
+    connect_bd_net -net status_report_12 [get_bd_pins slot_12/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_12 }]
+
+    connect_bd_net -net status_report_13 [get_bd_pins slot_13/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_13 }]
+
+    connect_bd_net -net status_report_14 [get_bd_pins slot_14/status_report]
+    set_property HDL_ATTRIBUTE.DEBUG true [get_bd_nets {status_report_14 }]
+
+    apply_bd_automation -rule xilinx.com:bd_rule:debug -dict [list \
+                                                              [get_bd_intf_nets slot_0_MEMIF64_Mem2Hwt] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_intf_nets slot_14_MEMIF64_Hwt2Mem] {NON_AXI_SIGNALS "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets timer] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_1] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_2] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_3] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_4] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_5] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_6] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_7] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_8] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_9] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_10] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_11] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_12] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_13] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                              [get_bd_nets status_report_14] {PROBE_TYPE "Data and Trigger" CLK_SRC "/reconos_clock_0/CLK1_Out" SYSTEM_ILA "Auto" } \
+                                                            ]
+
+    set_property -dict [list CONFIG.C_BRAM_CNT {47.5} CONFIG.C_DATA_DEPTH {8192} CONFIG.C_EN_STRG_QUAL {1} CONFIG.C_ADV_TRIGGER {true} CONFIG.C_PROBE14_MU_CNT {3} CONFIG.C_PROBE13_MU_CNT {3} CONFIG.C_PROBE12_MU_CNT {3} CONFIG.C_PROBE11_MU_CNT {3} CONFIG.C_PROBE10_MU_CNT {3} CONFIG.C_PROBE9_MU_CNT {3} CONFIG.C_PROBE8_MU_CNT {3} CONFIG.C_PROBE7_MU_CNT {3} CONFIG.C_PROBE6_MU_CNT {3} CONFIG.C_PROBE5_MU_CNT {3} CONFIG.C_PROBE4_MU_CNT {3} CONFIG.C_PROBE3_MU_CNT {3} CONFIG.C_PROBE2_MU_CNT {3} CONFIG.C_PROBE1_MU_CNT {3} CONFIG.C_PROBE0_MU_CNT {3} CONFIG.ALL_PROBE_SAME_MU_CNT {3}] [get_bd_cells system_ila_0]
+
+
+
     #create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_0
     #set_property -dict [list CONFIG.FIFO_DEPTH {32}] [get_bd_cells axis_data_fifo_0]
     #connect_bd_net [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins reconos_clock_0/CLK1_Out]

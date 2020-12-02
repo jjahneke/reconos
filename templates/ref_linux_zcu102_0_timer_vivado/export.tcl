@@ -318,9 +318,14 @@ proc reconos_hw_setup {new_project_name new_project_path reconos_ip_dir} {
       # register pipeline type: fully-registered (8), bypass (0), default (1)
       set_property -dict [list CONFIG.REG_CONFIG {8}] [get_bd_cells axis_register_slice_<<Id>>]
       connect_bd_net [get_bd_pins axis_register_slice_<<Id>>/aclk] [get_bd_pins reconos_clock_0/CLK<<Clk>>_Out]
-      connect_bd_net [get_bd_pins axis_register_slice_<<Id>>/aresetn] [get_bd_pins reset_0/Interconnect_aresetn]
       connect_bd_intf_net [get_bd_intf_pins axis_register_slice_<<Id>>/M_AXIS] [get_bd_intf_pins slot_<<PipeToSlot>>/PIPE_S]
       connect_bd_intf_net [get_bd_intf_pins axis_register_slice_<<Id>>/S_AXIS] [get_bd_intf_pins slot_<<Id>>/PIPE_M]
+
+      # Connect register slice reset to reset of input slot - need an inverter because it requires an active low reset like all AXI peripherals
+      create_bd_cell -type ip -vlnv xilinx.com:ip:util_vector_logic:2.0 util_vector_logic_<<Id>>
+      set_property -dict [list CONFIG.C_SIZE {1} CONFIG.C_OPERATION {not} CONFIG.LOGO_FILE {data/sym_notgate.png}] [get_bd_cells util_vector_logic_<<Id>>]
+      connect_bd_net [get_bd_pins util_vector_logic_<<Id>>/Op1] [get_bd_pins reconos_proc_control_0/PROC_Hwt_Rst_<<Id>>]
+      connect_bd_net [get_bd_pins axis_register_slice_<<Id>>/aresetn] [get_bd_pins util_vector_logic_<<Id>>/Res]
     <<end generate>>
 
 

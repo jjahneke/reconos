@@ -48,6 +48,7 @@ def export_sw(args, swdir, link):
 		d["HasHw"] = t.hwsource is not None
 		d["HasSw"] = t.swsource is not None
 		dictionary["THREADS"].append(d)
+	dictionary["TotalResourceCount"] = len(prj.resources)
 	dictionary["RESOURCES"] = []
 	for r in prj.resources:
 		d = {}

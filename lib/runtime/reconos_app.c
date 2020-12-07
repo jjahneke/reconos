@@ -58,6 +58,7 @@ struct reconos_resource <<NameLower>>_res = {
 };
 <<end generate>>
 
+struct mbox* resources_mbox_array [<<TotalResourceCount>>];
 
 /* == Application functions ============================================ */
 
@@ -79,6 +80,11 @@ void reconos_app_init() {
 
 	<<generate for RESOURCES(Type == "cond")>>
 	pthread_cond_init(<<NameLower>>, NULL);
+	<<end generate>>
+
+	int i = 0;
+	<<generate for RESOURCES(Type == "mbox")>>
+	resources_mbox_array[i++] = &<<NameLower>>_s;
 	<<end generate>>
 }
 

@@ -59,6 +59,7 @@ extern pthread_cond <<NameLower>>_s;
 extern pthread_cond *<<NameLower>>;
 <<end generate>>
 
+extern struct mbox* resources_mbox_array [<<TotalResourceCount>>];
 
 /* == Application functions ============================================ */
 

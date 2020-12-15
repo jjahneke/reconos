@@ -71,7 +71,7 @@ proc import_pcore { repo_path ip_name {libs ""} } {
 set ip_repo "pcores"
 set temp_dir "/tmp/reconos_tmp/"
 
-create_project -force managed_ip_project $temp_dir/managed_ip_project -part xc7z020clg484-1 -ip
+create_project -force managed_ip_project $temp_dir/managed_ip_project -part xczu9eg-ffvb1156-2-e -ip
 set_property  ip_repo_paths  $ip_repo [current_project]
 
 # load IP-XACT definitions of FIFO interfaces (these are supplied with the template)

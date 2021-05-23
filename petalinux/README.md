@@ -2,6 +2,8 @@ The PetaLinux project "RECONOS" was created with the following steps under v2020
 
 1. Create template project:
 `petalinux-create --type project --template zynqMP --name RECONOS`
+When building for the ZCU104 Evaluation Board do not use '--template zynqMP'.
+Instead, use the ZCU104 Board Support Package with '--source zcu104.bsp'.
 
 2. Initialize project with exemplary ReconOS hardware platform (Vivado-generated .xsa file):
 `petalinux-config --get-hw-description <PATH-TO-XSA Directory>`

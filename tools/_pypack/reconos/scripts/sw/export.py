@@ -1,3 +1,4 @@
+import re
 import reconos.utils.shutil2 as shutil2
 import reconos.utils.template as template
 
@@ -32,7 +33,7 @@ def export_sw(args, swdir, link):
 	swdir = swdir if swdir is not None else prj.basedir + ".sw"
 
 	log.info("Export software to project directory '" + prj.dir + "'")
-
+	
 	dictionary = {}
 	dictionary["NAME"] = prj.name.lower()
 	dictionary["CFLAGS"] = prj.impinfo.cflags
@@ -80,12 +81,20 @@ def export_sw(args, swdir, link):
 	for t in prj.threads:
 		export_sw_thread(args, swdir, link, t.name)
 
+	list_files = shutil2.listfiles(swdir, True, "c[cp]*$")
+	list_rcns = list(filter(re.compile("^lib/").match, list_files))
+	list_app = list(filter(re.compile("^application/").match, list_files))
+
 	dictionary = {}
 	dictionary["OS"] = prj.impinfo.os.lower()
 	dictionary["BOARD"] = "_".join(prj.impinfo.board)
 	dictionary["REPO_REL"] = shutil2.relpath(prj.impinfo.repo, swdir)
-	dictionary["OBJS"] = [{"Source": shutil2.trimext(_) + ".o"}
-	                       for _ in shutil2.listfiles(swdir, True, "c[p]*$")]
+	if prj.name.lower() != 'os2':
+		dictionary["OBJS_RCNS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_files]
+		dictionary["OBJS_APP"] = []
+	else:
+		dictionary["OBJS_RCNS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_rcns]
+		dictionary["OBJS_APP"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_app]
 
 	template.preproc(shutil2.join(swdir, "Makefile"), dictionary, "overwrite", force=True)
 

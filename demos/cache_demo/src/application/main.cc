@@ -7,12 +7,22 @@ extern "C" {
 	#include "reconos_app.h"
 }
 
+void print_help() {
+	std::cout <<
+		"Usage: cachedemo <num_hw_thread> <num_sw_threads> <image>\n"
+		"Only use one of the threads, i.e.\n"
+		"cachedemo 0 1 <img> *or* cachedemo 1 0 <img>"
+	<< std::endl;
+}
+
 int main(int argc, char **argv) {
 	int num_hwts, num_swts;
 	int clk;
 
-	if (argc != 3)
+	if (argc != 4) {
+		print_help();
 		return 0;
+	}
 
 	num_hwts = atoi(argv[1]);
 	num_swts = atoi(argv[2]);
@@ -33,7 +43,7 @@ int main(int argc, char **argv) {
     
 	uint64_t cache_cnt = 0;
 	
-	cv::Mat x = cv::imread("/home/linaro/configOS2/01/image_0/000000.png", 0);
+	cv::Mat x = cv::imread(argv[3], 0);
 	uint8_t* ptr = (uint8_t*)x.data;
 	int img_w = x.cols;
 	int img_h = x.rows;

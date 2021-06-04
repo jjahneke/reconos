@@ -2,6 +2,7 @@
 #include "reconos_thread.h"
 
 #include "common/xf_common.hpp"
+#include "features/xf_fast.hpp"
 
 #define CC_W 1280
 #define CC_H 384
@@ -98,12 +99,7 @@ THREAD_ENTRY() {
 
 	for(int i = 0; i < 30; i++){
 		for(int ii = 0; ii < 30; ii++){
-			xfCvMat.write(i*30+ii, (ap_uint<8>)mat1[i*30+ii]);
-		}
-	}
-
-	for(int i = 0; i < 30; i++){
-		for(int ii = 0; ii < 30; ii++){
+			xfCvMat.write(i*30+ii, mat1[i*30+ii]);
 			MBOX_PUT(resources_rt2sw, xfCvMat.read(i*30+ii));
 		}
 	}

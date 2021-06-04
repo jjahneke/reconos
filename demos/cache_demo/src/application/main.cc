@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < num_hwts; i++) {
 		std::cout << "Creating hw_thread_" << i << std::endl;
 		reconos_thread_create_hwt_cachedemo();
+		reconos_thread_create_hwt_test();
 	}
 
 	for (int i = 0; i < num_swts; i++) {
@@ -120,6 +121,24 @@ int main(int argc, char **argv) {
 	uint64_t ret;
 	do{
 		ret = mbox_get(resources_rt2sw);
+	} while(ret != 0xffffffffffffffff);
+
+	std::cout << "##########\n##############\n########\nDone with thread CacheDemo" << std::endl;
+
+	uint64_t* ret_ptr2 = (uint64_t*) malloc(4 * DWORDSPERLINE * 8);
+	mbox_put(rcs_tsw2rt, (uint64_t)ret_ptr2);
+
+	for(int i = 0; i < 4; i++){
+		for(int ii = 0; ii < DWORDSPERLINE; ii++){
+			uint32_t w0 = (uint32_t)((*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w0) >> 32);
+			uint32_t w1 = (uint32_t)(*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w1);
+			std::cout << w0 << ", " << w1 << ", ";
+		}
+		std::cout << std::endl;
+	}
+
+	do{
+		ret = mbox_get(rcs_trt2sw);
 	} while(ret != 0xffffffffffffffff);
 
 	reconos_app_cleanup();

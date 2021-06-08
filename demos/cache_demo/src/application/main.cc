@@ -21,33 +21,46 @@ void print_help() {
 }
 
 int main(int argc, char **argv) {
-	int num_hwts, num_swts;
+	int en_hw, en_sw, en_test; 
 	int clk;
 
-	if (argc != 4) {
+	if (argc != 5) {
 		print_help();
 		return 0;
 	}
 
-	num_hwts = atoi(argv[1]);
-	num_swts = atoi(argv[2]);
+	en_hw = atoi(argv[1]);
+	en_sw = atoi(argv[2]);
+	en_test = atoi(argv[3]);
+
 
 	reconos_init();
 	reconos_app_init();
 	clk = reconos_clock_threads_set(100000);
 
-	for (int i = 0; i < num_hwts; i++) {
-		std::cout << "Creating hw_thread_" << i << std::endl;
-		reconos_thread_create_hwt_cachedemo();
-		reconos_thread_create_hwt_test();
+	if(en_sw == en_hw){
+		std::cout << "ERROR: Either HW or SW thread!" << std::endl;
 	}
 
-	for (int i = 0; i < num_swts; i++) {
-		std::cout << "Creating sw_thread_" << i << std::endl;
+	if(en_hw == 1) {
+		std::cout << "Creating hw_thread cachedemo" << std::endl;
+		reconos_thread_create_hwt_cachedemo();
+		if(en_test == 1) {
+			std::cout << "Creating hw_thread test" << std::endl;
+			reconos_thread_create_hwt_test();
+		}
+	}
+
+	if(en_sw == 1) {
+		std::cout << "Creating sw_thread cachedemo" << std::endl;
 		reconos_thread_create_swt_cachedemo();
+		if(en_test == 1) {
+			std::cout << "Creating sw_thread test" << std::endl;
+			reconos_thread_create_swt_test();
+		}
 	}
     
-	cv::Mat x = cv::imread(argv[3], 0);
+	cv::Mat x = cv::imread(argv[4], 0);
 	uint8_t* ptr = (uint8_t*)x.data;
 	int img_w = x.cols;
 	int img_h = x.rows;
@@ -98,7 +111,7 @@ int main(int argc, char **argv) {
 		std::cout << std::endl;
 	}
 
-	std::cout << "xfCv matrix" << std::endl;
+	std::cout << "xfCv/Dummy matrix" << std::endl;
 	for(int i = 0; i < 30; i++){
 		for(int ii = 0; ii < 30; ii++){
 			_ret = mbox_get(resources_rt2sw);
@@ -123,23 +136,26 @@ int main(int argc, char **argv) {
 		ret = mbox_get(resources_rt2sw);
 	} while(ret != 0xffffffffffffffff);
 
-	std::cout << "##########\n##############\n########\nDone with thread CacheDemo" << std::endl;
+	if(en_test == 1) {
+		std::cout << "##########\n##############\n########\nDone with thread CacheDemo" << std::endl;
+	
+		uint64_t* ret_ptr2 = (uint64_t*) malloc(4 * DWORDSPERLINE * 8);
+		mbox_put(rcs_sw2rt, (uint64_t)ret_ptr2);
 
-	uint64_t* ret_ptr2 = (uint64_t*) malloc(4 * DWORDSPERLINE * 8);
-	mbox_put(rcs_tsw2rt, (uint64_t)ret_ptr2);
-
-	for(int i = 0; i < 4; i++){
-		for(int ii = 0; ii < DWORDSPERLINE; ii++){
-			uint32_t w0 = (uint32_t)((*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w0) >> 32);
-			uint32_t w1 = (uint32_t)(*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w1);
-			std::cout << w0 << ", " << w1 << ", ";
+		for(int i = 0; i < 4; i++){
+			std::cout << mbox_get(rcs_rt2sw) << std::endl;
+			for(int ii = 0; ii < DWORDSPERLINE; ii++){
+				uint32_t w0 = (uint32_t)((*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w0) >> 32);
+				uint32_t w1 = (uint32_t)(*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w1);
+				std::cout << w0 << ", " << w1 << ", ";
+			}
+			std::cout << std::endl;
 		}
-		std::cout << std::endl;
-	}
 
-	do{
-		ret = mbox_get(rcs_trt2sw);
-	} while(ret != 0xffffffffffffffff);
+		do{
+			ret = mbox_get(rcs_rt2sw);
+		} while(ret != 0xffffffffffffffff);
+	}
 
 	reconos_app_cleanup();
 	reconos_cleanup();

@@ -8,6 +8,7 @@
 #define CC_H 384
 
 #define WS 60
+#define FAST_WS 30
 #define DWORDSPERLINE 7
 
 #define macro_read_batch {for(int i=0; i<WS; i++) {\
@@ -35,13 +36,13 @@
 #define macro_fill_mat {\
 	uint8_t* _src = (uint8_t*)&cache[0];\
 	uint8_t* dst = &mat1[0];\
-    for(int i=0; i<30; i++){\
+    for(int i=0; i<FAST_WS; i++){\
         uint64_t row_index = iniY + i;\
         uint64_t byte_offset = ((uint64_t)ptr + row_index * img_w) & 7;\
-        for(int j=0; j<30; j++){\
+        for(int j=0; j<FAST_WS; j++){\
             uint64_t col_index = iniX + j;\
             uint8_t v = _src[(row_index * CC_W + byte_offset + col_index)];\
-            dst[i*30+j] = v;\
+            dst[i*FAST_WS+j] = v;\
 		}\
     }\
 }
@@ -58,8 +59,8 @@ THREAD_ENTRY() {
 	
 	uint64_t cache_cnt = 0;
 	uint64_t cache[CC_W/8 * CC_H];
-	uint8_t mat1[30*30];
-	xf::cv::Mat<XF_8UC1, 30, 30, XF_NPPC1> xfCvMat(30, 30);
+	uint8_t mat1[FAST_WS*FAST_WS];
+	xf::cv::Mat<XF_8UC1, FAST_WS, FAST_WS, XF_NPPC1> xfCvMat(FAST_WS, FAST_WS);
 	uint32_t _mem[5] = {1,2,3,4,5};
 	uint64_t mem[7];
 	for(int i = 0; i < 2; i++){
@@ -91,16 +92,16 @@ THREAD_ENTRY() {
 	uint64_t iniY = 25;
 	macro_fill_mat;
 
-	for(int i = 0; i < 30; i++){
-		for(int ii = 0; ii < 30; ii++){
-			MBOX_PUT(resources_rt2sw, mat1[i*30+ii]);
+	for(int i = 0; i < FAST_WS; i++){
+		for(int ii = 0; ii < FAST_WS; ii++){
+			MBOX_PUT(resources_rt2sw, mat1[i*FAST_WS+ii]);
 		}
 	}
 
-	for(int i = 0; i < 30; i++){
-		for(int ii = 0; ii < 30; ii++){
-			xfCvMat.write(i*30+ii, mat1[i*30+ii]);
-			MBOX_PUT(resources_rt2sw, xfCvMat.read(i*30+ii));
+	for(int i = 0; i < FAST_WS; i++){
+		for(int ii = 0; ii < FAST_WS; ii++){
+			xfCvMat.write(i*FAST_WS+ii, mat1[i*FAST_WS+ii]);
+			MBOX_PUT(resources_rt2sw, xfCvMat.read(i*FAST_WS+ii));
 		}
 	}
 

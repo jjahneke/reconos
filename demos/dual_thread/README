@@ -1,0 +1,44 @@
+DualThread Demo
+
+Idea: Sequential execution of two different threads in two different slots.
+-> thread0 in slot0
+-> thread1 in slot1
+
+Expected output for thread0:
+	Thread 0 enabled!
+	Creating sw_thread0 / hw_thread0
+	Starting thread_0
+	Got answer from thread_0: 42
+	rt_thread: 10 20 30 40 
+	main.cc: 10 20 30 40
+	Done with thread_0, mem is valid? 1
+
+Expected output for thread1:
+	Thread 1 enabled!
+	Creating sw_thread1 / hw_thread1
+	Starting thread_1
+	Got answer from thread_1: 64
+	rt_thread: 164 264 364 464
+	main.cc: 164 264 364 464
+	Done with thread_1, mem is valid? 1
+
+SW threads' output is correct.
+Output of HW threads as follows:
+
+Thread0:
+	Thread 0 enabled!
+	Creating hw_thread0
+	Starting thread_0
+	Got answer from thread_0: 64
+	rt_thread: 164 264 364 464
+	main.cc: 10 20 30 40
+	Done with thread_0, mem is valid? 0
+
+Thread1:
+	Thread 1 enabled!
+	Creating hw_thread1
+	Starting thread_1
+	Got answer from thread_1: 64
+	rt_thread: 164 264 364 464
+	main.cc: 164 264 364 464
+	Done with thread_1, mem is valid? 1

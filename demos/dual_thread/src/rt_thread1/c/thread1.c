@@ -15,6 +15,5 @@ THREAD_ENTRY() {
 	MEM_WRITE1(buf, ptr, 4*8);
 
 	MBOX_PUT(rcs1_rt2sw, 0xffffffffffffffff);
-
 	THREAD_EXIT();
 }

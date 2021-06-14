@@ -73,11 +73,14 @@ int main(int argc, char **argv) {
 		
 		bool valid0 = true;
 		std::string s0 = "";
+		std::string s0_buf = "";
 		for(uint64_t i = 0; i < 4; i++) {
 			valid0 &= (buf0[i] == *(ptr0+i));
 			s0 = s0 + std::to_string(*(ptr0+i)) + " ";
+			s0_buf = s0_buf + std::to_string(buf0[i]) + " ";
 		}
-		std::cout << s0 << std::endl;
+		std::cout << "rt_thread: " << s0 << std::endl;
+		std::cout << "main.cc: " << s0_buf << std::endl;
 
 		free(ptr0);
 		ptr0 = NULL;
@@ -104,11 +107,14 @@ int main(int argc, char **argv) {
 		
 		bool valid1 = true;
 		std::string s1 = "";
+		std::string s1_buf = "";
 		for(uint64_t i = 0; i < 4; i++) {
 			valid1 &= (buf1[i] == *(ptr1+i));
 			s1 = s1 + std::to_string(*(ptr1+i)) + " ";
+			s1_buf = s1_buf + std::to_string(buf1[i]) + " ";
 		}
-		std::cout << s1 << std::endl;
+		std::cout << "rt_thread: " << s1 << std::endl;
+		std::cout << "main.cc: " << s1_buf << std::endl;
 
 		free(ptr1);
 		ptr1 = NULL;

@@ -73,6 +73,7 @@ THREAD_ENTRY() {
 	uint64_t img_w = MBOX_GET(resources_sw2rt);
 	uint64_t img_h = MBOX_GET(resources_sw2rt);
 	uint64_t ret_ptr = MBOX_GET(resources_sw2rt);
+	uint64_t ret_ptr2 = MBOX_GET(resources_sw2rt);
 
 	for(int i = 0; i < 7; i++){
 		macro_read_batch;
@@ -109,6 +110,10 @@ THREAD_ENTRY() {
 		MBOX_PUT(resources_rt2sw, (ret_ptr + i*8*DWORDSPERLINE));
 		MEM_WRITE(mem, (ret_ptr + i*8*DWORDSPERLINE), DWORDSPERLINE*8);
 	}
+	
+	// Second mem Test
+	uint8_t _memTest[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+	MEM_WRITE(&_memTest[0], ret_ptr2, 16);
 
 	// Done
 	MBOX_PUT(resources_rt2sw, 0xffffffffffffffff);

@@ -4,6 +4,8 @@
 
 #define WORDSPERLINE 13
 #define DWORDSPERLINE 7
+#define FAST_WS 30
+
 #define mask_w0 0xffffffff00000000
 #define mask_w1 0x00000000ffffffff
 
@@ -14,64 +16,50 @@ extern "C" {
 
 void print_help() {
 	std::cout <<
-		"Usage: cachedemo <num_hw_thread> <num_sw_threads> <image>\n"
-		"Only use one of the threads, i.e.\n"
-		"cachedemo 0 1 <img> *or* cachedemo 1 0 <img>"
+		"Usage: cachedemo <sw_or_hw> <image>\n"
+		"For sw: cachedemo 0 <image>\n"
+		"For hw: cachedemo 1 <image>"
 	<< std::endl;
 }
 
 int main(int argc, char **argv) {
-	int en_hw, en_sw, en_test; 
+	int sw_or_hw;
 	int clk;
 
-	if (argc != 5) {
+	if (argc != 3) {
 		print_help();
 		return 0;
 	}
 
-	en_hw = atoi(argv[1]);
-	en_sw = atoi(argv[2]);
-	en_test = atoi(argv[3]);
-
+	sw_or_hw = atoi(argv[1]);
 
 	reconos_init();
 	reconos_app_init();
 	clk = reconos_clock_threads_set(100000);
 
-	if(en_sw == en_hw){
-		std::cout << "ERROR: Either HW or SW thread!" << std::endl;
-	}
-
-	if(en_hw == 1) {
-		std::cout << "Creating hw_thread cachedemo" << std::endl;
-		reconos_thread_create_hwt_cachedemo();
-		if(en_test == 1) {
-			std::cout << "Creating hw_thread test" << std::endl;
-			reconos_thread_create_hwt_test();
-		}
-	}
-
-	if(en_sw == 1) {
+	if(sw_or_hw == 0) { 
 		std::cout << "Creating sw_thread cachedemo" << std::endl;
 		reconos_thread_create_swt_cachedemo();
-		if(en_test == 1) {
-			std::cout << "Creating sw_thread test" << std::endl;
-			reconos_thread_create_swt_test();
-		}
 	}
-    
-	cv::Mat x = cv::imread(argv[4], 0);
+	else { 
+		std::cout << "Creating hw_thread cachedemo" << std::endl;
+		reconos_thread_create_hwt_cachedemo();
+	}
+		
+	cv::Mat x = cv::imread(argv[2], 0);
 	uint8_t* ptr = (uint8_t*)x.data;
 	int img_w = x.cols;
 	int img_h = x.rows;
 
 	// NOTE_J: 4 Lines 13 WORD (aka 4 Byte) / (7 DWORD) (aka 8 Byte) each
 	uint64_t* ret_ptr = (uint64_t*) malloc(4 * DWORDSPERLINE * 8);
+	uint64_t* ret_ptr2 = (uint64_t*) calloc(2, sizeof(uint64_t));
 	
 	mbox_put(resources_sw2rt, (uint64_t)ptr);
 	mbox_put(resources_sw2rt, (uint64_t)img_w);
 	mbox_put(resources_sw2rt, (uint64_t)img_h);
 	mbox_put(resources_sw2rt, (uint64_t)ret_ptr);
+	mbox_put(resources_sw2rt, (uint64_t)ret_ptr2);
 
 	uint64_t _ret;
 	uint64_t mask = 0x00000000000000ff;
@@ -103,8 +91,8 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << "First matrix" << std::endl;
-	for(int i = 0; i < 30; i++){
-		for(int ii = 0; ii < 30; ii++){
+	for(int i = 0; i < FAST_WS; i++){
+		for(int ii = 0; ii < FAST_WS; ii++){
 			_ret = mbox_get(resources_rt2sw);
 			std::cout << _ret << ", ";
 		}
@@ -112,8 +100,8 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << "xfCv/Dummy matrix" << std::endl;
-	for(int i = 0; i < 30; i++){
-		for(int ii = 0; ii < 30; ii++){
+	for(int i = 0; i < FAST_WS; i++){
+		for(int ii = 0; ii < FAST_WS; ii++){
 			_ret = mbox_get(resources_rt2sw);
 			std::cout << _ret << ", ";
 		}
@@ -131,31 +119,21 @@ int main(int argc, char **argv) {
 		std::cout << std::endl;
 	}
 
+	std::cout << "Second mem test, uint8_t array via MEM_WRITE" << std::endl;
+	for(int i = 0; i < 16; i++) {
+		std::cout << (short)*((uint8_t*)ret_ptr2 + i) << ", ";
+	}
+	std::cout << std::endl;
+
 	uint64_t ret;
 	do{
 		ret = mbox_get(resources_rt2sw);
 	} while(ret != 0xffffffffffffffff);
 
-	if(en_test == 1) {
-		std::cout << "##########\n##############\n########\nDone with thread CacheDemo" << std::endl;
-	
-		uint64_t* ret_ptr2 = (uint64_t*) malloc(4 * DWORDSPERLINE * 8);
-		mbox_put(rcs_sw2rt, (uint64_t)ret_ptr2);
-
-		for(int i = 0; i < 4; i++){
-			std::cout << mbox_get(rcs_rt2sw) << std::endl;
-			for(int ii = 0; ii < DWORDSPERLINE; ii++){
-				uint32_t w0 = (uint32_t)((*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w0) >> 32);
-				uint32_t w1 = (uint32_t)(*(ret_ptr2 + i*DWORDSPERLINE + ii) & mask_w1);
-				std::cout << w0 << ", " << w1 << ", ";
-			}
-			std::cout << std::endl;
-		}
-
-		do{
-			ret = mbox_get(rcs_rt2sw);
-		} while(ret != 0xffffffffffffffff);
-	}
+	free(ret_ptr);
+	ret_ptr = NULL;	
+	free(ret_ptr2);
+	ret_ptr2 = NULL;	
 
 	reconos_app_cleanup();
 	reconos_cleanup();

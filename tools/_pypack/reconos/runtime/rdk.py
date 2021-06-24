@@ -26,6 +26,7 @@ import logging
 
 logging.basicConfig(format="[reconos-toolchain | %(name)s] %(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
+fh = logging.FileHandler('reconos.log')
 
 #
 # Main function implementing main loop of toolchain.
@@ -74,11 +75,15 @@ def main():
 
 	if args.log == "debug":
 		logging.getLogger().setLevel(level=logging.DEBUG)
+		fh.setLevel(level=logging.DEBUG)
 	elif args.log == "warning":
 		logging.getLogger().setLevel(level=logging.WARNING)
+		fh.setLevel(level=logging.WARNING)
 	else:
 		logging.getLogger().setLevel(level=logging.ERROR)
+		fh.setLevel(level=logging.ERROR)
 
+	logging.getLogger().addHandler(fh)
 	if args.cmd == None:
 		exit = ["exit"]
 		def _complete(text, state):

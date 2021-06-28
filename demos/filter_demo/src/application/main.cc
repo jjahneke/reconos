@@ -42,8 +42,7 @@ int main(int argc, char **argv) {
 	}
 	else { 
 		std::cout << "Creating HW Thread" << std::endl;
-		return 0;
-		//reconos_thread_create_hwt_filterdemo();
+		reconos_thread_create_hwt_filterdemo();
 	}
 
 	// Open image, allocate output memory

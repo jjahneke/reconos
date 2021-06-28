@@ -12,16 +12,16 @@ const uint64_t BYTEMASK = 0x00000000000000ff;
 #define PREFETCH_ROWS (CACHE_LINES - 1)
 
 // Unit kernel for verification
-const uint8_t filterU[] = {0, 0, 0,
-						   0, 1, 0,
-						   0, 0, 0};
+//const uint8_t filterU[] = {0, 0, 0,
+//						   0, 1, 0,
+//						   0, 0, 0};
 
 // Discrete approximation for Gaussian 3x3 kernel
 // Divide by 16 -> shift right 4
-//#define SHIFT_NORM_GAUSS 4
-//const uint8_t filterG[] = {1,2,1,
-//						  2,4,2,
-//						  1,2,1};
+#define SHIFT_NORM_GAUSS 4
+const uint8_t filterG[] = {1,2,1,
+						  2,4,2,
+						  1,2,1};
 //
 //#define SHIFT_NORM_SOBEL 3
 //const int8_t filterX[] = { 1, 2, 1,
@@ -35,7 +35,7 @@ const uint8_t filterU[] = {0, 0, 0,
 #define macro_prefetch_rows {\
 	for(int i = 0; i < PREFETCH_ROWS; i++) {\
 		uint64_t _offset = (((uint64_t)ptr_i + i * img_w) & 7);\
-		MEM_READ1((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], CC_W + 8);\
+		MEM_READ((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], CC_W + 8);\
 		for(int ii = 0; ii < CC_W; ii++) {\
 			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
 			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
@@ -104,8 +104,10 @@ THREAD_ENTRY() {
 			for(int i = -FILTER_SIZE_H; i <= FILTER_SIZE_H; i++) {
 				for(int j = -FILTER_SIZE_H; j <= FILTER_SIZE_H; j++) {
 					uint8_t _byte = cache[(row+i)%CACHE_LINES * CC_W + (col+j)];
+					res += _byte * filterG[filter_ptr];
+				
 				//	if(mode == 0) {
-						res += _byte * filterU[filter_ptr];
+				//		res += _byte * filterU[filter_ptr];
 				//	}
 				//	else if(mode == 1) {
 				//		res += _byte * filterG[filter_ptr];
@@ -114,13 +116,16 @@ THREAD_ENTRY() {
 				//		resX += _byte * filterX[filter_ptr];
 				//		resY += _byte * filterY[filter_ptr];
 				//	}
+
 					filter_ptr++;
 				}
 			}
 			
 			// Normalize result
+			_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
+
 		//	if(mode == 0) {
-				_out[col/8] |= ((uint64_t)res) << 8*(col&7);
+		//		_out[col/8] |= ((uint64_t)res) << 8*(col&7);
 		//	}
 		//	else if(mode == 1) {
 		//		_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));

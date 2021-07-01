@@ -47,7 +47,7 @@ const uint8_t filterG[] = {1,2,1,
 }
 
 #define macro_read_row {\
-	uint64_t ptr_limit = (row-1) % img_h;\
+	uint64_t ptr_limit = (row-FILTER_SIZE_H) % img_h;\
 	MEM_READ((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], CC_W + 8);\
 	for(int ii = 0; ii < CC_W; ii++) {\
 		uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\

@@ -62,7 +62,7 @@ const int8_t filterY[] = { 1, 0, -1,
 		uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
 		uint64_t _dword = _in[_dword_ptr];\
 		uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-		uint64_t _cache_line = CC_W * ((row+2) % CACHE_LINES);\
+		uint64_t _cache_line = CC_W * ((row+FILTER_SIZE_H+1) % CACHE_LINES);\
 		cache[_cache_line + ii] = _byte;\
 	}\
 }

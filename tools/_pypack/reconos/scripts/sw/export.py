@@ -134,5 +134,7 @@ def export_sw_thread(args, swdir, link, thread):
 	log.info("Generating export files ...")
 	if thread.swsource == "c":
 		prj.apply_template("thread_c_plain", dictionary, swdir, link)
+	elif thread.swsource == "cpp":
+		prj.apply_template("thread_cpp_plain", dictionary, swdir, link)
 	elif thread.swsource == "hls":
 		prj.apply_template("thread_c_hls", dictionary, swdir, link)

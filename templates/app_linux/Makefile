@@ -8,9 +8,8 @@ CXXFLAGS = $(CFLAGS)
 
 MKDIRP = mkdir -p
 
-OBJS_RCNS = <<generate for OBJS_RCNS>><<Source>> <<end generate>>
-OBJS_APP = <<generate for OBJS_APP>><<Source>> <<end generate>>
-BUILD_OBJS = $(OBJS_RCNS:%=_build/%) $(OBJS_APP)
+OBJS = <<generate for OBJS>><<Source>> <<end generate>>
+BUILD_OBJS = $(OBJS:%=_build/%)
 
 all: $(BUILD_OBJS)
 	$(CC) $(BUILD_OBJS) $(LDFLAGS) -o <<NAME>>

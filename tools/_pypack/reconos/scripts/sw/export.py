@@ -84,17 +84,19 @@ def export_sw(args, swdir, link):
 	list_files = shutil2.listfiles(swdir, True, "c[cp]*$")
 	list_rcns = list(filter(re.compile("^lib/").match, list_files))
 	list_app = list(filter(re.compile("^application/").match, list_files))
+	list_rt = list(filter(re.compile("^rt_[a-zA-Z0-9]*/").match, list_files))
 
 	dictionary = {}
 	dictionary["OS"] = prj.impinfo.os.lower()
 	dictionary["BOARD"] = "_".join(prj.impinfo.board)
 	dictionary["REPO_REL"] = shutil2.relpath(prj.impinfo.repo, swdir)
-	if prj.name.lower() != 'os2':
-		dictionary["OBJS_RCNS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_files]
-		dictionary["OBJS_APP"] = []
+	if prj.name.lower() != '_os2':
+		dictionary["OBJS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_files]
+		#dictionary["OBJS_APP"] = []
 	else:
-		dictionary["OBJS_RCNS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_rcns]
+		dictionary["OBJS"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_rcns]
 		dictionary["OBJS_APP"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_app]
+		dictionary["OBJS_RT"] = [{"Source": shutil2.trimext(_) + ".o"} for _ in list_rt]
 
 	template.preproc(shutil2.join(swdir, "Makefile"), dictionary, "overwrite", force=True)
 

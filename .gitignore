@@ -79,3 +79,4 @@ demos/*/*.jou
 # Own symbolic link
 #
 VitisVisionLib
+**/reconos.log

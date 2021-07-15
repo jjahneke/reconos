@@ -22,15 +22,15 @@ const uint8_t filterU[] = {0, 0, 0,
 const uint8_t filterG[] = {1,2,1,
 						  2,4,2,
 						  1,2,1};
-//
-//#define SHIFT_NORM_SOBEL 3
-//const int8_t filterX[] = { 1, 2, 1,
-//						    0, 0, 0,
-//						   -1,-2,-1};
-//
-//const int8_t filterY[] = { 1, 0, -1,
-//						   2, 0, -2,
-//						   1, 0, -1};
+
+#define SHIFT_NORM_SOBEL 3
+const int8_t filterX[] = { 1, 2, 1,
+						    0, 0, 0,
+						   -1,-2,-1};
+
+const int8_t filterY[] = { 1, 0, -1,
+						   2, 0, -2,
+						   1, 0, -1};
 
 #define macro_prefetch_rows {\
 	for(int i = 0; i < PREFETCH_ROWS; i++) {\
@@ -64,7 +64,7 @@ const uint8_t filterG[] = {1,2,1,
 }
 
 #define macro_write_row {\
-	MEM_WRITE(_out, (uint64_t)(ptr_o + row*CC_W), CC_W);\
+	MEM_WRITE(&_out[0], (uint64_t)(ptr_o + row*CC_W), CC_W);\
 }
 
 THREAD_ENTRY() {
@@ -80,11 +80,6 @@ THREAD_ENTRY() {
 	uint64_t ptr_o = MBOX_GET(rcs_sw2rt);
 	uint64_t mode = MBOX_GET(rcs_sw2rt);
 
-	// Holds the result of filter operations on individual Byte
-	uint16_t res;
-	int16_t resX;
-	int16_t resY;
-
 	// Prefetch PREFETCH_ROWS lines of image
 	macro_prefetch_rows;
 	for(int row = FILTER_SIZE_H; row < img_h - FILTER_SIZE_H; row++) {
@@ -95,44 +90,38 @@ THREAD_ENTRY() {
 	
 		for(int col = FILTER_SIZE_H; col < img_w - FILTER_SIZE_H; col++) {
 			// Reset temporary accumulation buffer
-			res = 0;
-			resX = 0;
-			resY = 0;
+			uint16_t res = 0;
+			int16_t resX = 0;
+			int16_t resY = 0;
 
 			uint16_t filter_ptr = 0;
 			for(int i = -FILTER_SIZE_H; i <= FILTER_SIZE_H; i++) {
 				for(int j = -FILTER_SIZE_H; j <= FILTER_SIZE_H; j++) {
 					uint8_t _byte = cache[(row+i)%CACHE_LINES * CC_W + (col+j)];
-					res += _byte * filterU[filter_ptr];
-				
-				//	if(mode == 0) {
-				//		res += _byte * filterU[filter_ptr];
-				//	}
-				//	else if(mode == 1) {
-				//		res += _byte * filterG[filter_ptr];
-				//	}
-				//	else {
-				//		resX += _byte * filterX[filter_ptr];
-				//		resY += _byte * filterY[filter_ptr];
-				//	}
-
+					if(mode == 0) {
+						res += _byte * filterU[filter_ptr];
+					}
+					else if(mode == 1) {
+						res += _byte * filterG[filter_ptr];
+					}
+					else {
+						resX += _byte * filterX[filter_ptr];
+						resY += _byte * filterY[filter_ptr];
+					}
 					filter_ptr++;
 				}
 			}
 			
 			// Normalize result
-			//_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
-			_out[col/8] |= ((uint64_t)res) << 8*(col&7);
-
-		//	if(mode == 0) {
-		//		_out[col/8] |= ((uint64_t)res) << 8*(col&7);
-		//	}
-		//	else if(mode == 1) {
-		//		_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
-		//	}
-		//	else {
-		//		_out[col/8] |= (((uint64_t)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
-		//	}
+			if(mode == 0) {
+				_out[col/8] |= ((uint64_t)res) << 8*(col&7);
+			}
+			else if(mode == 1) {
+				_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
+			}
+			else {
+				_out[col/8] |= (((uint64_t)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
+			}
 		}
 		// Write-back computed row
 		macro_write_row;

@@ -2,12 +2,8 @@ extern "C" {
 	#include "reconos_thread.h"
 	#include "reconos_calls.h"
 }
-//#include "string.h"
-//#include "stdlib.h"
-//#include "stdio.h"
 #include <iostream>
 #include <cstring>
-
 
 #define MEM_READ1(src, dest, n) memcpy((void*)dest, (void*)src, n)
 #define MEM_WRITE1(src, dest, n) memcpy((void*)dest, (void*)src, n)
@@ -89,11 +85,6 @@ THREAD_ENTRY() {
 	uint64_t ptr_o = MBOX_GET(rcs_sw2rt);
 	uint64_t mode = MBOX_GET(rcs_sw2rt);
 
-	// Holds the result of filter operations on individual Byte
-	uint16_t res;
-	int16_t resX;
-	int16_t resY;
-
 	// Prefetch PREFETCH_ROWS lines of image
 	macro_prefetch_rows;
 	for(int row = FILTER_SIZE_H; row < img_h - FILTER_SIZE_H; row++) {
@@ -104,9 +95,9 @@ THREAD_ENTRY() {
 	
 		for(int col = FILTER_SIZE_H; col < img_w - FILTER_SIZE_H; col++) {
 			// Reset temporary accumulation buffer
-			res = 0;
-			resX = 0;
-			resY = 0;
+			uint16_t res = 0;
+			int16_t resX = 0;
+			int16_t resY = 0;
 
 			uint16_t filter_ptr = 0;
 			for(int i = -FILTER_SIZE_H; i <= FILTER_SIZE_H; i++) {
@@ -141,7 +132,6 @@ THREAD_ENTRY() {
 		macro_write_row;
 	}
 
-	std::cout << "Hello from CPP thread\n";
 	MBOX_PUT(rcs_rt2sw, 0xffffffffffffffff);
 	THREAD_EXIT();
 }

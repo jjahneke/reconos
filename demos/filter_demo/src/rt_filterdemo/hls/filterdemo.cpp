@@ -87,13 +87,13 @@ THREAD_ENTRY() {
 
 	// Prefetch PREFETCH_ROWS lines of image
 	macro_prefetch_rows;
-	for(int row = FILTER_SIZE_H; row < CC_H - FILTER_SIZE_H; row++) {
+	for(int row = FILTER_SIZE_H; row < img_h - FILTER_SIZE_H; row++) {
 		macro_read_row;
 		for(int i = 0; i < CC_W/8; i++) {
 			_out[i] = 0;
 		}
 	
-		for(int col = FILTER_SIZE_H; col < CC_W - FILTER_SIZE_H; col++) {
+		for(int col = FILTER_SIZE_H; col < img_w - FILTER_SIZE_H; col++) {
 			// Reset temporary accumulation buffer
 			res = 0;
 			resX = 0;
@@ -103,7 +103,7 @@ THREAD_ENTRY() {
 			for(int i = -FILTER_SIZE_H; i <= FILTER_SIZE_H; i++) {
 				for(int j = -FILTER_SIZE_H; j <= FILTER_SIZE_H; j++) {
 					uint8_t _byte = cache[(row+i)%CACHE_LINES * CC_W + (col+j)];
-					res += _byte * filterG[filter_ptr];
+					res += _byte * filterU[filter_ptr];
 				
 				//	if(mode == 0) {
 				//		res += _byte * filterU[filter_ptr];

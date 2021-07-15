@@ -1,5 +1,6 @@
 #include "reconos_calls.h"
 #include "reconos_thread.h"
+#include "hls_math.h"
 
 #define CC_W 1280
 #define CC_H 384
@@ -120,7 +121,7 @@ THREAD_ENTRY() {
 				_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
 			}
 			else {
-				_out[col/8] |= (((uint64_t)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
+				_out[col/8] |= (((uint64_t)(((uint16_t)hls::abs(resX) + (uint16_t)hls::abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
 			}
 		}
 		// Write-back computed row

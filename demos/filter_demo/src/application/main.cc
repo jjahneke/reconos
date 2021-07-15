@@ -7,6 +7,7 @@
 extern "C" {
 	#include "reconos.h"
 	#include "reconos_app.h"
+	#include "timer.h"
 }
 
 #define CC_W 1280
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
 
 	reconos_init();
 	reconos_app_init();
+	timer_init();
 	clk = reconos_clock_threads_set(100000);
 
 	if(sw_or_hw == 0) { 
@@ -59,6 +61,8 @@ int main(int argc, char **argv) {
 
 	// Do thread work
 	std::cout << "Starting thread work" << std::endl;
+	unsigned int t_start, t_end;
+	t_start = timer_get();
 	{
 		uint64_t ret;
 
@@ -72,8 +76,10 @@ int main(int argc, char **argv) {
 			ret = mbox_get(rcs_rt2sw);
 		}
 		while(ret != 0xffffffffffffffff);
-		std::cout << "Done with thread work!" << std::endl;
 	}
+	t_end = timer_get();
+	std::cout << "Done with thread work!" << std::endl;
+	std::cout << "Compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
 
 	// Create image from allocated memory
 	for(int row = 0; row < rows; row++) {

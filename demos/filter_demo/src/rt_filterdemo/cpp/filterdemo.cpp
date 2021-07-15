@@ -46,7 +46,8 @@ const int8_t filterY[] = { 1, 0, -1,
 #define macro_prefetch_rows {\
 	for(int i = 0; i < PREFETCH_ROWS; i++) {\
 		uint64_t _offset = (((uint64_t)ptr_i + i * img_w) & 7);\
-		MEM_READ1((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], CC_W + 8);\
+		uint64_t _len = (img_w + _offset + 8)&(~7);\
+		MEM_READ1((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], _len);\
 		for(int ii = 0; ii < CC_W; ii++) {\
 			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
 			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
@@ -59,7 +60,9 @@ const int8_t filterY[] = { 1, 0, -1,
 
 #define macro_read_row {\
 	uint64_t ptr_limit = (row-FILTER_SIZE_H) % img_h;\
-	MEM_READ1((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], CC_W + 8);\
+	uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
+	uint64_t _len = (img_w + _offset + 8)&(~7);\
+	MEM_READ1((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], _len);\
 	for(int ii = 0; ii < CC_W; ii++) {\
 		uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
 		uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
@@ -72,7 +75,7 @@ const int8_t filterY[] = { 1, 0, -1,
 }
 
 #define macro_write_row {\
-	MEM_WRITE1(&_out[0], (uint64_t)(ptr_o + (row-1)*CC_W), CC_W);\
+	MEM_WRITE1(&_out[0], (uint64_t)(ptr_o + row*CC_W), CC_W);\
 }
 
 THREAD_ENTRY() {
@@ -93,17 +96,13 @@ THREAD_ENTRY() {
 
 	// Prefetch PREFETCH_ROWS lines of image
 	macro_prefetch_rows;
-	for(int row = FILTER_SIZE_H; row < CC_H - FILTER_SIZE_H; row++) {
-		// Write-back computed row
-		if(row > FILTER_SIZE_H) {
-			macro_write_row;
-		}
+	for(int row = FILTER_SIZE_H; row < img_h - FILTER_SIZE_H; row++) {
 		macro_read_row;
 		for(int i = 0; i < CC_W/8; i++) {
 			_out[i] = 0;
 		}
 	
-		for(int col = FILTER_SIZE_H; col < CC_W - FILTER_SIZE_H; col++) {
+		for(int col = FILTER_SIZE_H; col < img_w - FILTER_SIZE_H; col++) {
 			// Reset temporary accumulation buffer
 			res = 0;
 			resX = 0;
@@ -138,6 +137,8 @@ THREAD_ENTRY() {
 				_out[col/8] |= (((uint64_t)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
 			}
 		}
+		// Write-back computed row
+		macro_write_row;
 	}
 
 	std::cout << "Hello from CPP thread\n";

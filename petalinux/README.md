@@ -10,7 +10,7 @@ Instead, use the ZCU104 Board Support Package with '--source zcu104.bsp'.
 
 3. Configure system-level options:
 `petalinux-config`
-  * Set DTG->Machine_name to ZCU102 board
+  * Set DTG->Machine_name to "zcu102-rev1.0"
   * Enable kernel & U-Boot autoconfig
   * Manual kernel boot args: `earlycon clk_ignore_unused root=/dev/nfs nfsroot=<IP>:<NFS-PATH>,tcp,nfsvers=3 ip=dhcp rw`
   * Enable FPGA-Manager

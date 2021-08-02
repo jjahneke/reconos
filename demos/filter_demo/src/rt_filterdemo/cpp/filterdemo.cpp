@@ -5,12 +5,22 @@ extern "C" {
 #include <iostream>
 #include <cstring>
 
+#if 1 // ReconOS64
+    #define BASETYPE uint64_t
+    #define BYTES 8
+    #define MASK 7
+#else // ReconOS32
+    #define BASETYPE uint32_t
+    #define BYTES 4
+    #define MASK 3
+#endif
+
 #define MEM_READ1(src, dest, n) memcpy((void*)dest, (void*)src, n)
 #define MEM_WRITE1(src, dest, n) memcpy((void*)dest, (void*)src, n)
 
 #define CC_W 1280
 #define CC_H 384
-const uint64_t BYTEMASK = 0x00000000000000ff;
+const BASETYPE BYTEMASK = 0xff;
 
 // Filter properties
 #define FILTER_SIZE 3
@@ -40,56 +50,60 @@ const int8_t filterY[] = { 1, 0, -1,
 						   1, 0, -1};
 
 #define macro_prefetch_rows {\
-	for(int i = 0; i < PREFETCH_ROWS; i++) {\
-		uint64_t _offset = (((uint64_t)ptr_i + i * img_w) & 7);\
-		uint64_t _len = (img_w + _offset + 8)&(~7);\
-		MEM_READ1((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], _len);\
-		for(int ii = 0; ii < CC_W; ii++) {\
-			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
-			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
-			uint64_t _dword = _in[_dword_ptr];\
-			uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-			cache[i*CC_W + ii] = _byte;\
-		}\
-	}\
+    for(int i = 0; i < PREFETCH_ROWS; i++) {\
+        _offset = ((ptr_i + i * img_w) & MASK);\
+        _len = (img_w + _offset + BYTES)&(~MASK);\
+        MEM_READ1(((ptr_i + i * img_w)&(~MASK)), &_in[0], _len);\
+        for(int ii = 0; ii < CC_W; ii++) {\
+            _byte_in_dword = (uint8_t)((_offset + ii) % BYTES);\
+            _dword_ptr = (uint16_t)((_offset + ii) / BYTES);\
+            _dword = _in[_dword_ptr];\
+            _byte = ((_dword & (BYTEMASK << _byte_in_dword*BYTES))>> _byte_in_dword*BYTES);\
+            cache[i*CC_W + ii] = _byte;\
+        }\
+    }\
 }
 
 #define macro_read_row {\
-	uint64_t ptr_limit = (row-FILTER_SIZE_H) % img_h;\
-	uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
-	uint64_t _len = (img_w + _offset + 8)&(~7);\
-	MEM_READ1((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], _len);\
-	for(int ii = 0; ii < CC_W; ii++) {\
-		uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
-		uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
-		uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
-		uint64_t _dword = _in[_dword_ptr];\
-		uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-		uint64_t _cache_line = CC_W * ((row+FILTER_SIZE_H+1) % CACHE_LINES);\
-		cache[_cache_line + ii] = _byte;\
-	}\
+    BASETYPE ptr_limit = (row-FILTER_SIZE_H) % img_h;\
+    _offset = ((ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & MASK);\
+    _len = (img_w + _offset + BYTES)&(~MASK);\
+    MEM_READ1(((ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~MASK)), &_in[0], _len);\
+    for(int ii = 0; ii < CC_W; ii++) {\
+        _byte_in_dword = (uint8_t)((_offset + ii) % BYTES);\
+        _dword_ptr = (uint16_t)((_offset + ii) / BYTES);\
+        _dword = _in[_dword_ptr];\
+        _byte = ((_dword & (BYTEMASK << _byte_in_dword*BYTES))>> _byte_in_dword*BYTES);\
+        _cache_line = CC_W * ((row+FILTER_SIZE_H+1) % CACHE_LINES);\
+        cache[_cache_line + ii] = _byte;\
+    }\
 }
 
 #define macro_write_row {\
-	MEM_WRITE1(&_out[0], (uint64_t)(ptr_o + row*CC_W), CC_W);\
+	MEM_WRITE1(&_out[0], (ptr_o + row*CC_W), CC_W);\
 }
 
 THREAD_ENTRY() {
-	uint8_t cache[CC_W * CACHE_LINES];
-	uint64_t _in[CC_W/8 + 1];
-	uint64_t _out[CC_W/8];
+    // Variables needed for MEM_READ operations
+    BASETYPE _offset, _dword, _cache_line, _len;
+    uint16_t _dword_ptr;
+    uint8_t _byte_in_dword, _byte;
 
-	uint64_t ptr_i = MBOX_GET(rcs_sw2rt);
-	uint64_t img_w = MBOX_GET(rcs_sw2rt);
-	uint64_t img_h = MBOX_GET(rcs_sw2rt);
-	uint64_t ptr_o = MBOX_GET(rcs_sw2rt);
-	uint64_t mode = MBOX_GET(rcs_sw2rt);
+	uint8_t cache[CC_W * CACHE_LINES];
+	BASETYPE _in[CC_W/BYTES + 1];
+	BASETYPE _out[CC_W/BYTES];
+
+	BASETYPE ptr_i = MBOX_GET(rcs_sw2rt);
+	BASETYPE img_w = MBOX_GET(rcs_sw2rt);
+	BASETYPE img_h = MBOX_GET(rcs_sw2rt);
+	BASETYPE ptr_o = MBOX_GET(rcs_sw2rt);
+	BASETYPE mode = MBOX_GET(rcs_sw2rt);
 
 	// Prefetch PREFETCH_ROWS lines of image
 	macro_prefetch_rows;
 	for(int row = FILTER_SIZE_H; row < img_h - FILTER_SIZE_H; row++) {
 		macro_read_row;
-		for(int i = 0; i < CC_W/8; i++) {
+		for(int i = 0; i < CC_W/BYTES; i++) {
 			_out[i] = 0;
 		}
 	
@@ -119,17 +133,20 @@ THREAD_ENTRY() {
 			
 			// Normalize result
 			if(mode == 0) {
-				_out[col/8] |= ((uint64_t)res) << 8*(col&7);
+				_out[col/BYTES] |= ((BASETYPE)res) << BYTES*(col&MASK);
 			}
 			else if(mode == 1) {
-				_out[col/8] |= (((uint64_t)(res >> SHIFT_NORM_GAUSS)) << 8*(col&7));
+				_out[col/BYTES] |= (((BASETYPE)(res >> SHIFT_NORM_GAUSS)) << BYTES*(col&MASK));
 			}
 			else {
-				_out[col/8] |= (((uint64_t)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&7));
+				_out[col/BYTES] |= (((BASETYPE)(((uint16_t)abs(resX) + (uint16_t)abs(resY)) >> SHIFT_NORM_SOBEL)) << BYTES*(col&MASK));
 			}
 		}
 		// Write-back computed row
-		macro_write_row;
+		uint64_t _addr = ptr_o + row*CC_W;
+		MBOX_PUT(rcs_rt2sw, _addr);
+		MEM_WRITE1(&_out[0], _addr, CC_W);
+		//macro_write_row;
 	}
 
 	MBOX_PUT(rcs_rt2sw, 0xffffffffffffffff);

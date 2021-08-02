@@ -4,6 +4,19 @@
 #include <opencv2/core/core.hpp>
 #include <fstream>
 
+#if 1 // ReconOS64
+    #define BASETYPE uint64_t
+    #define BYTES 8
+    #define MASK 7
+#else // ReconOS32
+    #define BASETYPE uint32_t
+    #define BYTES 4
+    #define MASK 3
+#endif
+
+
+
+
 extern "C" {
 	#include "reconos.h"
 	#include "reconos_app.h"
@@ -64,35 +77,30 @@ int main(int argc, char **argv) {
 	unsigned int t_start, t_end;
 	t_start = timer_get();
 	{
-		uint64_t ret;
+		BASETYPE ret;
 
-		mbox_put(rcs_sw2rt, (uint64_t)ptr_i);
-		mbox_put(rcs_sw2rt, (uint64_t)cols);
-		mbox_put(rcs_sw2rt, (uint64_t)rows);
-		mbox_put(rcs_sw2rt, (uint64_t)ptr_o);
-		mbox_put(rcs_sw2rt, (uint64_t)mode);
+		mbox_put(rcs_sw2rt, (BASETYPE)ptr_i);
+		mbox_put(rcs_sw2rt, (BASETYPE)cols);
+		mbox_put(rcs_sw2rt, (BASETYPE)rows);
+		mbox_put(rcs_sw2rt, (BASETYPE)ptr_o);
+		mbox_put(rcs_sw2rt, (BASETYPE)mode);
 
 		do {
 			ret = mbox_get(rcs_rt2sw);
-			std::cout << "Before MEM_WRITE of row " << ret << std::endl;
+			std::cout << "Before MEM_WRITE to addr " << (uint64_t*)ret << std::endl;
 		}
 		while(ret != 0xffffffffffffffff);
 	}
 	t_end = timer_get();
 	std::cout << "Done with thread work!" << std::endl;
 	std::cout << "Compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
-	std::cout << "Pointer to mem is " << (uint64_t*)ptr_o << std::endl;
+	std::cout << "Pointer to mem is " << (BASETYPE*)ptr_o << std::endl;
 
 	// Create image from allocated memory
 	for(int row = 0; row < rows; row++) {
 	    uint8_t* row_ptr = (uint8_t*)img_o.ptr(row);
 	    memcpy(row_ptr, ptr_o + (row)*CC_W, cols);
 	}
-
-//	std::cout << "Base is " << (uint64_t*)ptr_o << std::endl;
-//	for(int row = 1; row < 4; row++) {
-//		std::cout << "Row " << row << " is " << (uint64_t*)(ptr_o + row*CC_W) << std::endl;
-//	}
 
 	// Store image
 	cv::imwrite(argv[4], img_o);

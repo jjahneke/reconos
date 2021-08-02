@@ -54,7 +54,6 @@ const int8_t filterY[] = { 1, 0, -1,
 	uint64_t _len = (img_w + _offset + 8)&(~7);\
 	MEM_READ((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], _len);\
 	for(int ii = 0; ii < CC_W; ii++) {\
-		uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
 		uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
 		uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
 		uint64_t _dword = _in[_dword_ptr];\

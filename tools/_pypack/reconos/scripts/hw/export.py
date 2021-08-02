@@ -186,7 +186,7 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 				  cd {0};
 				  vivado_hls -f script_csynth.tcl;
 				  vivado -mode batch -notrace -nojournal -nolog -source script_vivado_edn.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
-				  shell=True)
+				  shell=True, executable="/bin/bash")
 
 				dictionary = {}
 				dictionary["NAME"] = thread.name.lower()
@@ -208,7 +208,7 @@ def _export_hw_thread_ise_vivado(prj, hwdir, link, thread):
 			  source /opt/Xilinx/Vivado/{1}/settings64.sh;
 			  cd {0};
 			  vivado_hls -f script_csynth.tcl;""".format(tmp.name, prj.impinfo.hls[1]),
-			  shell=True)
+			  shell=True, executable="/bin/bash")
 
 			dictionary = {}
 			dictionary["NAME"] = thread.name.lower()
@@ -249,7 +249,9 @@ def _export_hw_vivado(prj, hwdir, link):
 	
 	tmpl = "ref_" + prj.impinfo.os + "_" + "_".join(prj.impinfo.board) + "_" + prj.impinfo.design + "_" + prj.impinfo.xil[0] + "_" + prj.impinfo.xil[1]
 	print("Using template directory " + tmpl)
-	# TODO: No error message when template directory is not found!
+	if not shutil2.exists(prj.get_template(tmpl)):
+		log.error("Template directory not found in project or ReconOS repository")
+		return
 	prj.apply_template(tmpl, dictionary, hwdir, link)
 
 	log.info("Generating threads ...")
@@ -261,7 +263,7 @@ def _export_hw_vivado(prj, hwdir, link):
 					source /opt/Xilinx/Vivado/{1}/settings64.sh;
 					cd {0};
 					vivado -mode batch -notrace -nojournal -nolog -source create_ip_library.tcl;""".format(hwdir, prj.impinfo.xil[1]),
-					shell=True)
+					shell=True, executable="/bin/bash")
 	if result != 0 :
 		print("[RDK] Generation of Vivado IP repository failed. Maybe you specified unknown components in build.cfg?")
 		exit(1)
@@ -271,5 +273,5 @@ def _export_hw_vivado(prj, hwdir, link):
 					source /opt/Xilinx/Vivado/{1}/settings64.sh;
 					cd {0};
 					vivado -mode batch -notrace -nojournal -nolog -source export.tcl -tclargs -proj_name myReconOS -proj_path . ;""".format(hwdir, prj.impinfo.xil[1]),
-					shell=True)
+					shell=True, executable="/bin/bash")
 

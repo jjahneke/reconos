@@ -122,6 +122,18 @@ entity reconos_clock is
 end entity reconos_clock;
 
 architecture imp of reconos_clock is
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+	
+	ATTRIBUTE X_INTERFACE_INFO of CLK_Ref: SIGNAL is "xilinx.com:signal:clock:1.0 CLK_Ref CLK";
+	
+	<<generate for CLOCKS>>
+	ATTRIBUTE X_INTERFACE_INFO of CLK<<Id>>_Out: SIGNAL is "xilinx.com:signal:clock:1.0 CLK<<Id>>_Out CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of CLK<<Id>>_Out: SIGNAL is "FREQ_HZ 100000000";
+	<<end generate>>
+
+
 	--
 	-- Internal ipif signals
 	--

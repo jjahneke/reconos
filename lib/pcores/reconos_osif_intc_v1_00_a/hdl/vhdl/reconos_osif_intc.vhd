@@ -93,6 +93,17 @@ end entity reconos_osif_intc;
 
 
 architecture implementation of reconos_osif_intc is
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+	
+	<<generate for SLOTS>>
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_INTC_In_<<Id>>: SIGNAL is "xilinx.com:signal:interrupt:1.0 OSIF_INTC_In_<<Id>> INTERRUPT";
+	ATTRIBUTE X_INTERFACE_PARAMETER of OSIF_INTC_In_<<Id>>: SIGNAL is "SENSITIVITY LEVEL_HIGH";
+	<<end generate>>
+	
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_INTC_Out: SIGNAL is "xilinx.com:signal:interrupt:1.0 OSIF_INTC_Out INTERRUPT";
+	ATTRIBUTE X_INTERFACE_PARAMETER of OSIF_INTC_Out: SIGNAL is "SENSITIVITY LEVEL_HIGH";
 
 	constant USER_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;
 	constant IPIF_SLV_DWIDTH   : integer   := C_S_AXI_DATA_WIDTH;

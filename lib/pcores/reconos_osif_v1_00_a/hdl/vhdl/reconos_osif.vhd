@@ -115,6 +115,25 @@ entity reconos_osif is
 end entity reconos_osif;
 
 architecture imp of reconos_osif is
+	-- Declare port attributes for the Vivado IP Packager
+	ATTRIBUTE X_INTERFACE_INFO : STRING;
+	ATTRIBUTE X_INTERFACE_PARAMETER : STRING;
+	
+	ATTRIBUTE X_INTERFACE_INFO of s00_axi_aclk: SIGNAL is "xilinx.com:signal:clock:1.0 s00_axi_aclk CLK";
+	ATTRIBUTE X_INTERFACE_PARAMETER of s00_axi_aclk: SIGNAL is "ASSOCIATED_BUSIF <<generate for SLOTS>>OSIF_Hw2Sw_<<Id>>:OSIF_Sw2Hw_<<Id>>:<<end generate>>s00_axi";
+	
+	<<generate for SLOTS>>
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_Empty:    SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_Empty";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Hw2Sw_<<Id>>_In_RE:       SIGNAL is "cs.upb.de:reconos:FIFO_S:1.0 OSIF_Hw2Sw_<<Id>> FIFO_S_RE";
+	<<end generate>>
+	
+	<<generate for SLOTS>>
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Data:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_Data";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_Full:     SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_Full";
+	ATTRIBUTE X_INTERFACE_INFO of OSIF_Sw2Hw_<<Id>>_In_WE:       SIGNAL is "cs.upb.de:reconos:FIFO_M:1.0 OSIF_Sw2Hw_<<Id>> FIFO_M_WE";
+	<<end generate>>
+
 	--
 	-- Internal ipif signals
 	--

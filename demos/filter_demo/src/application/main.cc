@@ -8,13 +8,13 @@
     #define BASETYPE uint64_t
     #define BYTES 8
     #define MASK 7
+	const BASETYPE _DONE = 0xffffffffffffffff;
 #else // ReconOS32
     #define BASETYPE uint32_t
     #define BYTES 4
     #define MASK 3
+	const BASETYPE _DONE = 0xffffffff;
 #endif
-
-
 
 
 extern "C" {
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 			ret = mbox_get(rcs_rt2sw);
 			std::cout << "Before MEM_WRITE to addr " << (uint64_t*)ret << std::endl;
 		}
-		while(ret != 0xffffffffffffffff);
+		while(ret != _DONE);
 	}
 	t_end = timer_get();
 	std::cout << "Done with thread work!" << std::endl;

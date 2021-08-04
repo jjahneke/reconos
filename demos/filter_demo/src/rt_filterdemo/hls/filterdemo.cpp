@@ -6,10 +6,12 @@
     #define BASETYPE uint64_t
     #define BYTES 8
     #define MASK 7
+	const BASETYPE _DONE = 0xffffffffffffffff;
 #else // ReconOS32
     #define BASETYPE uint32_t
     #define BYTES 4
     #define MASK 3
+	const BASETYPE _DONE = 0xffffffff;
 #endif
 
 #define CC_W 1280
@@ -52,7 +54,7 @@ const int8_t filterY[] = { 1, 0, -1,
 			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % BYTES);\
 			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / BYTES);\
 			BASETYPE _dword = _in[_dword_ptr];\
-			uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*BYTES))>> _byte_in_dword*BYTES);\
+			uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
 			cache[i*CC_W + ii] = _byte;\
 		}\
 	}\
@@ -67,7 +69,7 @@ const int8_t filterY[] = { 1, 0, -1,
 		uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % BYTES);\
 		uint16_t _dword_ptr = (uint16_t)((_offset + ii) / BYTES);\
 		BASETYPE _dword = _in[_dword_ptr];\
-		uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*BYTES))>> _byte_in_dword*BYTES);\
+		uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
 		BASETYPE _cache_line = CC_W * ((row+FILTER_SIZE_H+1) % CACHE_LINES);\
 		cache[_cache_line + ii] = _byte;\
 	}\
@@ -124,21 +126,20 @@ THREAD_ENTRY() {
 			
 			// Normalize result
 			if(mode == 0) {
-				_out[col/BYTES] |= ((BASETYPE)res) << BYTES*(col&MASK);
+				_out[col/BYTES] |= ((BASETYPE)res) << 8*(col&MASK);
 			}
 			else if(mode == 1) {
-				_out[col/BYTES] |= (((BASETYPE)(res >> SHIFT_NORM_GAUSS)) << BYTES*(col&MASK));
+				_out[col/BYTES] |= (((BASETYPE)(res >> SHIFT_NORM_GAUSS)) << 8*(col&MASK));
 			}
 			else {
-				_out[col/BYTES] |= (((BASETYPE)(((uint16_t)hls::abs(resX) + (uint16_t)hls::abs(resY)) >> SHIFT_NORM_SOBEL)) << BYTES*(col&MASK));
+				_out[col/BYTES] |= (((BASETYPE)(((uint16_t)hls::abs(resX) + (uint16_t)hls::abs(resY)) >> SHIFT_NORM_SOBEL)) << 8*(col&MASK));
 			}
 		}
 		// Write-back computed row
-		uint64_t _addr = ptr_o + row*CC_W;
+		BASETYPE _addr = ptr_o + row*CC_W;
 		MBOX_PUT(rcs_rt2sw, _addr);
-		MEM_WRITE(&_out[0], _addr, CC_W);
-		//macro_write_row;
+		macro_write_row;
 	}
 
-	MBOX_PUT(rcs_rt2sw, 0xffffffffffffffff);
+	MBOX_PUT(rcs_rt2sw, _DONE);
 }

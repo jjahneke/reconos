@@ -4,50 +4,54 @@
 #include "common/xf_common.hpp"
 #include "features/xf_fast.hpp"
 
-#define CC_W 1280
-#define CC_H 384
-const uint64_t BYTEMASK = 0x00000000000000ff;
+#define BASETYPE uint64_t
+#define BYTES 8
+#define MASK 7
+#define DWORDS_KPT 1
+	
+#define MEM_READ1(src, dest, n) memcpy((void*)dest, (void*)src, n)
+#define MEM_WRITE1(src, dest, n) memcpy((void*)dest, (void*)src, n)
 
-#define FAST_TH 7
-#define MAXPERBLOCK 200
-#define DWORDS_KPT 2
+#define MAX_W 640 // In pixel
+#define BYTEPERPIXEL 3
+#define CC_W (MAX_W*BYTEPERPIXEL) // In Byte
+#define CC_H 480
+const BASETYPE BYTEMASK = 0xff;
 
 #define BORDER_EDGE 16
 #define WINDOW_SIZE 32
 #define MAT_SIZE (WINDOW_SIZE + 6)
 #define CACHE_LINES (WINDOW_SIZE * 2)
-#define PREFETCH_ROWS (CACHE_LINES)
+
+#define FAST_TH 7
+#define MAXPERBLOCK 200
 
 #define NROWS (int)((CC_H - 2*BORDER_EDGE) / WINDOW_SIZE)
-#define NCOLS (int)((CC_W - 2*BORDER_EDGE) / WINDOW_SIZE)
-
-#define macro_prefetch_rows {\
-	for(int i = 0; i < PREFETCH_ROWS; i++) {\
-		uint64_t _offset = (((uint64_t)ptr_i + i * img_w) & 7);\
-		MEM_READ((((uint64_t)ptr_i + i * img_w)&(~7)), &_in[0], CC_W + 8);\
-		for(int ii = 0; ii < CC_W; ii++) {\
-			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
-			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
-			uint64_t _dword = _in[_dword_ptr];\
-			uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8)) >> _byte_in_dword*8);\
-			cache[i*CC_W + ii] = _byte;\
-		}\
-		row_count++;\
-	}\
-}
+#define NCOLS (int)((MAX_W - 2*BORDER_EDGE) / WINDOW_SIZE)
 
 #define macro_read_next_batch {\
 	for(int _row = 0; _row < WINDOW_SIZE; _row++) {\
-		uint64_t ptr_limit = row_count % img_h;\
-		MEM_READ((((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w)&(~7)), &_in[0], CC_W + 8);\
-		for(int ii = 0; ii < CC_W; ii++) {\
-			uint64_t _offset = (((uint64_t)ptr_i + (PREFETCH_ROWS + (ptr_limit)) * img_w) & 7);\
-			uint8_t _byte_in_dword = (uint8_t)((_offset + ii) % 8);\
-			uint16_t _dword_ptr = (uint16_t)((_offset + ii) / 8);\
-			uint64_t _dword = _in[_dword_ptr];\
-			uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-			uint64_t _cache_line = CC_W * (row_count % CACHE_LINES);\
-			cache[_cache_line + ii] = _byte;\
+		ptr_limit = row_count % img_h;\
+		_offset = ((ptr_i + ptr_limit * _img_w) & MASK);\
+		_len = (_img_w + _offset + BYTES)&(~MASK);\
+		_addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
+		MEM_READ1(_addr, &_in[0], _len);\
+		for(int ii = 0; ii < MAX_W; ii++) {\
+			uint8_t _b, _g, _r;\
+			for(int b = 0; b < BYTEPERPIXEL; b++) {\
+				_byte_in_dword = (uint8_t)((_offset + ii*BYTEPERPIXEL + b) % BYTES);\
+				_dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
+				_dword = _in[_dword_ptr];\
+				_byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
+				if(b == 0)\
+					_b = _byte;\
+				else if(b == 1)\
+					_g = _byte;\
+				else if(b == 2)\
+					_r = _byte;\
+			}\
+			_cache_line = MAX_W * (row_count % CACHE_LINES);\
+			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
 		row_count++;\
 	}\
@@ -56,29 +60,42 @@ const uint64_t BYTEMASK = 0x00000000000000ff;
 #define populate_xfMat {\
 	for(int _row = 0; _row < MAT_SIZE; _row++) {\
 		for(int _col = 0; _col < MAT_SIZE; _col++) {\
-			uint8_t v = cache[(startRow+_row)%CACHE_LINES * CC_W + (startCol+_col)];\
+			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];\
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
 }
 
+uint8_t kernel(uint8_t b, uint8_t r, uint8_t g) {
+	#pragma HLS inline
+	return (uint8_t)(0.114*b + 0.587*r + 0.299*g);
+}
+
 THREAD_ENTRY() {
 	THREAD_INIT();
-	uint8_t cache[CC_W * CACHE_LINES];
-	uint64_t _in[CC_W/8 + 1];
+	// Variables needed for MEM_READ operations
+	BASETYPE _offset, _dword, _cache_line, _len, _addr, ptr_limit;
+	uint16_t _dword_ptr;
+	uint8_t _byte_in_dword, _byte;
+
+	BASETYPE ptr_i = MBOX_GET(rcsfast_sw2rt);
+	BASETYPE ptr_o = MBOX_GET(rcsfast_sw2rt);
+	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
+	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
+	
+	// Pixel length to Byte length
+	unsigned int _img_w = img_w*BYTEPERPIXEL;
+
+	uint8_t cache[MAX_W * CACHE_LINES];
+	BASETYPE _in[CC_W/BYTES + 1];
+	
 	uint16_t row_count = 0;
-	uint64_t memOut[DWORDS_KPT];
+	BASETYPE memOut[DWORDS_KPT];
 
-	uint64_t ptr_i = MBOX_GET(rcsfast_sw2rt);
-	uint64_t img_w = MBOX_GET(rcsfast_sw2rt);
-	uint64_t img_h = MBOX_GET(rcsfast_sw2rt);
-	uint64_t ptr_o = MBOX_GET(rcsfast_sw2rt);
-
-	// Prefetch PREFETCH_ROWS lines of image
-	macro_prefetch_rows;
+	// Prefetch BATCH lines of image
+	macro_read_next_batch;
 	for(int rowStep = 0; rowStep < NROWS; rowStep++) {
-		if(rowStep > 0)
-			macro_read_next_batch;
+		macro_read_next_batch;
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
@@ -98,23 +115,17 @@ THREAD_ENTRY() {
 			// Mat eval & memWrite;
 			for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 				for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
-					uint64_t r = mFast_out.read(_mrow * MAT_SIZE + _mcol);
-					uint64_t x = _mcol + startCol;
-					uint64_t y = _mrow + startRow;
-					uint64_t a = 0;
-					if(r > 0) {
-						uint64_t memOut[DWORDS_KPT];
-						memOut[0] = (x << 32) | y;
-						memOut[1] = (a << 32) | r;
-						uint64_t _offset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
-						MEM_WRITE(memOut, (ptr_o + (_offset*DWORDS_KPT*8)), DWORDS_KPT*8);
-						local_cnt++;
-					}
-				}
+					BASETYPE r = mFast_out.read(_mrow * MAT_SIZE + _mcol);
+					BASETYPE x = _mcol + startCol;
+					BASETYPE y = _mrow + startRow;
+					BASETYPE a = 0;
+					memOut[0] = (x << 48) | (y << 32) | (a << 16) | r;
+					BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
+					MEM_WRITE1(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), DWORDS_KPT*BYTES);
+					local_cnt++;
 			}
-			} // End dataflow
+			} // end dataflow
 		}
 	}
-
-	MBOX_PUT(rcsfast_rt2sw, 0xffffffffffffffff);
+	MBOX_PUT(rcsfast_rt2sw, -1);
 }

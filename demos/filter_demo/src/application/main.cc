@@ -70,7 +70,9 @@ int main(int argc, char **argv) {
 
 	cv::Mat img_o = cv::Mat::zeros(rows, cols, CV_8U);
 	uint8_t* ptr_i = (uint8_t*)img_i.data;
-	uint8_t* ptr_o = (uint8_t*)calloc(CC_W * CC_H, sizeof(uint8_t));
+	//uint8_t* ptr_o = (uint8_t*)calloc(CC_W * CC_H, sizeof(uint8_t));
+	uint8_t* ptr_o = (uint8_t*)malloc(CC_W * CC_H * sizeof(uint8_t));
+	memset(ptr_o, 0, CC_W * CC_H * sizeof(uint8_t));
 
 	// Do thread work
 	std::cout << "Starting thread work" << std::endl;

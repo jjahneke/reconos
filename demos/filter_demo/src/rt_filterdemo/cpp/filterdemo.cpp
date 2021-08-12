@@ -146,7 +146,7 @@ THREAD_ENTRY() {
 		}
 		// Write-back computed row
 		BASETYPE _addr = ptr_o + row*CC_W;
-		MBOX_PUT(rcs_rt2sw, _addr);
+		//MBOX_PUT(rcs_rt2sw, _addr);
 		macro_write_row;
 	}
 

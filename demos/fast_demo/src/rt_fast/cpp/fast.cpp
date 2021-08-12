@@ -13,12 +13,14 @@ extern "C" {
     #define BYTES 8
     #define MASK 7
 	#define DWORDS_KPT 1
+	#define DONEFLAG 0xffffffffffffffff
 #else // ReconOS32
 	#define R64 0
     #define BASETYPE uint32_t
     #define BYTES 4
     #define MASK 3
 	#define DWORDS_KPT 2
+	#define DONEFLAG 0xffffffff
 #endif
 	
 #define MEM_READ1(src, dest, n) memcpy((void*)dest, (void*)src, n)
@@ -141,6 +143,6 @@ THREAD_ENTRY() {
 			}
 		}
 	}
-	MBOX_PUT(rcsfast_rt2sw, -1);
+	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);
 	THREAD_EXIT();
 }

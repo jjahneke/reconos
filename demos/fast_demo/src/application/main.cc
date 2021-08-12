@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <cstdlib>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <fstream>
@@ -15,12 +16,14 @@ extern "C" {
     #define BYTES 8
     #define MASK 7
 	#define DWORDS_KPT 1
+	#define DONEFLAG 0xffffffffffffffff
 #else // ReconOS32
 	#define R64 0
     #define BASETYPE uint32_t
     #define BYTES 4
     #define MASK 3
 	#define DWORDS_KPT 2
+	#define DONEFLAG 0xffffffff
 #endif
 	
 // Only used by R64
@@ -86,7 +89,10 @@ int main(int argc, char** argv) {
 	//cv::Mat _dummy = cv::Mat::zeros(2,img_w,img_i.type());
 	//img_i.push_back(_dummy);
 	uint8_t* ptr_i = (uint8_t*)img_i.data;
-	BASETYPE* kpt_ptr = (BASETYPE*)calloc(mem_size_kpt, sizeof(BASETYPE));
+	//BASETYPE* kpt_ptr = (BASETYPE*)calloc(mem_size_kpt, sizeof(BASETYPE));
+	BASETYPE* kpt_ptr = (BASETYPE*)malloc(mem_size_kpt * sizeof(BASETYPE));
+	memset(kpt_ptr, 0, mem_size_kpt * sizeof(BASETYPE));
+
 	std::vector<cv::KeyPoint> vToDistributeKeys;
 	vToDistributeKeys.reserve(MAXPERBLOCK*NROWS*NCOLS);
 
@@ -102,7 +108,7 @@ int main(int argc, char** argv) {
 	do {
 		ret = mbox_get(rcsfast_rt2sw);
 	}
-	while(ret != -1);
+	while(ret != DONEFLAG);
 
 	std::ofstream myFile;
 	myFile.open("__result.txt", std::ios_base::trunc);

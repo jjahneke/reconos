@@ -8,6 +8,7 @@
 #define BYTES 8
 #define MASK 7
 #define DWORDS_KPT 1
+#define DONEFLAG 0xffffffffffffffff
 	
 #define MAX_W 640 // In pixel
 #define BYTEPERPIXEL 3
@@ -109,17 +110,19 @@ THREAD_ENTRY() {
 			for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 				for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
 					BASETYPE r = mFast_out.read(_mrow * MAT_SIZE + _mcol);
-					BASETYPE x = _mcol + startCol;
-					BASETYPE y = _mrow + startRow;
-					BASETYPE a = 0;
-					memOut[0] = (x << 48) | (y << 32) | (a << 16) | r;
-					BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
-					MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), DWORDS_KPT*BYTES);
-					local_cnt++;
+					if(r > 0) {
+						BASETYPE x = _mcol + startCol;
+						BASETYPE y = _mrow + startRow;
+						BASETYPE a = 0;
+						memOut[0] = (x << 48) | (y << 32) | (a << 16) | r;
+						BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
+						MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), DWORDS_KPT*BYTES);
+						local_cnt++;
+					}
 				}
 			}
 			} // end dataflow
 		}
 	}
-	MBOX_PUT(rcsfast_rt2sw, -1);
+	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);
 }

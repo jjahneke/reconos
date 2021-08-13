@@ -8,6 +8,7 @@
 extern "C" {
 	#include "reconos.h"
 	#include "reconos_app.h"
+	#include "timer.h"
 }
 
 #ifdef __aarch64__ // ReconOS64
@@ -65,6 +66,7 @@ int main(int argc, char** argv) {
 	
 	reconos_init();
 	reconos_app_init();
+	timer_init();
 	int clk = reconos_clock_threads_set(100000);
 
 	int sw_or_hw = atoi(argv[1]);
@@ -96,19 +98,26 @@ int main(int argc, char** argv) {
 	std::vector<cv::KeyPoint> vToDistributeKeys;
 	vToDistributeKeys.reserve(MAXPERBLOCK*NROWS*NCOLS);
 
-	// Thread computations
-	mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_i);
-	mbox_put(rcsfast_sw2rt, (BASETYPE)kpt_ptr);
-	mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
-	mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
+	std::cout << "Starting thread work" << std::endl;
+	unsigned int t_start, t_end;
+	t_start = timer_get();
+	{
+		// Thread computations
+		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_i);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)kpt_ptr);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
+		
+		std::cout << "Sent data to thread\nWaiting for answer...\n";
 	
-	std::cout << "Sent data to thread\nWaiting for answer...\n";
-
-	BASETYPE ret;
-	do {
-		ret = mbox_get(rcsfast_rt2sw);
+		BASETYPE ret;
+		do {
+			ret = mbox_get(rcsfast_rt2sw);
+		}
+		while(ret != DONEFLAG);
 	}
-	while(ret != DONEFLAG);
+	t_end = timer_get();
+	std::cout << "Thread compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
 
 	std::ofstream myFile;
 	myFile.open("__result.txt", std::ios_base::trunc);
@@ -116,7 +125,8 @@ int main(int argc, char** argv) {
 	uint32_t nfeatures = 0;
 	for(unsigned int b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
-		for(int i = 0; i < MAXPERBLOCK; i++){
+		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
+		for(int i = 1; i < inBlock+1; i++){
 			int x,y;
 			float a,r;
 			if(R64) {
@@ -134,9 +144,9 @@ int main(int argc, char** argv) {
 			uint32_t id = nfeatures;
 			
 			// Exit condition for the block, i.e. not all 100 allowed features were filled
-			if (x == 0 ||  y == 0){
-				break;
-			}
+		//	if (x == 0 ||  y == 0){
+		//		break;
+		//	}
 			
 			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
 				continue;

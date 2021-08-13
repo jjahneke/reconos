@@ -45,18 +45,18 @@ const BASETYPE BYTEMASK = 0xff;
 
 #define macro_read_next_batch {\
 	for(int _row = 0; _row < WINDOW_SIZE; _row++) {\
-		ptr_limit = row_count % img_h;\
-		_offset = ((ptr_i + ptr_limit * _img_w) & MASK);\
-		_len = (_img_w + _offset + BYTES)&(~MASK);\
-		_addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
+		BASETYPE ptr_limit = row_count % img_h;\
+		BASETYPE _offset = ((ptr_i + ptr_limit * _img_w) & MASK);\
+		BASETYPE _len = (_img_w + _offset + BYTES)&(~MASK);\
+		BASETYPE _addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
 		MEM_READ1(_addr, &_in[0], _len);\
 		for(int ii = 0; ii < MAX_W; ii++) {\
 			uint8_t _b, _g, _r;\
 			for(int b = 0; b < BYTEPERPIXEL; b++) {\
-				_byte_in_dword = (uint8_t)((_offset + ii*BYTEPERPIXEL + b) % BYTES);\
-				_dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
-				_dword = _in[_dword_ptr];\
-				_byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
+				uint8_t _byte_in_dword = (uint8_t)((_offset + ii*BYTEPERPIXEL + b) % BYTES);\
+				uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
+				BASETYPE _dword = _in[_dword_ptr];\
+				uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
 				if(b == 0)\
 					_b = _byte;\
 				else if(b == 1)\
@@ -64,7 +64,7 @@ const BASETYPE BYTEMASK = 0xff;
 				else if(b == 2)\
 					_r = _byte;\
 			}\
-			_cache_line = MAX_W * (row_count % CACHE_LINES);\
+			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
 			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
 		row_count++;\
@@ -85,16 +85,6 @@ uint8_t kernel(uint8_t b, uint8_t r, uint8_t g) {
 }
 
 THREAD_ENTRY() {
-	// Variables needed for MEM_READ operations
-	BASETYPE _offset, _dword, _cache_line, _len, _addr, ptr_limit;
-	uint16_t _dword_ptr;
-	uint8_t _byte_in_dword, _byte;
-
-	uint8_t cache[MAX_W * CACHE_LINES];
-	BASETYPE _in[CC_W/BYTES + 1];
-	
-	uint16_t row_count = 0;
-	BASETYPE memOut[DWORDS_KPT];
 	
 	BASETYPE ptr_i = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE ptr_o = MBOX_GET(rcsfast_sw2rt);
@@ -104,6 +94,12 @@ THREAD_ENTRY() {
 	// Pixel length to Byte length
 	unsigned int _img_w = img_w*BYTEPERPIXEL;
 
+	uint8_t cache[MAX_W * CACHE_LINES];
+	BASETYPE _in[CC_W/BYTES + 1];
+	
+	uint16_t row_count = 0;
+	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
+	
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
 	for(int rowStep = 0; rowStep < NROWS; rowStep++) {
@@ -131,16 +127,17 @@ THREAD_ENTRY() {
 				BASETYPE a = 0;
 				BASETYPE r = (BASETYPE)kp.response;
 				if(R64) {
-					memOut[0] = (x << 48) | (y << 32) | (a << 16) | r;
+					memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 				}
 				else {
 					memOut[0] = (x << 16) | y;
 					memOut[1] = (a << 16) | r;
 				}
-				BASETYPE _offset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
-				MEM_WRITE1(&memOut[0], (ptr_o + (_offset*DWORDS_KPT*BYTES)), DWORDS_KPT*BYTES);
 				local_cnt++;
 			}
+			memOut[0] = local_cnt;
+			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+			MEM_WRITE1(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

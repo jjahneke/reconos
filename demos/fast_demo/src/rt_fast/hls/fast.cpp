@@ -84,7 +84,7 @@ THREAD_ENTRY() {
 	BASETYPE _in[CC_W/BYTES + 1];
 	
 	uint16_t row_count = 0;
-	BASETYPE memOut[DWORDS_KPT];
+	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
@@ -114,13 +114,14 @@ THREAD_ENTRY() {
 						BASETYPE x = _mcol + startCol;
 						BASETYPE y = _mrow + startRow;
 						BASETYPE a = 0;
-						memOut[0] = (x << 48) | (y << 32) | (a << 16) | r;
-						BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep) + local_cnt;
-						MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), DWORDS_KPT*BYTES);
+						memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 						local_cnt++;
 					}
 				}
 			}
+			memOut[0] = local_cnt;
+			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 			} // end dataflow
 		}
 	}

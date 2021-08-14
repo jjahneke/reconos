@@ -22,7 +22,7 @@ const BASETYPE BYTEMASK = 0xff;
 #define CACHE_LINES (WINDOW_SIZE * 2)
 
 #define FAST_TH 7
-#define MAXPERBLOCK 200
+#define MAXPERBLOCK 100
 
 #define NROWS (int)((CC_H - 2*BORDER_EDGE) / WINDOW_SIZE)
 #define NCOLS (int)((MAX_W - 2*BORDER_EDGE) / WINDOW_SIZE)
@@ -53,6 +53,15 @@ const BASETYPE BYTEMASK = 0xff;
 		}\
 		row_count++;\
 	}\
+}
+
+void populate_xfMat(uint8_t* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> _dst, uint16_t startRow, uint16_t startCol) {
+	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
+		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
+			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
+			_dst.write(_row * MAT_SIZE + _col, v);
+		}
+	}
 }
 
 #define populate_xfMat {\
@@ -88,13 +97,13 @@ THREAD_ENTRY() {
 
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
-	for(int rowStep = 0; rowStep < NROWS; rowStep++) {
+	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
 
-		for(int colStep = 0; colStep < NCOLS; colStep++) {
+		for(uint8_t colStep = 0; colStep < NCOLS; colStep++) {
 			uint16_t startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			uint16_t endCol = startCol + WINDOW_SIZE + 6;
 	
@@ -102,9 +111,11 @@ THREAD_ENTRY() {
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
 
+			//#pragma HLS stream variable=mFast_in.data depth=(MAT_SIZE*MAT_SIZE)
+			//#pragma HLS stream variable=mFast_out.data depth=(MAT_SIZE*MAT_SIZE)
 			{
 			#pragma HLS dataflow
-			populate_xfMat;
+			populate_xfMat(cache, mFast_in, startRow, startCol);
 			xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 			// Mat eval & memWrite;
 			for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
@@ -118,8 +129,8 @@ THREAD_ENTRY() {
 						local_cnt++;
 					}
 				}
+				memOut[0] = local_cnt;
 			}
-			memOut[0] = local_cnt;
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 			} // end dataflow

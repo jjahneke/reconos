@@ -45,7 +45,7 @@ const BASETYPE BYTEMASK = 0xff;
 
 #define BORDER_EDGE 16
 #define WINDOW_SIZE 32
-#define MAXPERBLOCK 200
+#define MAXPERBLOCK 100
 
 #define NROWS (int)((CC_H - 2*BORDER_EDGE) / WINDOW_SIZE)
 #define NCOLS (int)((MAX_W - 2*BORDER_EDGE) / WINDOW_SIZE)
@@ -117,7 +117,6 @@ int main(int argc, char** argv) {
 		while(ret != DONEFLAG);
 	}
 	t_end = timer_get();
-	std::cout << "Thread compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
 
 	std::ofstream myFile;
 	myFile.open("__result.txt", std::ios_base::trunc);
@@ -126,6 +125,7 @@ int main(int argc, char** argv) {
 	for(unsigned int b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
+		//std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(int i = 1; i < inBlock+1; i++){
 			int x,y;
 			float a,r;
@@ -160,6 +160,7 @@ int main(int argc, char** argv) {
 	}
 	myFile.close();
 	
+	std::cout << "Thread compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
 	std::cout << "KeyPoints found: " << nfeatures << std::endl;
 
 	for(int i = 0; i < vToDistributeKeys.size(); i++) {

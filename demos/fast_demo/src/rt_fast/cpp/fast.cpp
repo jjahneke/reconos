@@ -38,7 +38,7 @@ const BASETYPE BYTEMASK = 0xff;
 #define CACHE_LINES (WINDOW_SIZE * 2)
 
 #define FAST_TH 7
-#define MAXPERBLOCK 200
+#define MAXPERBLOCK 100
 
 #define NROWS (int)((CC_H - 2*BORDER_EDGE) / WINDOW_SIZE)
 #define NCOLS (int)((MAX_W - 2*BORDER_EDGE) / WINDOW_SIZE)
@@ -99,7 +99,7 @@ THREAD_ENTRY() {
 	
 	uint16_t row_count = 0;
 	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
-	
+
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
 	for(int rowStep = 0; rowStep < NROWS; rowStep++) {

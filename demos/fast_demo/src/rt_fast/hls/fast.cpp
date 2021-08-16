@@ -55,7 +55,7 @@ const BASETYPE BYTEMASK = 0xff;
 	}\
 }
 
-void populate_xfMat(uint8_t* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> _dst, uint16_t startRow, uint16_t startCol) {
+void populate_xfMat(uint8_t* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, uint16_t startRow, uint16_t startCol) {
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
 		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
@@ -115,7 +115,7 @@ THREAD_ENTRY() {
 			//#pragma HLS stream variable=mFast_out.data depth=(MAT_SIZE*MAT_SIZE)
 			{
 			#pragma HLS dataflow
-			populate_xfMat(cache, mFast_in, startRow, startCol);
+			populate_xfMat;//(cache, mFast_in, startRow, startCol);
 			xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 			// Mat eval & memWrite;
 			for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
@@ -131,9 +131,9 @@ THREAD_ENTRY() {
 				}
 				memOut[0] = local_cnt;
 			}
+			} // end dataflow
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
-			} // end dataflow
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

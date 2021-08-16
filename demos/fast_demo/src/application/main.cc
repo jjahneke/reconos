@@ -113,6 +113,8 @@ int main(int argc, char** argv) {
 		BASETYPE ret;
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
+
+			std::cout << "Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W3)) << "\n";
 		}
 		while(ret != DONEFLAG);
 	}

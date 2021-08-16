@@ -102,13 +102,13 @@ THREAD_ENTRY() {
 
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
-	for(int rowStep = 0; rowStep < NROWS; rowStep++) {
+	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
 
-		for(int colStep = 0; colStep < NCOLS; colStep++) {
+		for(uint8_t colStep = 0; colStep < NCOLS; colStep++) {
 			uint16_t startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			uint16_t endCol = startCol + WINDOW_SIZE + 6;
 	

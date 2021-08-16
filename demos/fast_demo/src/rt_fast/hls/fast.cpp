@@ -55,8 +55,10 @@ const BASETYPE BYTEMASK = 0xff;
 	}\
 }
 
-void populate_xfMat(uint8_t* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, uint16_t startRow, uint16_t startCol) {
+void populate_xfMat(uint8_t cache[MAX_W*CACHE_LINES], xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, uint16_t startRow, uint16_t startCol) {
+Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
+Loop_FillCol:
 		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
 			_dst.write(_row * MAT_SIZE + _col, v);
@@ -93,32 +95,36 @@ THREAD_ENTRY() {
 	BASETYPE _in[CC_W/BYTES + 1];
 	
 	uint16_t row_count = 0;
-	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
+Loop_RowStep:
 	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
 
+Loop_ColStep:
 		for(uint8_t colStep = 0; colStep < NCOLS; colStep++) {
 			uint16_t startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			uint16_t endCol = startCol + WINDOW_SIZE + 6;
 	
 			uint16_t local_cnt = 0;
+			BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
 
-			//#pragma HLS stream variable=mFast_in.data depth=(MAT_SIZE*MAT_SIZE)
-			//#pragma HLS stream variable=mFast_out.data depth=(MAT_SIZE*MAT_SIZE)
+			//#pragma HLS stream variable=mFast_in.data depth=1444
+			//#pragma HLS stream variable=mFast_out.data depth=1444
 			{
 			#pragma HLS dataflow
 			populate_xfMat;//(cache, mFast_in, startRow, startCol);
 			xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 			// Mat eval & memWrite;
+Loop_EvalRow:
 			for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+Loop_EvalCol:
 				for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
 					BASETYPE r = mFast_out.read(_mrow * MAT_SIZE + _mcol);
 					if(r > 0) {

@@ -30,9 +30,9 @@ const BASETYPE BYTEMASK = 0xff;
 #define macro_read_next_batch {\
 	for(int _row = 0; _row < WINDOW_SIZE; _row++) {\
 		BASETYPE ptr_limit = row_count % img_h;\
-		BASETYPE _offset = ((ptr_i + ptr_limit * _img_w) & MASK);\
-		BASETYPE _len = (_img_w + _offset + BYTES)&(~MASK);\
-		BASETYPE _addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
+		BASETYPE _offset = ((ptr_i + ptr_limit * (img_w*BYTEPERPIXEL)) & MASK);\
+		BASETYPE _len = ((img_w*BYTEPERPIXEL) + _offset + BYTES)&(~MASK);\
+		BASETYPE _addr = (ptr_i + ptr_limit * (img_w*BYTEPERPIXEL))&(~MASK);\
 		MEM_READ(_addr, &_in[0], _len);\
 		for(int ii = 0; ii < MAX_W; ii++) {\
 			uint8_t _b, _g, _r;\
@@ -41,6 +41,7 @@ const BASETYPE BYTEMASK = 0xff;
 				uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
 				BASETYPE _dword = _in[_dword_ptr];\
 				uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
+				hash1 ^= _byte;\
 				if(b == 0)\
 					_b = _byte;\
 				else if(b == 1)\
@@ -50,7 +51,6 @@ const BASETYPE BYTEMASK = 0xff;
 			}\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
 			uint8_t _v = kernel(_b, _g, _r);\
-			hash1 ^= _v;\
 			cache[_cache_line + ii] = _v;\
 		}\
 		row_count++;\
@@ -72,15 +72,15 @@ Loop_FillCol:
 	for(int _row = 0; _row < MAT_SIZE; _row++) {\
 		for(int _col = 0; _col < MAT_SIZE; _col++) {\
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];\
-			hash2 ^= v;\
+			hash2[rowStep * NCOLS + colStep + 1] = hash2[rowStep * NCOLS + colStep] ^ v;\
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
 }
 
-uint8_t kernel(uint8_t b, uint8_t r, uint8_t g) {
+uint8_t kernel(uint8_t b, uint8_t g, uint8_t r) {
 	#pragma HLS inline
-	return (uint8_t)(0.114*b + 0.587*r + 0.299*g);
+	return (uint8_t)(0.114*b + 0.587*g + 0.299*r);
 }
 
 THREAD_ENTRY() {
@@ -91,13 +91,11 @@ THREAD_ENTRY() {
 	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
 	
-	// Pixel length to Byte length
-	unsigned int _img_w = img_w*BYTEPERPIXEL;
-
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
 	uint8_t hash1 = 0;
-	uint8_t hash2 = 0;
+	uint8_t hash2[NROWS*NCOLS + 1];
+	hash2[0] = 0;
 	uint16_t row_count = 0;
 
 	// Prefetch BATCH lines of image
@@ -105,7 +103,6 @@ THREAD_ENTRY() {
 Loop_RowStep:
 	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
-		MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash1 | ((uint64_t)rowStep << 16) | (0xffff000000000000));
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
@@ -120,11 +117,9 @@ Loop_ColStep:
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
 
-			//#pragma HLS stream variable=mFast_in.data depth=1444
-			//#pragma HLS stream variable=mFast_out.data depth=1444
 			{
 			#pragma HLS dataflow
-			populate_xfMat;//(cache, mFast_in, startRow, startCol);
+			populate_xfMat;
 			xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 			// Mat eval & memWrite;
 Loop_EvalRow:
@@ -144,7 +139,6 @@ Loop_EvalCol:
 			}
 			} // end dataflow
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
-			MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash2 | ((uint64_t)rowStep << 16) | ((uint64_t)colStep << 32));
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
 	}

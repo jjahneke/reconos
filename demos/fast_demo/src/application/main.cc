@@ -91,7 +91,6 @@ int main(int argc, char** argv) {
 	//cv::Mat _dummy = cv::Mat::zeros(2,img_w,img_i.type());
 	//img_i.push_back(_dummy);
 	uint8_t* ptr_i = (uint8_t*)img_i.data;
-	//BASETYPE* kpt_ptr = (BASETYPE*)calloc(mem_size_kpt, sizeof(BASETYPE));
 	BASETYPE* kpt_ptr = (BASETYPE*)malloc(mem_size_kpt * sizeof(BASETYPE));
 	memset(kpt_ptr, 0, mem_size_kpt * sizeof(BASETYPE));
 
@@ -119,14 +118,6 @@ int main(int argc, char** argv) {
 		BASETYPE ret;
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
-
-			//std::cout << "Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W3)) << "\n";
-			if(((ret & MASK_W0) >> 48) == 0xffff)
-				//std::cout << "Cache: Row " << ((ret & MASK_W2) >> 16) << ": " << (ret & MASK_W3) << "\n";
-				hashFile << "Cache: Row " << ((ret & MASK_W2) >> 16) << ": " << (ret & MASK_W3) << "\n";
-			else
-				//std::cout << "Mat: Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W1) >> 32) << ": " << (ret & MASK_W3) << "\n";
-				hashFile << "Mat: Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W1) >> 32) << ": " << (ret & MASK_W3) << "\n";
 		}
 		while(ret != DONEFLAG);
 	}

@@ -36,9 +36,9 @@ const BASETYPE BYTEMASK = 0xff;
 #define macro_read_next_batch {\
 	for(int _row = 0; _row < WINDOW_SIZE; _row++) {\
 		BASETYPE ptr_limit = row_count % img_h;\
-		BASETYPE _offset = ((ptr_i + ptr_limit * (img_w*BYTEPERPIXEL)) & MASK);\
-		BASETYPE _len = ((img_w*BYTEPERPIXEL) + _offset + BYTES)&(~MASK);\
-		BASETYPE _addr = (ptr_i + ptr_limit * (img_w*BYTEPERPIXEL))&(~MASK);\
+		BASETYPE _offset = ((ptr_i + ptr_limit * _img_w) & MASK);\
+		BASETYPE _len = (_img_w + _offset + BYTES)&(~MASK);\
+		BASETYPE _addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
 		MEM_READ1(_addr, &_in[0], _len);\
 		for(int ii = 0; ii < MAX_W; ii++) {\
 			uint8_t _b, _g, _r;\
@@ -82,6 +82,7 @@ THREAD_ENTRY() {
 	BASETYPE ptr_i = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE ptr_o = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
+	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
 	
 	uint8_t cache[MAX_W * CACHE_LINES];

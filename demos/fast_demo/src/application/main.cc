@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
 	cv::Mat img_i = cv::imread(argv[2]);
 	cv::Mat img_gray = cv::imread(argv[2], 0);
 	BASETYPE img_w = img_i.cols;
+	BASETYPE _img_w = img_w * BYTEPERPIXEL;
 	BASETYPE img_h = img_i.rows;
 	
 	//cv::Mat _dummy = cv::Mat::zeros(2,img_w,img_i.type());
@@ -111,6 +112,7 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_i);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)kpt_ptr);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
 		
 		std::cout << "Sent data to thread\nWaiting for answer...\n";

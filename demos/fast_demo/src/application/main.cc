@@ -97,6 +97,12 @@ int main(int argc, char** argv) {
 
 	std::vector<cv::KeyPoint> vToDistributeKeys;
 	vToDistributeKeys.reserve(MAXPERBLOCK*NROWS*NCOLS);
+	
+	std::ofstream hashFile;
+	if(sw_or_hw == 0)
+		hashFile.open("hash_sw.txt", std::ios_base::trunc);
+	else
+		hashFile.open("hash_hw.txt", std::ios_base::trunc);
 
 	std::cout << "Starting thread work" << std::endl;
 	unsigned int t_start, t_end;
@@ -114,14 +120,24 @@ int main(int argc, char** argv) {
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
 
-			std::cout << "Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W3)) << "\n";
+			//std::cout << "Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W3)) << "\n";
+			if(((ret & MASK_W0) >> 48) == 0xffff)
+				//std::cout << "Cache: Row " << ((ret & MASK_W2) >> 16) << ": " << (ret & MASK_W3) << "\n";
+				hashFile << "Cache: Row " << ((ret & MASK_W2) >> 16) << ": " << (ret & MASK_W3) << "\n";
+			else
+				//std::cout << "Mat: Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W1) >> 32) << ": " << (ret & MASK_W3) << "\n";
+				hashFile << "Mat: Row " << ((ret & MASK_W2) >> 16) << " Col " << ((ret & MASK_W1) >> 32) << ": " << (ret & MASK_W3) << "\n";
 		}
 		while(ret != DONEFLAG);
 	}
 	t_end = timer_get();
+	hashFile.close();
 
 	std::ofstream myFile;
-	myFile.open("__result.txt", std::ios_base::trunc);
+	if(sw_or_hw == 0)
+		myFile.open("res_sw.txt", std::ios_base::trunc);
+	else
+		myFile.open("res_hw.txt", std::ios_base::trunc);
 	// Construct result vector from memory
 	uint32_t nfeatures = 0;
 	for(unsigned int b = 0; b < blocks; b++){

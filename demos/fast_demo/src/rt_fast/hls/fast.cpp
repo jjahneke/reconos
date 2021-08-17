@@ -49,7 +49,9 @@ const BASETYPE BYTEMASK = 0xff;
 					_r = _byte;\
 			}\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
-			cache[_cache_line + ii] = kernel(_b, _g, _r);\
+			uint8_t _v = kernel(_b, _g, _r);\
+			hash1 ^= _v;\
+			cache[_cache_line + ii] = _v;\
 		}\
 		row_count++;\
 	}\
@@ -70,6 +72,7 @@ Loop_FillCol:
 	for(int _row = 0; _row < MAT_SIZE; _row++) {\
 		for(int _col = 0; _col < MAT_SIZE; _col++) {\
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];\
+			hash2 ^= v;\
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
@@ -93,7 +96,8 @@ THREAD_ENTRY() {
 
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
-	
+	uint8_t hash1 = 0;
+	uint8_t hash2 = 0;
 	uint16_t row_count = 0;
 
 	// Prefetch BATCH lines of image
@@ -101,6 +105,7 @@ THREAD_ENTRY() {
 Loop_RowStep:
 	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
+		MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash1 | ((uint64_t)rowStep << 16) | (0xffff000000000000));
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
@@ -139,6 +144,7 @@ Loop_EvalCol:
 			}
 			} // end dataflow
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+			MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash2 | ((uint64_t)rowStep << 16) | ((uint64_t)colStep << 32));
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
 	}

@@ -7,21 +7,11 @@ extern "C" {
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 
-#ifdef __aarch64__ // ReconOS64
-	#define R64 1
-    #define BASETYPE uint64_t
-    #define BYTES 8
-    #define MASK 7
-	#define DWORDS_KPT 1
-	#define DONEFLAG 0xffffffffffffffff
-#else // ReconOS32
-	#define R64 0
-    #define BASETYPE uint32_t
-    #define BYTES 4
-    #define MASK 3
-	#define DWORDS_KPT 2
-	#define DONEFLAG 0xffffffff
-#endif
+#define BASETYPE uint64_t
+#define BYTES 8
+#define MASK 7
+#define DWORDS_KPT 1
+#define DONEFLAG 0xffffffffffffffff
 	
 #define MEM_READ1(src, dest, n) memcpy((void*)dest, (void*)src, n)
 #define MEM_WRITE1(src, dest, n) memcpy((void*)dest, (void*)src, n)
@@ -65,19 +55,25 @@ const BASETYPE BYTEMASK = 0xff;
 					_r = _byte;\
 			}\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
-			cache[_cache_line + ii] = kernel(_b, _g, _r);\
+			uint8_t _v = kernel(_b, _g, _r);\
+			hash1 ^= _v;\
+			cache[_cache_line + ii] = _v;\
 		}\
 		row_count++;\
 	}\
 }
 
-void populate_cvMat(uint8_t* cache, cv::Mat &mFast_in, uint16_t startRow, uint16_t startCol) {
-	for(int _row = 0; _row < MAT_SIZE; _row++) {
-		for(int _col = 0; _col < MAT_SIZE; _col++) {
+uint8_t populate_cvMat(uint8_t* cache, cv::Mat &mFast_in, uint16_t startRow, uint16_t startCol, uint8_t hash) { 
+Loop_FillRow:
+	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
+Loop_FillCol:
+		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
+			hash ^= v;
 			mFast_in.at<uint8_t>(_row, _col) = v;
 		}
 	}
+	return hash;
 }
 
 uint8_t kernel(uint8_t b, uint8_t r, uint8_t g) {
@@ -96,26 +92,30 @@ THREAD_ENTRY() {
 
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
-	
+	uint8_t hash1 = 0;
+	uint8_t hash2 = 0;
 	uint16_t row_count = 0;
-	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 	// Prefetch BATCH lines of image
 	macro_read_next_batch;
+Loop_RowStep:
 	for(uint8_t rowStep = 0; rowStep < NROWS; rowStep++) {
 		macro_read_next_batch;
+		MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash1 | ((uint64_t)rowStep << 16) | (0xffff000000000000));
 
 		uint16_t startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		uint16_t endRow = startRow + WINDOW_SIZE + 6;
 
+Loop_ColStep:
 		for(uint8_t colStep = 0; colStep < NCOLS; colStep++) {
 			uint16_t startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			uint16_t endCol = startCol + WINDOW_SIZE + 6;
 	
 			uint16_t local_cnt = 0;
+			BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 			cv::Mat mFast_in = cv::Mat::zeros(MAT_SIZE, MAT_SIZE, CV_8UC1);
 			std::vector<cv::KeyPoint> mFast_out;
-			populate_cvMat(&cache[0], mFast_in, startRow, startCol);
+			hash2 = populate_cvMat(&cache[0], mFast_in, startRow, startCol, hash2);
 			cv::FAST(mFast_in, mFast_out, FAST_TH, true);
 			// Mat eval & memWrite;
 			for(int _kpt = 0; _kpt < mFast_out.size(); _kpt++) {
@@ -126,18 +126,14 @@ THREAD_ENTRY() {
 				BASETYPE y = (BASETYPE)kp.pt.y + startRow;
 				BASETYPE a = 0;
 				BASETYPE r = (BASETYPE)kp.response;
-				if(R64) {
-					memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
-				}
-				else {
-					memOut[0] = (x << 16) | y;
-					memOut[1] = (a << 16) | r;
-				}
+				memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 				local_cnt++;
 			}
 			memOut[0] = local_cnt;
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+			MBOX_PUT(rcsfast_rt2sw, (uint64_t)hash2 | ((uint64_t)rowStep << 16) | ((uint64_t)colStep << 32));
 			MEM_WRITE1(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
+
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

@@ -41,7 +41,6 @@ const BASETYPE BYTEMASK = 0xff;
 				uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
 				BASETYPE _dword = _in[_dword_ptr];\
 				uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-				hash1 ^= _byte;\
 				if(b == 0)\
 					_b = _byte;\
 				else if(b == 1)\
@@ -72,7 +71,6 @@ Loop_FillCol:
 	for(int _row = 0; _row < MAT_SIZE; _row++) {\
 		for(int _col = 0; _col < MAT_SIZE; _col++) {\
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];\
-			hash2[rowStep * NCOLS + colStep + 1] = hash2[rowStep * NCOLS + colStep] ^ v;\
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
@@ -93,9 +91,6 @@ THREAD_ENTRY() {
 	
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
-	uint8_t hash1 = 0;
-	uint8_t hash2[NROWS*NCOLS + 1];
-	hash2[0] = 0;
 	uint16_t row_count = 0;
 
 	// Prefetch BATCH lines of image

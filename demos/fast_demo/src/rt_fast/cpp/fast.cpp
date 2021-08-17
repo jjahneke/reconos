@@ -47,7 +47,6 @@ const BASETYPE BYTEMASK = 0xff;
 				uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
 				BASETYPE _dword = _in[_dword_ptr];\
 				uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-				hash1 ^= _byte;\
 				if(b == 0)\
 					_b = _byte;\
 				else if(b == 1)\
@@ -63,13 +62,12 @@ const BASETYPE BYTEMASK = 0xff;
 	}\
 }
 
-void populate_cvMat(uint8_t* cache, cv::Mat &mFast_in, uint16_t startRow, uint16_t startCol, uint8_t* hash2, uint16_t rowStep, uint16_t colStep) {
+void populate_cvMat(uint8_t* cache, cv::Mat &mFast_in, uint16_t startRow, uint16_t startCol) {
 Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
 Loop_FillCol:
 		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
-			hash2[rowStep * NCOLS + colStep + 1] = hash2[rowStep * NCOLS + colStep] ^ v;\
 			mFast_in.at<uint8_t>(_row, _col) = v;
 		}
 	}
@@ -88,9 +86,6 @@ THREAD_ENTRY() {
 	
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
-	uint8_t hash1 = 0;
-	uint8_t hash2[NROWS*NCOLS + 1];
-	hash2[0] = 0;
 	uint16_t row_count = 0;
 
 	// Prefetch BATCH lines of image
@@ -111,7 +106,7 @@ Loop_ColStep:
 			BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 			cv::Mat mFast_in = cv::Mat::zeros(MAT_SIZE, MAT_SIZE, CV_8UC1);
 			std::vector<cv::KeyPoint> mFast_out;
-			populate_cvMat(&cache[0], mFast_in, startRow, startCol, &hash2[0], rowStep, colStep);
+			populate_cvMat(&cache[0], mFast_in, startRow, startCol);
 			cv::FAST(mFast_in, mFast_out, FAST_TH, true);
 			// Mat eval & memWrite;
 			for(int _kpt = 0; _kpt < mFast_out.size(); _kpt++) {

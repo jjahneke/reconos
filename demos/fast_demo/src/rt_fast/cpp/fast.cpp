@@ -41,22 +41,15 @@ const BASETYPE BYTEMASK = 0xff;
 		BASETYPE _addr = (ptr_i + ptr_limit * _img_w)&(~MASK);\
 		MEM_READ1(_addr, &_in[0], _len);\
 		for(int ii = 0; ii < MAX_W; ii++) {\
-			uint8_t _b, _g, _r;\
-			for(int b = 0; b < BYTEPERPIXEL; b++) {\
-				uint8_t _byte_in_dword = (uint8_t)((_offset + ii*BYTEPERPIXEL + b) % BYTES);\
-				uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL + b) / BYTES);\
-				BASETYPE _dword = _in[_dword_ptr];\
-				uint8_t _byte = ((_dword & (BYTEMASK << _byte_in_dword*8))>> _byte_in_dword*8);\
-				if(b == 0)\
-					_b = _byte;\
-				else if(b == 1)\
-					_g = _byte;\
-				else if(b == 2)\
-					_r = _byte;\
-			}\
+			uint16_t _dword_ptr = (uint16_t)((_offset + ii*BYTEPERPIXEL) / BYTES);\
+			uint8_t _byte_in_dword = (uint8_t)((_offset + ii*BYTEPERPIXEL) % BYTES);\
+			BASETYPE _dword0 = _in[_dword_ptr];\
+			BASETYPE _dword1 = _in[_dword_ptr+1];\
+			uint8_t _b = ((_dword0 & (BYTEMASK << _byte_in_dword*8)) >> _byte_in_dword*8);\
+			uint8_t _g = _byte_in_dword < 7 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+1)*8)) >> (_byte_in_dword+1)*8) : ((_dword1 & (BYTEMASK << 0*8)) >> 0*8);\
+			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
-			uint8_t _v = kernel(_b, _g, _r);\
-			cache[_cache_line + ii] = _v;\
+			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
 		row_count++;\
 	}\

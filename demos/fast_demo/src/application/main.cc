@@ -131,6 +131,7 @@ int main(int argc, char** argv) {
 		myFile.open("res_sw.txt", std::ios_base::trunc);
 	else
 		myFile.open("res_hw.txt", std::ios_base::trunc);
+	myFile << "Col, Row, Ang, Response\n";
 	// Construct result vector from memory
 	uint32_t nfeatures = 0;
 	for(unsigned int b = 0; b < blocks; b++){
@@ -163,7 +164,7 @@ int main(int argc, char** argv) {
 				continue;
 			}
 
-			myFile << x << ", " << y << std::endl;
+			myFile << x << ", " << y << ", " << a << ", " << r << std::endl;
 
 			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,a,r,0,id));
 			nfeatures++;
@@ -176,9 +177,11 @@ int main(int argc, char** argv) {
 
 	for(int i = 0; i < vToDistributeKeys.size(); i++) {
 		cv::KeyPoint kp = vToDistributeKeys[i];
-		img_gray.at<uint8_t>(kp.pt.y, kp.pt.x) = 255;
+		//img_gray.at<uint8_t>(kp.pt.y, kp.pt.x) = 255;
+		img_i.at<cv::Vec3b>(kp.pt.y, kp.pt.x) = cv::Vec3b(255,255,255);
 	}
-	cv::imwrite(argv[3], img_gray);
+	//cv::imwrite(argv[3], img_gray);
+	cv::imwrite(argv[3], img_i);
 	std::cout << "Image written\n";
 
 	// Cleanup

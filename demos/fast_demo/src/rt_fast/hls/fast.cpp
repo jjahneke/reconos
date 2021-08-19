@@ -43,8 +43,7 @@ const BASETYPE BYTEMASK = 0xff;
 			uint8_t _g = _byte_in_dword < 7 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+1)*8)) >> (_byte_in_dword+1)*8) : _dword1 & BYTEMASK;\
 			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
-			ap_uint<9> _v = _b + _g + _r;\
-			cache[_cache_line + ii] = (uint8_t)(_v/3)_;\
+			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
 		row_count++;\
 	}\
@@ -68,6 +67,34 @@ Loop_FillCol:
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
+}
+
+uint16_t IC_Angle(uint8_t* cache, uint8_t row, uint8_t col) {
+	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
+	ap_uint<24> m_01 = 0;
+	ap_uint<24> m_10 = 0;
+	ap_uint<24> v_sum = 0;
+
+	for(int8_t _col = -15; _col <= 15; _col++) {
+		m_10 += _col * cache[row%CACHE_LINES * CC_W + (col+_col)];
+	}
+
+   	for(uint8_t _row = 1; _row <= 15; _row++) {
+		v_sum = 0;
+   	    for(int _col = -u_max[_row]; _col <= u_max[_row]; _col++) {
+			uint16_t val_plus = cache[(row+_row)%CACHE_LINES * CC_W + (col+_col)];
+			uint16_t val_minus = cache[(row-_row)%CACHE_LINES * CC_W + (col+_col)];
+			v_sum += (val_plus - val_minus);
+			m_10 += _col * (val_plus + val_minus);
+		}
+   	    m_01 += _row * v_sum;
+	}
+	return xf::cv::Atan2LookupFP24(m_01, m_10, 24, 0, 24, 0);
+}
+
+uint8_t kernel(uint8_t b, uint8_t g, uint8_t r) {
+	#pragma HLS inline
+	return (uint8_t)(0.114*b + 0.587*g + 0.299*r);
 }
 
 THREAD_ENTRY() {
@@ -115,7 +142,7 @@ Loop_EvalCol:
 					if(r > 0) {
 						BASETYPE x = _mcol + startCol;
 						BASETYPE y = _mrow + startRow;
-						BASETYPE a = 0;
+						BASETYPE a = (BASETYPE)(&cache[0], _mrow+startRow, _mcol+startCol);
 						memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 						local_cnt++;
 					}

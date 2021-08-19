@@ -47,8 +47,7 @@ const BASETYPE BYTEMASK = 0xff;
 			BASETYPE _dword1 = _in[_dword_ptr+1];\
 			uint8_t _b = ((_dword0 & (BYTEMASK << _byte_in_dword*8)) >> _byte_in_dword*8);\
 			uint8_t _g = _byte_in_dword < 7 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+1)*8)) >> (_byte_in_dword+1)*8) : ((_dword1 & (BYTEMASK << 0*8)) >> 0*8);\
-			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (6-_byte_in_dword)*8)) >> (6-_byte_in_dword)*8);\
-			/*uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);*/\
+			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
 			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
@@ -67,8 +66,35 @@ Loop_FillCol:
 	}
 }
 
+uint16_t IC_Angle(uint8_t* cache, uint16_t row, uint16_t col) {
+	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
+	uint32_t m_01 = 0;
+	uint32_t m_10 = 0;
+	uint32_t v_sum = 0;
+
+	uint16_t center = (row%CACHE_LINES) * MAX_W + col;
+
+	for(int8_t _col = -15; _col <= 15; _col++) {
+		m_10 += _col * cache[center + _col];
+	}
+
+   	for(uint8_t _row = 1; _row <= 15; _row++) {
+		v_sum = 0;
+   	    for(int _col = -u_max[_row]; _col <= u_max[_row]; _col++) {
+			uint16_t val_plus = cache[(row+_row)%CACHE_LINES * MAX_W + (col+_col)];
+			uint16_t val_minus = cache[(row-_row)%CACHE_LINES * MAX_W + (col+_col)];
+			v_sum += (val_plus - val_minus);
+			m_10 += _col * (val_plus + val_minus);
+		}
+   	    m_01 += _row * v_sum;
+	}
+	return cv::fastAtan2((float)m_01, (float)m_10);
+}
+
 uint8_t kernel(uint8_t b, uint8_t g, uint8_t r) {
-	return (uint8_t)((b + g + r)/3);
+	return (uint8_t)(0.114*b + 0.587*g + 0.299*r);
+	//uint16_t tmp = b + g + r;
+	//return (uint8_t)(tmp/3);
 }
 
 THREAD_ENTRY() {
@@ -110,7 +136,7 @@ Loop_ColStep:
 				cv::KeyPoint kp = mFast_out[_kpt];
 				BASETYPE x = (BASETYPE)kp.pt.x + startCol;
 				BASETYPE y = (BASETYPE)kp.pt.y + startRow;
-				BASETYPE a = 0;
+				BASETYPE a = (BASETYPE)IC_Angle(&cache[0], (uint16_t)y, (uint16_t)x);
 				BASETYPE r = (BASETYPE)kp.response;
 				memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 				local_cnt++;

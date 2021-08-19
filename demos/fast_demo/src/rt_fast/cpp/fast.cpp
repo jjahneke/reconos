@@ -47,7 +47,8 @@ const BASETYPE BYTEMASK = 0xff;
 			BASETYPE _dword1 = _in[_dword_ptr+1];\
 			uint8_t _b = ((_dword0 & (BYTEMASK << _byte_in_dword*8)) >> _byte_in_dword*8);\
 			uint8_t _g = _byte_in_dword < 7 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+1)*8)) >> (_byte_in_dword+1)*8) : ((_dword1 & (BYTEMASK << 0*8)) >> 0*8);\
-			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);\
+			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (6-_byte_in_dword)*8)) >> (6-_byte_in_dword)*8);\
+			/*uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);*/\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
 			cache[_cache_line + ii] = kernel(_b, _g, _r);\
 		}\
@@ -67,7 +68,7 @@ Loop_FillCol:
 }
 
 uint8_t kernel(uint8_t b, uint8_t g, uint8_t r) {
-	return (uint8_t)(0.114*b + 0.587*g + 0.299*r);
+	return (uint8_t)((b + g + r)/3);
 }
 
 THREAD_ENTRY() {

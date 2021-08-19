@@ -43,7 +43,8 @@ const BASETYPE BYTEMASK = 0xff;
 			uint8_t _g = _byte_in_dword < 7 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+1)*8)) >> (_byte_in_dword+1)*8) : _dword1 & BYTEMASK;\
 			uint8_t _r = _byte_in_dword < 6 ? ((_dword0 & (BYTEMASK << (_byte_in_dword+2)*8)) >> (_byte_in_dword+2)*8) : ((_dword1 & (BYTEMASK << (_byte_in_dword%6)*8)) >> (_byte_in_dword%6)*8);\
 			BASETYPE _cache_line = MAX_W * (row_count % CACHE_LINES);\
-			cache[_cache_line + ii] = kernel(_b, _g, _r);\
+			ap_uint<9> _v = _b + _g + _r;\
+			cache[_cache_line + ii] = (uint8_t)(_v/3)_;\
 		}\
 		row_count++;\
 	}\
@@ -67,11 +68,6 @@ Loop_FillCol:
 			mFast_in.write(_row * MAT_SIZE + _col, v);\
 		}\
 	}\
-}
-
-uint8_t kernel(uint8_t b, uint8_t g, uint8_t r) {
-	#pragma HLS inline
-	return (uint8_t)(0.114*b + 0.587*g + 0.299*r);
 }
 
 THREAD_ENTRY() {

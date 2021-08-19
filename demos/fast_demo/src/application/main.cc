@@ -140,21 +140,25 @@ int main(int argc, char** argv) {
 		//std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(int i = 1; i < inBlock+1; i++){
 			int x,y;
-			float a,r;
+			int a, r;
 			if(R64) {
 				x = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W0) >> 48);
 				y = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W1) >> 32);
-				a = (float)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W2) >> 16) * std::pow(2,-12);
-				r = (float)(*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W3);
+				a = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W2) >> 16);
+				r = (int)(*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W3);
 			}
 			else {
 				x = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 0) & MASK_S0) >> 16);
 				y = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 0) & MASK_S1));
-				a = (float)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S0) >> 16) * std::pow(2,-12);
-				r = (float) (*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S1);
+				a = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S0) >> 16);
+				r = (int) (*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S1);
 			}
 			uint32_t id = nfeatures;
-			
+		
+			// Conversion from Q format to float if necessary
+			if(sw_or_hw == 1)
+				a *= std::pow(2,-12);
+
 			// Exit condition for the block, i.e. not all 100 allowed features were filled
 		//	if (x == 0 ||  y == 0){
 		//		break;

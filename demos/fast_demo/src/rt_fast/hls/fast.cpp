@@ -2,6 +2,7 @@
 #include "reconos_calls.h"
 
 #include "common/xf_common.hpp"
+#include "core/xf_math.h"
 #include "features/xf_fast.hpp"
 
 #define BASETYPE uint64_t
@@ -20,6 +21,7 @@ const BASETYPE BYTEMASK = 0xff;
 #define WINDOW_SIZE 32
 #define MAT_SIZE (WINDOW_SIZE + 6)
 #define CACHE_LINES (WINDOW_SIZE * 2)
+#define MAT_SIZE_ANGLE (WINDOW_SIZE + 30)
 
 #define FAST_TH 7
 #define MAXPERBLOCK 100
@@ -49,13 +51,24 @@ const BASETYPE BYTEMASK = 0xff;
 	}\
 }
 
-void populate_xfMat(uint8_t cache[MAX_W*CACHE_LINES], xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, uint16_t startRow, uint16_t startCol) {
+void populate_xfMat(uint8_t* cache, uint8_t* mAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, uint16_t startRow, uint16_t startCol) {
+	uint16_t angleRow = startRow - 15;
+	uint16_t angleCol = startCol - 15;
 Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
 Loop_FillCol:
 		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
 			_dst.write(_row * MAT_SIZE + _col, v);
+		}
+	}
+
+Loop_FillRowA:
+	for(uint8_t _row = 0; _row < MAT_SIZE_ANGLE; _row++) {
+Loop_FillColA:
+		for(uint8_t _col = 0; _col < MAT_SIZE_ANGLE; _col++) {
+			uint8_t v = cache[(angleRow+_row)%CACHE_LINES * MAX_W + (angleCol+_col)];
+			mAngle[angleRow * MAT_SIZE_ANGLE + angleCol] = v;
 		}
 	}
 }
@@ -69,21 +82,21 @@ Loop_FillCol:
 	}\
 }
 
-uint16_t IC_Angle(uint8_t* cache, uint8_t row, uint8_t col) {
+uint16_t IC_Angle(uint8_t* mAngle, uint8_t row, uint8_t col) {
 	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
 	ap_uint<24> m_01 = 0;
 	ap_uint<24> m_10 = 0;
 	ap_uint<24> v_sum = 0;
 
 	for(int8_t _col = -15; _col <= 15; _col++) {
-		m_10 += _col * cache[row%CACHE_LINES * CC_W + (col+_col)];
+		m_10 += _col * mAngle[row * MAT_SIZE_ANGLE + _col];
 	}
 
    	for(uint8_t _row = 1; _row <= 15; _row++) {
 		v_sum = 0;
    	    for(int _col = -u_max[_row]; _col <= u_max[_row]; _col++) {
-			uint16_t val_plus = cache[(row+_row)%CACHE_LINES * CC_W + (col+_col)];
-			uint16_t val_minus = cache[(row-_row)%CACHE_LINES * CC_W + (col+_col)];
+			uint16_t val_plus =  mAngle[(row+row) * MAT_SIZE_ANGLE + _col];
+			uint16_t val_minus = mAngle[(row-_row) * MAT_SIZE_ANGLE + _col];
 			v_sum += (val_plus - val_minus);
 			m_10 += _col * (val_plus + val_minus);
 		}
@@ -108,6 +121,7 @@ THREAD_ENTRY() {
 	
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE _in[CC_W/BYTES + 1];
+	uint8_t mAngle[MAT_SIZE * MAT_SIZE];
 	uint16_t row_count = 0;
 
 	// Prefetch BATCH lines of image
@@ -130,8 +144,8 @@ Loop_ColStep:
 			xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
 
 			{
-			#pragma HLS dataflow
-			populate_xfMat;
+			#pragma HLS dataflow //Region 1
+			populate_xfMat(&cache, &mAngle, mFast_in, startRow, startCol);
 			xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 			// Mat eval & memWrite;
 Loop_EvalRow:
@@ -142,14 +156,16 @@ Loop_EvalCol:
 					if(r > 0) {
 						BASETYPE x = _mcol + startCol;
 						BASETYPE y = _mrow + startRow;
-						BASETYPE a = (BASETYPE)(&cache[0], _mrow+startRow, _mcol+startCol);
+						BASETYPE a = (BASETYPE)IC_Angle(&mAngle[0], _mrow-3+15, _mcol-3+15); // -3 to offset FAST borders, +15 to translate to mAngle dim
 						memOut[local_cnt+1] = (x << 48) | (y << 32) | (a << 16) | r;
 						local_cnt++;
 					}
 				}
 				memOut[0] = local_cnt;
 			}
-			} // end dataflow
+			} // end dataflow Region 1
+			
+
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}

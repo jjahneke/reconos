@@ -16,7 +16,7 @@ extern "C" {
     #define BASETYPE uint64_t
     #define BYTES 8
     #define MASK 7
-	#define DWORDS_KPT 1
+	#define DWORDS_KPT 3
 	#define DONEFLAG 0xffffffffffffffff
 #else // ReconOS32
 	#define R64 0
@@ -28,14 +28,13 @@ extern "C" {
 #endif
 	
 // Only used by R64
-#define MASK_W0 0xffff000000000000
-#define MASK_W1 0x0000ffff00000000
-#define MASK_W2 0x00000000ffff0000
-#define MASK_W3 0x000000000000ffff
+#define MASK_S0 0xffff000000000000
+#define MASK_S1 0x0000ffff00000000
+#define MASK_S2 0x00000000ffff0000
+#define MASK_S3 0x000000000000ffff
 
-// Only used by R32
-#define MASK_S0 0xffff0000
-#define MASK_S1 0x0000ffff
+#define MASK_W0 0xffffffff00000000
+#define MASK_W1 0x00000000ffffffff
 
 #define MAX_W 640 // In pixel
 #define BYTEPERPIXEL 3
@@ -52,14 +51,14 @@ const BASETYPE BYTEMASK = 0xff;
 
 void print_help() {
 	std::cout <<
-		"Usage: fastdemo <sw_or_hw> <img_in> <img_out>\n"
-		"For sw: fastdemo 0 <img_in> <img_out>\n"
-		"For hw: fastdemo 1 <img_in> <img_out>"
+		"Usage: fastdemo <sw_or_hw> <img_in> <depth_in> <img_out>\n"
+		"For sw: fastdemo 0 <img_in> <depth_in> <img_out>\n"
+		"For hw: fastdemo 1 <img_in> <depth_in> <img_out>"
 	<< std::endl;
 }
 
 int main(int argc, char** argv) {
-	if(argc != 4) {
+	if(argc != 5) {
 		print_help();
 		return 0;
 	}
@@ -74,17 +73,20 @@ int main(int argc, char** argv) {
 		std::cout << "Creating SW Thread" << std::endl;
 		reconos_thread_create_swt_fast();
 	}
-	else { 
+	else if(sw_or_hw == 1) { 
 		std::cout << "Creating HW Thread" << std::endl;
 		reconos_thread_create_hwt_fast();
 	}
+	else {
+		std::cout << "Invalid mode" << std::endl;
+		print_help();
+	}
 
-	std::cout << "Thread creation finished\n";
 	BASETYPE blocks = NROWS * NCOLS;
 	BASETYPE mem_size_kpt = MAXPERBLOCK * blocks * DWORDS_KPT;
 
 	cv::Mat img_i = cv::imread(argv[2]);
-	cv::Mat img_gray = cv::imread(argv[2], 0);
+	cv::Mat img_d = cv::imread(argv[3], cv::IMREAD_ANYDEPTH);
 	BASETYPE img_w = img_i.cols;
 	BASETYPE _img_w = img_w * BYTEPERPIXEL;
 	BASETYPE img_h = img_i.rows;
@@ -92,85 +94,79 @@ int main(int argc, char** argv) {
 	//cv::Mat _dummy = cv::Mat::zeros(2,img_w,img_i.type());
 	//img_i.push_back(_dummy);
 	uint8_t* ptr_i = (uint8_t*)img_i.data;
+	uint16_t* ptr_d = (uint16_t*)img_d.data;
 	BASETYPE* kpt_ptr = (BASETYPE*)malloc(mem_size_kpt * sizeof(BASETYPE));
 	memset(kpt_ptr, 0, mem_size_kpt * sizeof(BASETYPE));
 
 	std::vector<cv::KeyPoint> vToDistributeKeys;
 	vToDistributeKeys.reserve(MAXPERBLOCK*NROWS*NCOLS);
 	
-	std::ofstream hashFile;
-	if(sw_or_hw == 0)
-		hashFile.open("hash_sw.txt", std::ios_base::trunc);
-	else
-		hashFile.open("hash_hw.txt", std::ios_base::trunc);
-
 	std::cout << "Starting thread work" << std::endl;
 	unsigned int t_start, t_end;
+	
 	t_start = timer_get();
 	{
 		// Thread computations
 		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_i);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_d);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)kpt_ptr);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
-		
-		std::cout << "Sent data to thread\nWaiting for answer...\n";
 	
 		BASETYPE ret;
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
+			//std::cout << ((ret & 0xffffffff00000000) >> 32) << ", " << (ret & 0x00000000ffffffff) << std::endl;
 		}
 		while(ret != DONEFLAG);
 	}
 	t_end = timer_get();
-	hashFile.close();
+	std::cout << "Thread work complete\n";
 
 	std::ofstream myFile;
 	if(sw_or_hw == 0)
 		myFile.open("res_sw.txt", std::ios_base::trunc);
 	else
 		myFile.open("res_hw.txt", std::ios_base::trunc);
-	myFile << "Col, Row, Ang, Response\n";
+	myFile << "x, y, xU, yU, xR, depth, Angle, Response\n";
+
 	// Construct result vector from memory
 	uint32_t nfeatures = 0;
 	for(unsigned int b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
 		//std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
-		for(int i = 1; i < inBlock+1; i++){
-			int x,y;
-			int a, r;
-			if(R64) {
-				x = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W0) >> 48);
-				y = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W1) >> 32);
-				a = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W2) >> 16);
-				r = (int)(*(kpt_ptr + (blockoffset + i)*DWORDS_KPT) & MASK_W3);
-			}
-			else {
-				x = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 0) & MASK_S0) >> 16);
-				y = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 0) & MASK_S1));
-				a = (int)((*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S0) >> 16);
-				r = (int) (*(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1) & MASK_S1);
-			}
-			uint32_t id = nfeatures;
-		
-			// Conversion from Q format to float if necessary
-			if(sw_or_hw == 1)
-				a *= std::pow(2,-12);
+		for(int i = 0; i < inBlock; i++){
+			uint16_t x, y, depth, r;
+			float angle, xU, yU, xR;
 
+			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i*3) + 0)*DWORDS_KPT);
+			x = ((dword0 & MASK_S0) >> 48);
+			y = ((dword0 & MASK_S1) >> 32);
+			angle = ((dword0 & MASK_S2) >> 16) * std::pow(2,-12);
+			r = (dword0 & MASK_S3);
+			
+			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*3) + 1)*DWORDS_KPT);
+			xU = ((dword1 & MASK_W0) >> 32);
+			yU = (dword1 & MASK_W1);
+
+			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*3) + 2)*DWORDS_KPT);
+			xR = ((dword2 & MASK_W0) >> 32);
+			depth = (dword2 & MASK_W1);
+			
+			uint32_t id = nfeatures;
+			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
+				continue;
+			}
 			// Exit condition for the block, i.e. not all 100 allowed features were filled
 		//	if (x == 0 ||  y == 0){
 		//		break;
 		//	}
-			
-			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
-				continue;
-			}
 
-			myFile << x << ", " << y << ", " << a << ", " << r << std::endl;
+			myFile << x << ", " << y << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << std::endl;
 
-			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,a,r,0,id));
+			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,angle,r,0,id));
 			nfeatures++;
 		}
 	}
@@ -181,12 +177,10 @@ int main(int argc, char** argv) {
 
 	for(int i = 0; i < vToDistributeKeys.size(); i++) {
 		cv::KeyPoint kp = vToDistributeKeys[i];
-		//img_gray.at<uint8_t>(kp.pt.y, kp.pt.x) = 255;
 		img_i.at<cv::Vec3b>(kp.pt.y, kp.pt.x) = cv::Vec3b(255,255,255);
 	}
-	//cv::imwrite(argv[3], img_gray);
-	cv::imwrite(argv[3], img_i);
-	std::cout << "Image written\n";
+	cv::imwrite(argv[4], img_i);
+	std::cout << "Image written\n\n";
 
 	// Cleanup
 	free(kpt_ptr);

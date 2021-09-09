@@ -128,10 +128,12 @@ typedef struct {
 } kpt_t;
 
 void populate_xfMat(uint8_t* cache, uint8_t* mAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {
+#if 1
 Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
 Loop_FillCol:
 		for(uint8_t _col = 0; _col < MAT_SIZE; _col++) {
+			#pragma HLS pipeline
 			uint8_t v = cache[(startRow+_row)%CACHE_LINES * MAX_W + (startCol+_col)];
 			_dst.write(_row * MAT_SIZE + _col, v);
 		}
@@ -143,11 +145,27 @@ Loop_FillRowA:
 	for(uint8_t _row = 0; _row < MAT_SIZE_ANGLE; _row++) {
 Loop_FillColA:
 		for(uint8_t _col = 0; _col < MAT_SIZE_ANGLE; _col++) {
-			//#pragma HLS unroll
+			#pragma HLS pipeline
 			uint8_t v = cache[(angleRow+_row)%CACHE_LINES * MAX_W + (angleCol+_col)];
 			mAngle[_row * MAT_SIZE_ANGLE + _col] = v;
 		}
 	}
+#else
+	ap_uint<10> angleRow = startRow - 15;
+	ap_uint<10> angleCol = startCol - 15;
+Loop_FillMergedRow:
+	for(uint8_t _row = 0; _row < MAT_SIZE_ANGLE; _row++) {
+Loop_FillMergedCol:
+		for(uint8_t _col = 0; _col < MAT_SIZE_ANGLE; _col++) {
+			#pragma HLS pipeline
+			uint8_t v = cache[(angleRow+_row)%CACHE_LINES * MAX_W + (angleCol+_col)];
+			mAngle[_row * MAT_SIZE_ANGLE + _col] = v;
+			if(_row > 15 && _row <= MAT_SIZE_ANGLE-15 && _col > 15 && _col <= MAT_SIZE_ANGLE-15) {
+				_dst.write((_row-16) * MAT_SIZE + (_col-16), v);
+			}
+		}
+	}
+#endif
 }
 
 void evaluateFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _src, hls::stream<kpt_t> &_dst, ap_uint<10> startRow, ap_uint<10> startCol) {
@@ -263,8 +281,7 @@ While_fillMem:
 	memOut[0] = read_index;
 }
 
-void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
-	static uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
+void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, uint64_t ptr_o, ap_uint<6> NCOLS, ap_uint<6> rowStep, ap_uint<6> colStep, hls::stream<uint64_t>& memif_hwt2mem, hls::stream<uint64_t>& memif_mem2hwt) {
 	//#pragma HLS array_partition variable=mAngle cyclic factor=62
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
@@ -274,20 +291,22 @@ void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, BASETYPE* memOut, ap_
 	hls::stream<kpt_t> strm_undistort2Stereo;
 	hls::stream<kpt_t> strm_stereo2Angle;
 	hls::stream<kpt_t> strm_angle2Mem;
-	//#pragma HLS stream variable=strm_eval2Angle depth=256
-	//#pragma HLS stream variable=strm_angle2Mem depth=256
+	#pragma HLS stream variable=strm_eval2Angle depth=256
+	#pragma HLS stream variable=strm_angle2Mem depth=256
 
 	{
 		#pragma HLS dataflow
-		populate_xfMat(cache, &mAngle[0], mFast_in, startRow, startCol);
+		populate_xfMat(cache, mAngle, mFast_in, startRow, startCol);
 		xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>(mFast_in, mFast_out, FAST_TH);
 		evaluateFast(mFast_out, strm_eval2Undistort, startRow, startCol);
 		undistort(strm_eval2Undistort, strm_undistort2Stereo);
 		computeStereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth);
-		calcAngle(strm_stereo2Angle, strm_angle2Mem, &mAngle[0]);
+		calcAngle(strm_stereo2Angle, strm_angle2Mem, mAngle);
 		fillMem(strm_angle2Mem, memOut);
 		//fillMem(strm_stereo2Angle, memOut);
 	}
+	BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+	MEM_WRITE(memOut, (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 }
 
 THREAD_ENTRY() {
@@ -305,6 +324,7 @@ THREAD_ENTRY() {
 
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE cacheDepth[MAX_W * CACHE_LINES];
+	uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
 
 	read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h);
 Loop_RowStep:
@@ -322,11 +342,11 @@ Loop_ColStep:
 			BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol);
+				dataflow_region(&cache[0], &cacheDepth[0], &mAngle[0], &memOut[0], startRow, startCol, ptr_o, NCOLS, rowStep, colStep, memif_hwt2mem, memif_mem2hwt);
 			}
 
-			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
-			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
+//			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+//			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

@@ -148,11 +148,11 @@ int main(int argc, char** argv) {
 			r = (dword0 & MASK_S3);
 			
 			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*3) + 1)*DWORDS_KPT);
-			xU = ((dword1 & MASK_W0) >> 32);
-			yU = (dword1 & MASK_W1);
+			xU = ((dword1 & MASK_W0) >> 32) - 512;
+			yU = (dword1 & MASK_W1) - 512;
 
 			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*3) + 2)*DWORDS_KPT);
-			xR = ((dword2 & MASK_W0) >> 32);
+			xR = ((dword2 & MASK_W0) >> 32) - 512;
 			depth = (dword2 & MASK_W1);
 			
 			uint32_t id = nfeatures;

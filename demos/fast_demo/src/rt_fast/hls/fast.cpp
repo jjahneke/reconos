@@ -127,7 +127,7 @@ typedef struct {
 	ap_uint<10> startRow, startCol;
 } kpt_t;
 
-void populate_xfMat(uint8_t* cache, uint8_t* mAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {
+void populate_xfMat(uint8_t* cache, hls::stream<uint8_t>& mAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {
 #if 0
 Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
@@ -159,7 +159,8 @@ Loop_FillMergedCol:
 		for(uint8_t _col = 0; _col < MAT_SIZE_ANGLE; _col++) {
 			#pragma HLS pipeline
 			uint8_t v = cache[(angleRow+_row)%CACHE_LINES * MAX_W + (angleCol+_col)];
-			mAngle[_row * MAT_SIZE_ANGLE + _col] = v;
+			//mAngle[_row * MAT_SIZE_ANGLE + _col] = v;
+			mAngle.write(v);
 			if(_row > 15 && _row <= MAT_SIZE_ANGLE-15 && _col > 15 && _col <= MAT_SIZE_ANGLE-15) {
 				_dst.write((_row-16) * MAT_SIZE + (_col-16), v);
 			}
@@ -264,35 +265,70 @@ While_computeStereo:
 #endif
 }
 
-void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, uint8_t* mAngle) {
+void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, hls::stream<uint8_t>& _srcAngle) {
 	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
 	#pragma HLS array_partition variable=u_max complete
+
+	uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
+	#pragma HLS array_partition variable=mAngle cyclic factor=62
+Loop_fillAngleRow:
+	for(uint8_t _mrow = 0; _mrow < MAT_SIZE_ANGLE; _mrow++) {
+Loop_fillAngleCol:
+		for(uint8_t _mcol = 0; _mcol < MAT_SIZE_ANGLE; _mcol++) {
+			#pragma HLS pipeline
+			mAngle[_mrow*MAT_SIZE_ANGLE + _mcol] = _srcAngle.read();
+		}
+	}
+
 #if 1
 Loop_angleRow:
 	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 Loop_angleCol:
 		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
-			//#pragma HLS pipeline
 			kpt_t kpt = _src.read();
 			ap_uint<10> row = kpt.angle_y;
 			ap_uint<10> col = kpt.angle_x;
 		
+#if 0
 			ap_int<24> m_01, m_10;
 Loop_calcRow:for(ap_uint<5> _row = 0; _row <= 15; _row++) {
 Loop_calcCol:	for(ap_int<6> _col = -15; _col <= 15; _col++) {
 					if(_col >= -u_max[_row] && _col <= u_max[_row]) {
-						uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
-						uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
 						if(_row == 0) {
+							uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
 							m_10 += _col * val_minus;
 						}
 						else {
+							uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
+							uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
 							m_01 += _row * (val_plus - val_minus);
 							m_10 += _col * (val_plus + val_minus);
 						}
 					}
 				}
 			}
+#else
+			ap_int<24> m_01, m_10, v_sum;
+			for(ap_uint<5> _row = 0; _row <= 15; _row++) {
+				v_sum = 0;
+				for(ap_int<6> _col = -15; _col <= 15; _col++) {
+					if(_col >= -u_max[_row] && _col <= u_max[_row]) {
+						uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
+						uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
+						if(_row == 0) {
+							v_sum += _col * val_minus;
+							m_10 += _col * val_minus;
+						}
+						else {
+							v_sum += (val_plus - val_minus);
+							m_10 += _col * (val_plus + val_minus);
+						}
+					}
+				}
+				if(_row > 0)
+					m_01 += _row * v_sum;
+			}
+#endif
 			kpt.angle = (XF_PI_FIXED + xf::cv::Atan2LookupFP24(m_01, m_10, 24, 0, 24, 0));
 			_dst.write(kpt);
 		}
@@ -307,9 +343,9 @@ While_calcAngle:
 		ap_uint<10> col = kpt.angle_x;
 	
 		ap_int<24> m_01, m_10, v_sum;
-		for(ap_uint<4> _row = 0; _row <= 15; _row++) {
+		for(ap_uint<5> _row = 0; _row <= 15; _row++) {
 			v_sum = 0;
-			for(ap_int<5> _col = -15; _col <= 15; _col++) {
+			for(ap_int<6> _col = -15; _col <= 15; _col++) {
 				if(_col >= -u_max[_row] && _col <= u_max[_row]) {
 					uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
 					uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
@@ -373,7 +409,8 @@ While_fillMem:
 #endif
 }
 
-void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
+//void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
+void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -382,6 +419,7 @@ void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASE
 	hls::stream<kpt_t> strm_undistort2Stereo;
 	hls::stream<kpt_t> strm_stereo2Angle;
 	hls::stream<kpt_t> strm_angle2Mem;
+	hls::stream<uint8_t> mAngle;
 	#pragma HLS stream variable=strm_stereo2Angle depth=256
 	//#pragma HLS stream variable=strm_angle2Mem depth=256
 
@@ -412,7 +450,7 @@ THREAD_ENTRY() {
 
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE cacheDepth[MAX_W * CACHE_LINES];
-	uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
+	//uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
 	//#pragma HLS array_partition variable=mAngle cyclic factor=62
 
 	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
@@ -432,7 +470,8 @@ Loop_ColStep:
 	
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &mAngle[0], &memOut[0], startRow, startCol);
+				//dataflow_region(&cache[0], &cacheDepth[0], &mAngle[0], &memOut[0], startRow, startCol);
+				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol);
 			}
 
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);

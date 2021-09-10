@@ -128,7 +128,7 @@ typedef struct {
 } kpt_t;
 
 void populate_xfMat(uint8_t* cache, uint8_t* mAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {
-#if 1
+#if 0
 Loop_FillRow:
 	for(uint8_t _row = 0; _row < MAT_SIZE; _row++) {
 Loop_FillCol:
@@ -172,10 +172,11 @@ void evaluateFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1>& _src, hls:
 kpt_t kpt_out;
 Loop_EvalRow:for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 	Loop_EvalCol:for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
+			#pragma HLS pipeline
 			uint8_t r = _src.read(_mrow * MAT_SIZE + _mcol);
 			kpt_out.global_x = _mcol + startCol;
 			kpt_out.global_y = _mrow + startRow;
-			kpt_out.angle_x = _mcol + 12; // -3 to offset FAST borders, +15 to translate to mAngle dim
+			kpt_out.angle_x = _mcol + 12; // -3 to offset FAST borders, +15 to translate to angle matrix dim
 			kpt_out.angle_y = _mrow + 12;
 			kpt_out.r = r;
 			if(_mrow == MAT_SIZE-1 && _mcol == MAT_SIZE-1)
@@ -185,14 +186,27 @@ Loop_EvalRow:for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 
 			kpt_out.startRow = startRow;
 			kpt_out.startCol = startCol;
-			// Make sure we send the 
-			if((_mrow == MAT_SIZE-1 && _mcol == MAT_SIZE-1) || r > 0)
+			// Make sure we send the done flag
+			//if((_mrow == MAT_SIZE-1 && _mcol == MAT_SIZE-1) || r > 0)
 				_dst.write(kpt_out);
 		}
 	}
 }
 
 void undistort(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst) {
+#if 1
+Loop_UndistortRow:
+	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+Loop_UndistortCol:
+		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
+			#pragma HLS pipeline
+			kpt_t kpt = _src.read();
+			kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[kpt.startRow][kpt.startCol];
+			kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
+			_dst.write(kpt);
+		}
+	}
+#else
 	kpt_t kpt;
 While_undistort:
 	do {
@@ -202,47 +216,100 @@ While_undistort:
 		kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
 		_dst.write(kpt);
 	}
-	while(kpt.done != 1); 
+	while(kpt.done != 1);
+#endif
 }
 
 void computeStereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, uint64_t* cacheDepth) {
+#if 1
+Loop_stereoRow:
+	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+Loop_stereoCol:
+		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
+			#pragma HLS pipeline
+			kpt_t kpt = _src.read();
+			ap_uint<10> x = kpt.global_x;
+			ap_uint<10> y = kpt.global_y;
+			uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
+			ap_uint<2> _sidw = x % 4;
+			uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
+
+			kpt.depth = d; // Filter for kpt.d == 0
+			if(d > 0)
+				kpt.xR = kpt.xU - float2q(MBF/d, 6);
+			else
+				kpt.xR = -1;
+			_dst.write(kpt);
+		}
+	}
+#else
 	kpt_t kpt;
 While_computeStereo:
 	do {
 		kpt = _src.read();
-		uint16_t x = kpt.global_x;
-		uint16_t y = kpt.global_y;
+		ap_uint<10> x = kpt.global_x;
+		ap_uint<10> y = kpt.global_y;
 		uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
 		ap_uint<2> _sidw = x % 4;
 		uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
 
 		kpt.depth = d; // Filter for kpt.d == 0
-		// NOTE_J: Datatype?
 		if(d > 0)
 			kpt.xR = kpt.xU - float2q(MBF/d, 6);
 		else
-			kpt.xR = 0;
+			kpt.xR = -1;
 		_dst.write(kpt);
     }
 	while(kpt.done != 1);
+#endif
 }
 
 void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, uint8_t* mAngle) {
 	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
-	//#pragma HLS array_partition variable=u_max complete
+	#pragma HLS array_partition variable=u_max complete
+#if 1
+Loop_angleRow:
+	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+Loop_angleCol:
+		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
+			//#pragma HLS pipeline
+			kpt_t kpt = _src.read();
+			ap_uint<10> row = kpt.angle_y;
+			ap_uint<10> col = kpt.angle_x;
+		
+			ap_int<24> m_01, m_10;
+Loop_calcRow:for(ap_uint<5> _row = 0; _row <= 15; _row++) {
+Loop_calcCol:	for(ap_int<6> _col = -15; _col <= 15; _col++) {
+					if(_col >= -u_max[_row] && _col <= u_max[_row]) {
+						uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
+						uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
+						if(_row == 0) {
+							m_10 += _col * val_minus;
+						}
+						else {
+							m_01 += _row * (val_plus - val_minus);
+							m_10 += _col * (val_plus + val_minus);
+						}
+					}
+				}
+			}
+			kpt.angle = (XF_PI_FIXED + xf::cv::Atan2LookupFP24(m_01, m_10, 24, 0, 24, 0));
+			_dst.write(kpt);
+		}
+	}
 
+#else
 	kpt_t kpt;
 While_calcAngle:
 	do {
 		kpt = _src.read();
-		uint16_t row = kpt.angle_y;
-		uint16_t col = kpt.angle_x;
+		ap_uint<10> row = kpt.angle_y;
+		ap_uint<10> col = kpt.angle_x;
 	
-		ap_fixed<24,24> m_01, m_10, v_sum;
+		ap_int<24> m_01, m_10, v_sum;
 		for(ap_uint<4> _row = 0; _row <= 15; _row++) {
 			v_sum = 0;
-			for(int8_t _col = -15; _col <= 15; _col++) {
-			//#pragma HLS unroll
+			for(ap_int<5> _col = -15; _col <= 15; _col++) {
 				if(_col >= -u_max[_row] && _col <= u_max[_row]) {
 					uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
 					uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
@@ -256,6 +323,7 @@ While_calcAngle:
 		kpt.angle = (XF_PI_FIXED + xf::cv::Atan2LookupFP24(m_01, m_10, 24, 0, 24, 0));
 		_dst.write(kpt);
 	} while(kpt.done != 1);
+#endif
 }
 
 /**
@@ -265,6 +333,29 @@ While_calcAngle:
 */
 void fillMem(hls::stream<kpt_t>& _src, BASETYPE* memOut) {
 	ap_uint<10> read_index = 0;
+
+#if 1
+Loop_fillMemRow:
+	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+Loop_fillMemCol:
+		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
+			kpt_t kpt = _src.read();
+			if(kpt.r > 0) {
+				// To not transfer negative numbers, add 512 constant to ap_int<18> candidates
+				uint64_t dword0 = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
+				uint64_t dword1 = ((uint64_t)(kpt.xU+512) << 32) | (kpt.yU+512);
+				uint64_t dword2 = ((uint64_t)(kpt.xR+512) << 32) | kpt.angle;
+				memOut[(read_index+1)*3 - 2] = dword0;
+				memOut[(read_index+1)*3 - 1] = dword1;
+				memOut[(read_index+1)*3 - 0] = dword2;
+				read_index++;
+			}
+		}
+	}
+	memOut[0] = read_index;
+
+
+#else
 	kpt_t kpt;
 While_fillMem:
 	do {
@@ -279,10 +370,10 @@ While_fillMem:
 		read_index++;
 	} while(kpt.done != 1);
 	memOut[0] = read_index;
+#endif
 }
 
-void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, uint64_t ptr_o, ap_uint<6> NCOLS, ap_uint<6> rowStep, ap_uint<6> colStep, hls::stream<uint64_t>& memif_hwt2mem, hls::stream<uint64_t>& memif_mem2hwt) {
-	//#pragma HLS array_partition variable=mAngle cyclic factor=62
+void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, XF_NPPC1> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -291,8 +382,8 @@ void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASE
 	hls::stream<kpt_t> strm_undistort2Stereo;
 	hls::stream<kpt_t> strm_stereo2Angle;
 	hls::stream<kpt_t> strm_angle2Mem;
-	#pragma HLS stream variable=strm_eval2Angle depth=256
-	#pragma HLS stream variable=strm_angle2Mem depth=256
+	#pragma HLS stream variable=strm_stereo2Angle depth=256
+	//#pragma HLS stream variable=strm_angle2Mem depth=256
 
 	{
 		#pragma HLS dataflow
@@ -303,10 +394,7 @@ void dataflow_region(uint8_t* cache, BASETYPE* cacheDepth, uint8_t* mAngle, BASE
 		computeStereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth);
 		calcAngle(strm_stereo2Angle, strm_angle2Mem, mAngle);
 		fillMem(strm_angle2Mem, memOut);
-		//fillMem(strm_stereo2Angle, memOut);
 	}
-	BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
-	MEM_WRITE(memOut, (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 }
 
 THREAD_ENTRY() {
@@ -325,6 +413,9 @@ THREAD_ENTRY() {
 	uint8_t cache[MAX_W * CACHE_LINES];
 	BASETYPE cacheDepth[MAX_W * CACHE_LINES];
 	uint8_t mAngle[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
+	//#pragma HLS array_partition variable=mAngle cyclic factor=62
+
+	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 	read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h);
 Loop_RowStep:
@@ -339,14 +430,13 @@ Loop_ColStep:
 			ap_uint<10> startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
 	
-			BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &mAngle[0], &memOut[0], startRow, startCol, ptr_o, NCOLS, rowStep, colStep, memif_hwt2mem, memif_mem2hwt);
+				dataflow_region(&cache[0], &cacheDepth[0], &mAngle[0], &memOut[0], startRow, startCol);
 			}
 
-//			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
-//			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
+			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

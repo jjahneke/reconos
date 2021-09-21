@@ -11,21 +11,11 @@ extern "C" {
 	#include "timer.h"
 }
 
-#ifdef __aarch64__ // ReconOS64
-	#define R64 1
-    #define BASETYPE uint64_t
-    #define BYTES 8
-    #define MASK 7
-	#define DWORDS_KPT 3
-	#define DONEFLAG 0xffffffffffffffff
-#else // ReconOS32
-	#define R64 0
-    #define BASETYPE uint32_t
-    #define BYTES 4
-    #define MASK 3
-	#define DWORDS_KPT 2
-	#define DONEFLAG 0xffffffff
-#endif
+#define BASETYPE uint64_t
+#define BYTES 8
+#define MASK 7
+#define DWORDS_KPT 7
+#define DONEFLAG 0xffffffffffffffff
 	
 // Only used by R64
 #define MASK_S0 0xffff000000000000
@@ -48,6 +38,11 @@ const BASETYPE BYTEMASK = 0xff;
 
 #define NROWS (int)((CC_H - 2*BORDER_EDGE) / WINDOW_SIZE)
 #define NCOLS (int)((MAX_W - 2*BORDER_EDGE) / WINDOW_SIZE)
+
+typedef struct {
+	uint64_t dw0, dw1, dw2, dw3;
+} descriptor_t;
+
 
 void print_help() {
 	std::cout <<
@@ -113,11 +108,12 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
+		std::cout << "Waiting for answer" << std::endl;
 	
 		BASETYPE ret;
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
-			//std::cout << ((ret & 0xffffffff00000000) >> 32) << ", " << (ret & 0x00000000ffffffff) << std::endl;
+			std::cout << ret << std::endl;
 		}
 		while(ret != DONEFLAG);
 	}
@@ -129,32 +125,38 @@ int main(int argc, char** argv) {
 		myFile.open("res_sw.txt", std::ios_base::trunc);
 	else
 		myFile.open("res_hw.txt", std::ios_base::trunc);
-	myFile << "x, y, xU, yU, xR, depth, Angle, Response\n";
+	myFile << "x, y, xU, yU, xR, depth, Angle, Response, Desc0, Desc1, Desc2, Desc3\n";
 
+	std::vector<descriptor_t> unfltd_desc;
 	// Construct result vector from memory
 	uint32_t nfeatures = 0;
-	for(unsigned int b = 0; b < blocks; b++){
+	for(size_t b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
 		//std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
-		for(int i = 0; i < inBlock; i++){
+		for(size_t i = 0; i < inBlock; i++){
 			uint16_t x, y, depth, r;
 			float angle, xU, yU, xR;
 
-			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i*3) + 0)*DWORDS_KPT);
+			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 0)*DWORDS_KPT);
 			x = ((dword0 & MASK_S0) >> 48);
 			y = ((dword0 & MASK_S1) >> 32);
-			angle = ((dword0 & MASK_S2) >> 16) * std::pow(2,-12);
+			depth = ((dword0 & MASK_S2) >> 16);
 			r = (dword0 & MASK_S3);
 			
-			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*3) + 1)*DWORDS_KPT);
-			xU = ((dword1 & MASK_W0) >> 32) - 512;
-			yU = (dword1 & MASK_W1) - 512;
+			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 1)*DWORDS_KPT);
+			xU = (((dword1 & MASK_W0) >> 32) - 512) * std::pow(2,-6);
+			yU = ((dword1 & MASK_W1) - 512) * std::pow(2,-6);
 
-			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*3) + 2)*DWORDS_KPT);
-			xR = ((dword2 & MASK_W0) >> 32) - 512;
-			depth = (dword2 & MASK_W1);
+			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 2)*DWORDS_KPT);
+			xR = (((dword2 & MASK_W0) >> 32) - 512) * std::pow(2,-6);
+			angle = (dword2 & MASK_W1) * std::pow(2,-12);
 			
+			uint64_t dword3 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 3)*DWORDS_KPT);
+			uint64_t dword4 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 4)*DWORDS_KPT);
+			uint64_t dword5 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 5)*DWORDS_KPT);
+			uint64_t dword6 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 6)*DWORDS_KPT);
+
 			uint32_t id = nfeatures;
 			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
 				continue;
@@ -164,9 +166,11 @@ int main(int argc, char** argv) {
 		//		break;
 		//	}
 
-			myFile << x << ", " << y << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << std::endl;
+			myFile << x << ", " << y << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << ", " << dword3 << ", " << dword4 << ", " << dword5 << ", " << dword6 << std::endl;
 
 			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,angle,r,0,id));
+			descriptor_t tmp = {dword3,dword4,dword5,dword6};
+			unfltd_desc.push_back(tmp);
 			nfeatures++;
 		}
 	}
@@ -174,8 +178,10 @@ int main(int argc, char** argv) {
 	
 	std::cout << "Thread compute took " << timer_toms(t_end - t_start) << " ms" << std::endl;
 	std::cout << "KeyPoints found: " << nfeatures << std::endl;
+	
+	cv::Mat mToDistributeDescriptors = cv::Mat((int)vToDistributeKeys.size(), 32, CV_8U);
 
-	for(int i = 0; i < vToDistributeKeys.size(); i++) {
+	for(size_t i = 0; i < vToDistributeKeys.size(); i++) {
 		cv::KeyPoint kp = vToDistributeKeys[i];
 		img_i.at<cv::Vec3b>(kp.pt.y, kp.pt.x) = cv::Vec3b(255,255,255);
 	}

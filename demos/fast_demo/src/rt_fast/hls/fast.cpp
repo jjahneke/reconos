@@ -224,7 +224,7 @@ Loop_evalCalc:
 	}
 }
 
-void undistort(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst) {
+void undistortStereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth) {
 #if 0
 Loop_UndistortRow:
 	for(uint8_t _mrow = 0; _mrow < WINDOW_SIZE; _mrow++) {
@@ -234,6 +234,18 @@ Loop_UndistortCol:
 			kpt_t kpt = _src.read();
 			kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[kpt.startRow][kpt.startCol];
 			kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
+			ap_uint<10> x = kpt.global_x;
+			ap_uint<10> y = kpt.global_y;
+			uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
+			ap_uint<2> _sidw = x % 4;
+			uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
+
+			kpt.depth = d; // Filter for kpt.d == 0
+			if(d > 0)
+				kpt.xR = kpt.xU - float2q(MBF/d, 6);
+			else
+				kpt.xR = -1;
+
 			_dst.write(kpt);
 		}
 	}
@@ -244,39 +256,7 @@ While_undistort:
 		kpt = _src.read();
 		kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[kpt.startRow][kpt.startCol];
 		kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
-		_dst.write(kpt);
-	}
-	while(kpt.done != 1);
-#endif
-}
-
-void computeStereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth) {
-#if 0
-Loop_stereoRow:
-	for(uint8_t _mrow = 0; _mrow < WINDOW_SIZE; _mrow++) {
-Loop_stereoCol:
-		for(uint8_t _mcol = 0; _mcol < WINDOW_SIZE; _mcol++) {
-			#pragma HLS pipeline
-			kpt_t kpt = _src.read();
-			ap_uint<10> x = kpt.global_x;
-			ap_uint<10> y = kpt.global_y;
-			uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
-			ap_uint<3> _sidw = x % 4;
-			uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
-
-			kpt.depth = d; // Filter for kpt.d == -1
-			if(d > 0)
-				kpt.xR = kpt.xU - float2q(MBF/d, 6);
-			else
-				kpt.xR = -64; // == -1 when converted back
-			_dst.write(kpt);
-		}
-	}
-#else
-	kpt_t kpt;
-While_computeStereo:
-	do {
-		kpt = _src.read();
+		
 		ap_uint<10> x = kpt.global_x;
 		ap_uint<10> y = kpt.global_y;
 		uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
@@ -288,8 +268,9 @@ While_computeStereo:
 			kpt.xR = kpt.xU - float2q(MBF/d, 6);
 		else
 			kpt.xR = -1;
+
 		_dst.write(kpt);
-    }
+	}
 	while(kpt.done != 1);
 #endif
 }
@@ -494,15 +475,13 @@ void dataflow_region(ap_uint<TYPEWIDTH>* cache, ap_uint<64>* cacheDepth, BASETYP
 	xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC> mBlur_in(MAT_SIZE_ANGLE, MAT_SIZE_ANGLE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC> mBlur_out(MAT_SIZE_ANGLE, MAT_SIZE_ANGLE);
 	
-	hls::stream<kpt_t> strm_eval2Undistort;
-	hls::stream<kpt_t> strm_undistort2Stereo;
-	hls::stream<kpt_t> strm_stereo2Angle;
+	hls::stream<kpt_t> strm_eval2UndistortStereo;
+	hls::stream<kpt_t> strm_undistortStereo2Angle;
 	hls::stream<kpt_t> strm_angle2Desc;
 	hls::stream<kpt_t> strm_desc2Mem;
 	hls::stream<ap_uint<TYPEWIDTH>> mAngle;
-	#pragma HLS stream variable=strm_eval2Undistort depth=32
-	#pragma HLS stream variable=strm_undistort2Stereo depth=32
-	#pragma HLS stream variable=strm_stereo2Angle depth=32
+	#pragma HLS stream variable=strm_eval2UndistortStereo depth=32
+	#pragma HLS stream variable=strm_undistortStereo2Angle depth=32
 	#pragma HLS stream variable=strm_angle2Desc depth=32
 	#pragma HLS stream variable=strm_desc2Mem depth=32
 
@@ -511,10 +490,9 @@ void dataflow_region(ap_uint<TYPEWIDTH>* cache, ap_uint<64>* cacheDepth, BASETYP
 		populate_xfMat(cache, mFast_in, mAngle, mBlur_in, startRow, startCol);
 		xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>(mFast_in, mFast_out, FAST_TH);
 		xf::cv::GaussianBlur<5,XF_BORDER_CONSTANT,XF_8UC1,MAT_SIZE_ANGLE,MAT_SIZE_ANGLE,NPPC>(mBlur_in, mBlur_out, 2);
-		evaluateFast(mFast_out, strm_eval2Undistort, startRow, startCol);
-		undistort(strm_eval2Undistort, strm_undistort2Stereo);
-		computeStereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth);
-		calcAngle(strm_stereo2Angle, strm_angle2Desc, mAngle);
+		evaluateFast(mFast_out, strm_eval2UndistortStereo, startRow, startCol);
+		undistortStereo(strm_eval2UndistortStereo, strm_undistortStereo2Angle, cacheDepth);
+		calcAngle(strm_undistortStereo2Angle, strm_angle2Desc, mAngle);
 		calcDescriptor(strm_angle2Desc, strm_desc2Mem, mBlur_out);
 		fillMem(strm_desc2Mem, memOut);
 	}

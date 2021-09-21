@@ -96,30 +96,6 @@ Loop_batchReadRow:
 		BASETYPE _len = (_img_w + _offset + BYTES)&(~MASK);
 		BASETYPE _addr = (ptr_i + ptr_limit * _img_w)&(~MASK);
 		MEM_READ(_addr, &_in[0], _len);
-#if 0
-Loop_batchReadCol:
-		for(ap_uint<10> ii = 0; ii < MAX_W; ii+=8) {
-			ap_uint<64> _v;
-			uint16_t _dw0_ptr = (_offset + ii*BYTEPERPIXEL) / BYTES;
-			ap_uint<256> _buf;
-			_buf(256,192) = _in[_dw0_ptr];
-			_buf(192,128) = _in[_dw0_ptr + 1];
-			_buf(128,64) = _in[_dw0_ptr + 2];
-			_buf(64,0) = _in[_dw0_ptr + 3]; // Only overlapping read between iterations happens here
-
-			uint8_t first_bidw = (_offset + ii*BYTEPERPIXEL) % BYTES; // "Pointer" to first blue channel of first pixel
-			for(ap_uint<5> bgr = 0; bgr < 24; bgr+=3) {
-				#pragma HLS unroll
-				uint8_t _hi = 256-(first_bidw*8);
-				uint8_t _lo = 248-(first_bidw*8);
-				uint8_t _b = _buf(_hi-8*(bgr+0), _lo-8*(bgr+0));
-				uint8_t _r = _buf(_hi-8*(bgr+1), _lo-8*(bgr+1));
-				uint8_t _g = _buf(_hi-8*(bgr+2), _lo-8*(bgr+2));
-				_v |= (ap_uint<64>)kernel(_b, _g, _r) << (bgr/3)*8;
-			}
-			cache[MAX_W/8 * (row_count % CACHE_LINES) + ii/8] = _v;
-		}
-#else
 Loop_batchReadCol:
 		for(int ii = 0; ii < MAX_W/8; ii++) {
 			#pragma HLS pipeline
@@ -132,11 +108,10 @@ Loop_batchReadCol:
 				uint8_t _b = ((_dword0 & (BYTEMASK << _bidw*8)) >> _bidw*8);
 				uint8_t _g = _bidw < 7 ? ((_dword0 & (BYTEMASK << (_bidw+1)*8)) >> (_bidw+1)*8) : _dword1 & BYTEMASK;
 				uint8_t _r = _bidw < 6 ? ((_dword0 & (BYTEMASK << (_bidw+2)*8)) >> (_bidw+2)*8) : ((_dword1 & (BYTEMASK << (_bidw%6)*8)) >> (_bidw%6)*8);
-				_v |= (ap_uint<64>)kernel(_b, _g, _r) << b*8;
+				_v |= (ap_uint<64>)kernel(_b, _g, _r) << 8*b; // Preserve little endian-ness
 			}
 			cache[MAX_W/8 * (row_count % CACHE_LINES) + ii] = _v;
 		}
-#endif
 		row_count++;
 	}
 }
@@ -153,28 +128,44 @@ typedef struct {
 	ap_uint<64> desc[4];
 } kpt_t;
 
-void populate_xfMat(ap_uint<TYPEWIDTH>* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _dst, hls::stream<ap_uint<64>>& _dstAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC>& _dstBlur, ap_uint<10> startRow, ap_uint<10> startCol) {
-#if 0
-Loop_FillRow:
-	for(ap_int<8> _row = -1; _row < MAT_SIZE - 1; _row++) {
-Loop_FillCol:
-		for(ap_int<4> _col = -1; _col < MAT_SIZE/8 - 1; _col++) {
+void populate_xfMat(ap_uint<64>* cache, xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _dstFast, hls::stream<ap_uint<64>>& _dstAngle, xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC>& _dstBlur, ap_uint<10> startRow, ap_uint<10> startCol) {
+#if 1
+Loop_FillRowFast:
+	for(ap_uint<7> _row = 0; _row < MAT_SIZE; _row++) {
+Loop_FillColFast:
+		for(ap_uint<4> _col = 0; _col < MAT_SIZE/8; _col++) {
 			#pragma HLS pipeline
-			ap_uint<64> v = cache[((startRow + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 + _col)];
-			_dst.write((_row+1) * MAT_SIZE/8 + (_col+1), v);
+			ap_uint<64> v = cache[((startRow - 8 + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 - 1 + _col)];
+			if(NPPC == XF_NPPC8) {
+				_dstFast.write(_row * MAT_SIZE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+			}
+			else {
+				for(ap_uint<4> b = 0; b < 8; b++) {
+					ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; // To keep correct pixel order, have to access bytes in dword from LSB to MSB
+					_dstFast.write(_row * MAT_SIZE + _col + b, _v);
+				}		
+			}
+		}
+	}
+Loop_FillRowBlur:
+	for(ap_uint<7> _row = 0; _row < MAT_SIZE_ANGLE; _row++) {
+Loop_FillColBlur:
+		for(ap_uint<4> _col = 0; _col < MAT_SIZE_ANGLE/8; _col++) {
+			#pragma HLS pipeline
+			ap_uint<64> v = cache[((startRow - 16 + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 - 2 + _col)];
+			_dstAngle.write(v); // Little-endian
+			if(NPPC == XF_NPPC8) {
+				_dstBlur.write(_row * MAT_SIZE_ANGLE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+			}
+			else {
+				for(ap_uint<4> b = 0; b < 8; b++) {
+					ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; //To keep correct pixel order, have to access bytes in dword from LSB to MSB
+					_dstBlur.write(_row * MAT_SIZE_ANGLE + _col + b, _v);
+				}		
+			}
 		}
 	}
 
-Loop_FillRowAB:
-	for(ap_int<8> _row = -2; _row < MAT_SIZE_ANGLE - 2; _row++) {
-Loop_FillColAB:
-		for(ap_int<4> _col = -2; _col < MAT_SIZE_ANGLE/8 - 2; _col++) {
-			#pragma HLS pipeline
-			ap_uint<64> v = cache[((startRow + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 + _col)];
-			_dstAngle.write(v);
-			_dstBlur.write((_row+2) * MAT_SIZE_ANGLE/8 + (_col+2), v);
-		}
-	}
 #else
 Loop_FillRowMerged:
 	for(ap_int<8> _row = -2; _row < MAT_SIZE_ANGLE - 2; _row++) {
@@ -185,7 +176,7 @@ Loop_FillColMerged:
 			_dstAngle.write(v);
 			_dstBlur.write((_row+2) * MAT_SIZE_ANGLE/8 + (_col+2), v);
 			if(_row > -2 && _row < MAT_SIZE-1 && _col > -2 && _col < MAT_SIZE/8-1) {
-				_dst.write((_row+1) * MAT_SIZE/8 + (_col+1), v);
+				_dstFast.write((_row+1) * MAT_SIZE/8 + (_col+1), v);
 			}
 		}
 	}
@@ -194,24 +185,23 @@ Loop_FillColMerged:
 
 void evaluateFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t> &_dst, ap_uint<10> startRow, ap_uint<10> startCol) {
 Loop_EvalRow:
-	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
+	for(ap_uint<6> _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 	Loop_EvalCol:
-		for(uint8_t _mcol = 0; _mcol < MAT_SIZE/TYPEDIV; _mcol++) {
+		for(ap_uint<6> _mcol = 0; _mcol < MAT_SIZE/TYPEDIV; _mcol++) {
 			#pragma HLS pipeline
 			kpt_t kpt;
 			ap_uint<TYPEWIDTH> _r = _src.read(_mrow * MAT_SIZE/TYPEDIV + _mcol);
-			// NOTE_J: (b7, b6, ..., b1, b0) -> [b0, b1, ..., b6, b7]
 
 Loop_evalCalc:
-			for(ap_uint<4> pix = 0; pix < TYPEDIV; pix++) {
-				kpt.r = _r.range((pix+1)*TYPEDIV, pix*TYPEDIV);
-				ap_uint<8> resp = _r.range((pix+1)*TYPEDIV, pix*TYPEDIV);
-				kpt.global_x = startCol - 8 + _mcol*TYPEDIV + pix;
+			for(ap_uint<4> b = 0; b < TYPEDIV; b++) { // 8 Iterations for XF_NPPC8, 1 iteration for XF_NPPC1
+				ap_uint<8> resp = (_r & (BYTEMASK << 8*b) >> 8*b);
+				kpt.r = resp;
+				kpt.global_x = startCol - 8 + _mcol*TYPEDIV + b;
 				kpt.global_y = startRow - 8 + _mrow;
-				kpt.angle_x = 8 + _mcol*TYPEDIV + pix;
+				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
 				kpt.angle_y = 8 + _mrow;
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
-				kpt.done = _mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && pix == TYPEDIV-1 ? 1 : 0;
+				kpt.done = _mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1 ? 1 : 0;
 	
 				kpt.startRow = startRow;
 				kpt.startCol = startCol;
@@ -287,10 +277,10 @@ Loop_fillAngleRow:
 Loop_fillAngleCol:
 		for(uint8_t _mcol = 0; _mcol < MAT_SIZE_ANGLE/8; _mcol++) {
 			#pragma HLS pipeline
-			ap_uint<TYPEWIDTH> _v = _srcAngle.read();
-			for(ap_uint<4> b = 0; b < TYPEDIV; b++) {
-				uint8_t v = _v.range((b+1)*TYPEDIV,b*TYPEDIV);
-				mAngle[_mrow*MAT_SIZE_ANGLE + _mcol*TYPEDIV + b] = v;
+			ap_uint<64> _v = _srcAngle.read();
+			for(ap_uint<4> b = 0; b < 8; b++) {
+				ap_uint<8> v = (_v & (BYTEMASK << 8*b) >> 8*b);
+				mAngle[_mrow*MAT_SIZE_ANGLE + _mcol*8 + b] = v; // mAngle now contains pixels in correct order, i.e., [p0, p1, p2, ..., p7, p8, ...]
 			}
 		}
 	}
@@ -363,18 +353,18 @@ Loop_calcCol:
 }
 
 void calcDescriptor(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC>& _srcBlur) {
-	uint8_t mDesc[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
+	ap_uint<8> mDesc[MAT_SIZE_ANGLE * MAT_SIZE_ANGLE];
 	//#pragma HLS array_partition variable=mAngle cyclic factor=64
 Loop_fillDescRow:
-	for(uint8_t _mrow = 0; _mrow < MAT_SIZE_ANGLE; _mrow++) {
+	for(ap_uint<7> _mrow = 0; _mrow < MAT_SIZE_ANGLE; _mrow++) {
 Loop_fillDescCol:
-		for(uint8_t _mcol = 0; _mcol < MAT_SIZE_ANGLE/8; _mcol++) {
+		for(ap_uint<7> _mcol = 0; _mcol < MAT_SIZE_ANGLE/TYPEDIV; _mcol++) {
 			#pragma HLS pipeline
-			ap_uint<64> _v = _srcBlur.read(_mrow * MAT_SIZE_ANGLE/8 + _mcol);
+			ap_uint<TYPEWIDTH> _v = _srcBlur.read(_mrow * MAT_SIZE_ANGLE/TYPEDIV + _mcol);
 Loop_unpackPixels:
-			for(ap_uint<4> b = 0; b < 8; b++) {
-				uint8_t v = _v.range((b+1)*8,b*8);
-				mDesc[_mrow*MAT_SIZE_ANGLE + _mcol*8 + b] = v;
+			for(ap_uint<4> b = 0; b < TYPEDIV; b++) {
+				ap_uint<8> v = (_v & (BYTEMASK << 8*b) >> 8*b);
+				mDesc[_mrow*MAT_SIZE_ANGLE + _mcol*TYPEDIV + b] = v;
 			}
 		}
 	}
@@ -390,7 +380,7 @@ Loop_descCol:
 			ap_uint<10> y = kpt.angle_y;
 			for(ap_uint<9> bit = 0; bit < 256; bit++) {
 				desc_bit_t pair = pattern[bit];
-				kpt.descriptor.range(bit+1,bit) = mDesc[(y+pair.p1y)*MAT_SIZE_ANGLE + (x+pair.p1x)] < mDesc[(y+pair.p2y)*MAT_SIZE_ANGLE + (x+pair.p2x)] ? 1 : 0;
+				kpt.descriptor.range(bit,bit) = mDesc[(y+pair.p1y)*MAT_SIZE_ANGLE + (x+pair.p1x)] < mDesc[(y+pair.p2y)*MAT_SIZE_ANGLE + (x+pair.p2x)] ? 1 : 0;
 			}
 			_dst.write(kpt);
 		}
@@ -406,7 +396,7 @@ While_calcDesc:
 			#pragma HLS pipeline
 			for(ap_uint<9> bit = 0; bit < 64; bit++) {
 				desc_bit_t pair = pattern[dw*4 + bit];
-				kpt.desc[dw].range(bit+1,bit) = mDesc[(y+pair.p1y)*MAT_SIZE_ANGLE + (x+pair.p1x)] < mDesc[(y+pair.p2y)*MAT_SIZE_ANGLE + (x+pair.p2x)] ? 1 : 0;
+				kpt.desc[dw].range(bit,bit) = mDesc[(y+pair.p1y)*MAT_SIZE_ANGLE + (x+pair.p1x)] < mDesc[(y+pair.p2y)*MAT_SIZE_ANGLE + (x+pair.p2x)] ? 1 : 0;
 			}
 		}
 		_dst.write(kpt);
@@ -505,7 +495,7 @@ THREAD_ENTRY() {
 //	#pragma HLS data_pack variable=pattern[0]
 //	#pragma HLS data_pack variable=pattern[1]
 
-	ap_uint<TYPEWIDTH> cache[MAX_W/TYPEDIV * CACHE_LINES];
+	ap_uint<64> cache[MAX_W/8 * CACHE_LINES];
 	//#pragma HLS array_partition variable=cache cyclic factor=640
 	uint16_t row_count = 0;
 	ap_uint<64> cacheDepth[MAX_W * CACHE_LINES];
@@ -530,16 +520,13 @@ Loop_RowStep:
 		read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
 
 		ap_uint<10> startRow = BORDER_EDGE + rowStep*WINDOW_SIZE;
-		//ap_uint<10> startRow = (BORDER_EDGE-3) + rowStep*WINDOW_SIZE;
 		ap_uint<10> endRow = startRow + WINDOW_SIZE + 6;
 
 Loop_ColStep:
 		for(ap_uint<6> colStep = 0; colStep < NCOLS; colStep++) {
 			MBOX_PUT(rcsfast_rt2sw, rowStep*NROWS+colStep);
 			ap_uint<10> startCol = BORDER_EDGE + colStep*WINDOW_SIZE;
-			//ap_uint<10> startCol = (BORDER_EDGE-3) + colStep*WINDOW_SIZE;
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
-	
 
 			{ // Region 1
 				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol);

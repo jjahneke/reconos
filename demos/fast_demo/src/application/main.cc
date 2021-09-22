@@ -108,6 +108,7 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)200000);
 		std::cout << "Waiting for answer" << std::endl;
 	
 		BASETYPE ret;

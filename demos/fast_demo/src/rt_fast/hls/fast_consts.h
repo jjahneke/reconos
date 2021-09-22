@@ -6,6 +6,13 @@
 #include "imgproc/xf_gaussian_filter.hpp"
 #include "hls_math.h"
 
+/* For TUM1 and TUM3*/
+#define UNDISTORT 1
+
+/* For TUM2 */
+//#define UNDISTORT 0
+
+
 typedef struct {
 	ap_int<5> p1x, p1y, p2x, p2y;
 	uint8_t pos; // What bit of the descriptor is this?

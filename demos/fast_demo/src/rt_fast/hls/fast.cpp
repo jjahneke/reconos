@@ -15,7 +15,6 @@
 #define CC_H 480
 #define MAX_W_DEPTH (2*MAX_W)
 #define CC_W_DEPTH (MAX_W/4)
-#define MBF 40
 #define FAST_TH 7
 #define MAXPERBLOCK 100
 
@@ -28,7 +27,7 @@ const BASETYPE SHORTMASK = 0xffff;
 #define MAT_SIZE_ANGLE 64
 #define CACHE_LINES (WINDOW_SIZE * 2)
 
-#if 0
+#if 1
 	#define NPPC XF_NPPC1
 	#define TYPEWIDTH 8
 	#define TYPEDIV 1
@@ -74,13 +73,14 @@ ap_int<Wo> int2q(ap_int<Wi> v, uint8_t frac) {
 	return (v << frac); // == v * (2 << (frac-1) == v * 2**frac
 }
 
-/* Converts float to Q representation */
-int16_t float2q(float v, uint8_t frac) {
+/* Converts fixed to Q representation */
+template <int Wi, int I, int Wo>
+ap_int<Wo> ufixed2q(ap_fixed<Wi,I> v, uint8_t frac) {
 	#pragma HLS inline
-	return rint(v * (2 << (frac-1))); // == v * (2 << (frac-1) == v * 2**frac
+	return (v << frac); // == v * (2 << (frac-1) == v * 2**frac
 }
 
-void read_next_batch(hls::stream<uint64_t>& memif_hwt2mem, hls::stream<uint64_t>& memif_mem2hwt, BASETYPE ptr_d, BASETYPE ptr_i, ap_uint<64>* cacheDepth, ap_uint<TYPEWIDTH>* cache, BASETYPE _img_w, BASETYPE img_h, uint16_t& row_count) {
+void read_next_batch(hls::stream<uint64_t>& memif_hwt2mem, hls::stream<uint64_t>& memif_mem2hwt, BASETYPE ptr_d, BASETYPE ptr_i, ap_uint<64>* cacheDepth, ap_uint<64>* cache, BASETYPE _img_w, BASETYPE img_h, uint16_t& row_count) {
 	BASETYPE _in[CC_W/BYTES + 1];
 	#pragma HLS array_partition variable=_in complete
 Loop_batchReadRow:
@@ -124,7 +124,6 @@ typedef struct {
 	ap_int<18> xU, yU, xR;// Values in Q18.12.6
 	uint16_t depth;
 	ap_uint<1> done;
-	ap_uint<10> startRow, startCol;
 	ap_uint<64> desc[4];
 } kpt_t;
 
@@ -203,10 +202,8 @@ Loop_evalCalc:
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
 				kpt.done = _mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1 ? 1 : 0;
 	
-				kpt.startRow = startRow;
-				kpt.startCol = startCol;
 				// NOTE_J: Only keep points inside 32x32 ROI
-				if(_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0) {
+				if((_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0) || (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI)) {
 					_dst.write(kpt);
 				}
 			}
@@ -214,7 +211,7 @@ Loop_evalCalc:
 	}
 }
 
-void undistortStereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth) {
+void undistort(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth, ap_uint<10> startRow, ap_uint<10> startCol) {
 #if 0
 Loop_UndistortRow:
 	for(uint8_t _mrow = 0; _mrow < WINDOW_SIZE; _mrow++) {
@@ -222,20 +219,8 @@ Loop_UndistortCol:
 		for(uint8_t _mcol = 0; _mcol < WINDOW_SIZE; _mcol++) {
 			#pragma HLS pipeline
 			kpt_t kpt = _src.read();
-			kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[kpt.startRow][kpt.startCol];
-			kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
-			ap_uint<10> x = kpt.global_x;
-			ap_uint<10> y = kpt.global_y;
-			uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
-			ap_uint<2> _sidw = x % 4;
-			uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
-
-			kpt.depth = d; // Filter for kpt.d == 0
-			if(d > 0)
-				kpt.xR = kpt.xU - float2q(MBF/d, 6);
-			else
-				kpt.xR = -1;
-
+			kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[startRow][startCol];
+			kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[startRow][startCol];
 			_dst.write(kpt);
 		}
 	}
@@ -244,28 +229,39 @@ Loop_UndistortCol:
 While_undistort:
 	do {
 		kpt = _src.read();
-		kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[kpt.startRow][kpt.startCol];
-		kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[kpt.startRow][kpt.startCol];
+		kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[startRow][startCol];
+		kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[startRow][startCol];
 		
-		ap_uint<10> x = kpt.global_x;
-		ap_uint<10> y = kpt.global_y;
-		uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
-		ap_uint<2> _sidw = x % 4;
-		uint16_t d = (uint16_t)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
-
-		kpt.depth = d; // Filter for kpt.d == 0
-		if(d > 0)
-			kpt.xR = kpt.xU - float2q(MBF/d, 6);
-		else
-			kpt.xR = -1;
-
 		_dst.write(kpt);
 	}
 	while(kpt.done != 1);
 #endif
 }
 
-void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, hls::stream<ap_uint<TYPEWIDTH>>& _srcAngle) {
+void stereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth, ap_uint<18> depthFactor) {
+	kpt_t kpt;
+While_stereo:
+	do {
+		kpt = _src.read();
+		
+		ap_uint<10> x = kpt.global_x;
+		ap_uint<10> y = kpt.global_y;
+		uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
+		ap_uint<2> _sidw = x % 4;
+		ap_uint<16> d = (ap_uint<16>)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
+
+		kpt.depth = d; // Filter for kpt.d == 0
+		if(d > 0)
+			kpt.xR = kpt.xU - ufixed2q<24,18,18>((ap_ufixed<24,18>)depthFactor/d, 6);
+		else
+			kpt.xR = -1;
+
+		_dst.write(kpt);
+	}
+	while(kpt.done != 1);
+}
+
+void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, hls::stream<ap_uint<64>>& _srcAngle) {
 	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
 	#pragma HLS array_partition variable=u_max complete
 	//const ap_uint<4> umax[31] = {3, 6, 8, 9, 10, 11, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
@@ -457,7 +453,7 @@ While_fillMem:
 #endif
 }
 
-void dataflow_region(ap_uint<TYPEWIDTH>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol) {
+void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -465,11 +461,12 @@ void dataflow_region(ap_uint<TYPEWIDTH>* cache, ap_uint<64>* cacheDepth, BASETYP
 	xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC> mBlur_in(MAT_SIZE_ANGLE, MAT_SIZE_ANGLE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC> mBlur_out(MAT_SIZE_ANGLE, MAT_SIZE_ANGLE);
 	
-	hls::stream<kpt_t> strm_eval2UndistortStereo;
-	hls::stream<kpt_t> strm_undistortStereo2Angle;
+	hls::stream<kpt_t> strm_eval2Undistort;
+	hls::stream<kpt_t> strm_undistort2Stereo;
+	hls::stream<kpt_t> strm_stereo2Angle;
 	hls::stream<kpt_t> strm_angle2Desc;
 	hls::stream<kpt_t> strm_desc2Mem;
-	hls::stream<ap_uint<TYPEWIDTH>> mAngle;
+	hls::stream<ap_uint<64>> mAngle;
 	#pragma HLS stream variable=strm_eval2UndistortStereo depth=32
 	#pragma HLS stream variable=strm_undistortStereo2Angle depth=32
 	#pragma HLS stream variable=strm_angle2Desc depth=32
@@ -480,9 +477,10 @@ void dataflow_region(ap_uint<TYPEWIDTH>* cache, ap_uint<64>* cacheDepth, BASETYP
 		populate_xfMat(cache, mFast_in, mAngle, mBlur_in, startRow, startCol);
 		xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>(mFast_in, mFast_out, FAST_TH);
 		xf::cv::GaussianBlur<5,XF_BORDER_CONSTANT,XF_8UC1,MAT_SIZE_ANGLE,MAT_SIZE_ANGLE,NPPC>(mBlur_in, mBlur_out, 2);
-		evaluateFast(mFast_out, strm_eval2UndistortStereo, startRow, startCol);
-		undistortStereo(strm_eval2UndistortStereo, strm_undistortStereo2Angle, cacheDepth);
-		calcAngle(strm_undistortStereo2Angle, strm_angle2Desc, mAngle);
+		evaluateFast(mFast_out, strm_eval2Undistort, startRow, startCol);
+		undistort(strm_eval2Undistort, strm_undistort2Stereo, cacheDepth, startRow, startCol);
+		stereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth, depthFactor);
+		calcAngle(strm_stereo2Angle, strm_angle2Desc, mAngle);
 		calcDescriptor(strm_angle2Desc, strm_desc2Mem, mBlur_out);
 		fillMem(strm_desc2Mem, memOut);
 	}
@@ -508,12 +506,12 @@ THREAD_ENTRY() {
 	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
+	ap_uint<18> depthFactor = (ap_uint<18>)MBOX_GET(rcsfast_sw2rt);
 
 	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
 	ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
 
 	read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
-	MBOX_PUT(rcsfast_rt2sw, 42);
 Loop_RowStep:
 	for(ap_uint<6> rowStep = 0; rowStep < NROWS; rowStep++) {
 		MBOX_PUT(rcsfast_rt2sw, rowStep);
@@ -529,7 +527,7 @@ Loop_ColStep:
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol);
+				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor);
 			}
 
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);

@@ -146,11 +146,11 @@ int main(int argc, char** argv) {
 			r = (dword0 & MASK_S3);
 			
 			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 1)*DWORDS_KPT);
-			xU = (((dword1 & MASK_W0) >> 32) - 512) * std::pow(2,-6);
-			yU = ((dword1 & MASK_W1) - 512) * std::pow(2,-6);
+			xU = ((dword1 & MASK_W0) >> 32) * std::pow(2,-8);
+			yU = (dword1 & MASK_W1) * std::pow(2,-8);
 
 			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 2)*DWORDS_KPT);
-			xR = (((dword2 & MASK_W0) >> 32) - 512) * std::pow(2,-6);
+			xR = ((dword2 & MASK_W0) >> 32) * std::pow(2,-8);
 			angle = (dword2 & MASK_W1) * std::pow(2,-12);
 			
 			uint64_t dword3 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 3)*DWORDS_KPT);

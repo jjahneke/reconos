@@ -496,7 +496,7 @@ THREAD_ENTRY() {
 	ap_uint<64> cache[MAX_W/8 * CACHE_LINES];
 	//#pragma HLS array_partition variable=cache cyclic factor=640
 	uint16_t row_count = 0;
-	ap_uint<64> cacheDepth[MAX_W * CACHE_LINES];
+	ap_uint<64> cacheDepth[CC_W_DEPTH * CACHE_LINES];
 	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 	#pragma HLS array_partition variable=memOut cyclic factor=7
 

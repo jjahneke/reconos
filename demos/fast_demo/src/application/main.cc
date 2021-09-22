@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 	for(size_t b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
-		//std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
+		std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(size_t i = 0; i < inBlock; i++){
 			uint16_t x, y, depth, r;
 			float angle, xU, yU, xR;

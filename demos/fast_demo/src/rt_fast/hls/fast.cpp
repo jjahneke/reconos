@@ -182,7 +182,7 @@ Loop_FillColMerged:
 #endif
 }
 
-void evaluateFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t> &_dst, ap_uint<10> startRow, ap_uint<10> startCol) {
+void evaluateFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t>& _dst, ap_uint<10> startRow, ap_uint<10> startCol, int& found) {
 Loop_EvalRow:
 	for(ap_uint<6> _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 	Loop_EvalCol:
@@ -200,10 +200,14 @@ Loop_evalCalc:
 				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
 				kpt.angle_y = 8 + _mrow;
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
-				kpt.done = _mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1 ? 1 : 0;
+				if(_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1)
+					kpt.done = 1;
+				else
+					kpt.done = 0;
 	
-				// NOTE_J: Only keep points inside 32x32 ROI
-				if((_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0) || (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI)) {
+				// NOTE_J: Only keep points inside 32x32 ROI and dummy keypoint
+				if((_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0) || (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1)) {
+					found++;
 					_dst.write(kpt);
 				}
 			}
@@ -412,33 +416,6 @@ While_calcDesc:
 void fillMem(hls::stream<kpt_t>& _src, BASETYPE* memOut) {
 	ap_uint<10> read_index = 0;
 
-#if 0
-Loop_fillMemRow:
-	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
-Loop_fillMemCol:
-		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
-			#pragma HLS pipeline
-			kpt_t kpt = _src.read();
-			if(kpt.r > 0) {
-				// To not transfer negative numbers, add 512 constant to ap_int<18> candidates
-				uint64_t dword0 = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
-				uint64_t dword1 = ((uint64_t)(kpt.xU+512) << 32) | (kpt.yU+512);
-				uint64_t dword2 = ((uint64_t)(kpt.xR+512) << 32) | kpt.angle;
-				memOut[(read_index+1)*7 - 6] = dword0;
-				memOut[(read_index+1)*7 - 5] = dword1;
-				memOut[(read_index+1)*7 - 4] = dword2;
-				memOut[(read_index+1)*7 - 3] = kpt.desc[3];
-				memOut[(read_index+1)*7 - 2] = kpt.desc[2];
-				memOut[(read_index+1)*7 - 1] = kpt.desc[1];
-				memOut[(read_index+1)*7 - 0] = kpt.desc[0];
-				read_index++;
-			}
-		}
-	}
-	memOut[0] = read_index;
-
-
-#else
 	kpt_t kpt;
 While_fillMem:
 	do {
@@ -453,10 +430,9 @@ While_fillMem:
 		read_index++;
 	} while(kpt.done != 1);
 	memOut[0] = read_index;
-#endif
 }
 
-void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor) {
+void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor, int& found) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -480,7 +456,7 @@ void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memO
 		populate_xfMat(cache, mFast_in, mAngle, mBlur_in, startRow, startCol);
 		xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>(mFast_in, mFast_out, FAST_TH);
 		xf::cv::GaussianBlur<5,XF_BORDER_CONSTANT,XF_8UC1,MAT_SIZE_ANGLE,MAT_SIZE_ANGLE,NPPC>(mBlur_in, mBlur_out, 2);
-		evaluateFast(mFast_out, strm_eval2Undistort, startRow, startCol);
+		evaluateFast(mFast_out, strm_eval2Undistort, startRow, startCol, found);
 		undistort(strm_eval2Undistort, strm_undistort2Stereo);
 		stereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth, depthFactor);
 		calcAngle(strm_stereo2Angle, strm_angle2Desc, mAngle);
@@ -510,6 +486,7 @@ THREAD_ENTRY() {
 	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
 	ap_uint<18> depthFactor = (ap_uint<18>)MBOX_GET(rcsfast_sw2rt);
+	int found = 0;
 
 	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
 	ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
@@ -517,7 +494,6 @@ THREAD_ENTRY() {
 	read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
 Loop_RowStep:
 	for(ap_uint<6> rowStep = 0; rowStep < NROWS; rowStep++) {
-		MBOX_PUT(rcsfast_rt2sw, rowStep);
 		read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
 
 		ap_uint<10> startRow = BORDER_EDGE + rowStep*WINDOW_SIZE;
@@ -525,16 +501,16 @@ Loop_RowStep:
 
 Loop_ColStep:
 		for(ap_uint<6> colStep = 0; colStep < NCOLS; colStep++) {
-			MBOX_PUT(rcsfast_rt2sw, rowStep*NROWS+colStep);
 			ap_uint<10> startCol = BORDER_EDGE + colStep*WINDOW_SIZE;
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor);
+				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor, found);
 			}
 
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
 			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
+			MBOX_PUT(rcsfast_rt2sw, found);
 		}
 	}
 	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);

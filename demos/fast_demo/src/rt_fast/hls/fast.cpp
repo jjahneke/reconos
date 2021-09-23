@@ -199,7 +199,7 @@ Loop_evalCalc:
 				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
 				kpt.angle_y = 8 + _mrow;
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
-				if((_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1) || cnt == 32)
+				if((_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1) || cnt == MAXPERBLOCK-1)
 					kpt.done = 1;
 				else
 					kpt.done = 0;
@@ -207,7 +207,7 @@ Loop_evalCalc:
 				// NOTE_J: Only keep points inside 32x32 ROI and dummy keypoint
 				bool inRoiLargerZero = (_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0);
 				bool endOfRoi = (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1);
-				if((inRoiLargerZero || endOfRoi) && cnt <= 32) {
+				if((inRoiLargerZero || endOfRoi) && cnt < MAXPERBLOCK) {
 //					*counts++;
 					cnt++;
 					_dst.write(kpt);
@@ -358,15 +358,18 @@ void fillMem(hls::stream<kpt_t>& _src, BASETYPE* memOut) {//, volatile int* coun
 While_fillMem:
 	do {
 		kpt = _src.read();
-		memOut[(read_index+1)*7 - 6] = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
-		memOut[(read_index+1)*7 - 5] = (uint64_t)((ufixed2q(kpt.xU, 8)) << 32) | ufixed2q(kpt.yU, 8);
-		memOut[(read_index+1)*7 - 4] = (uint64_t)((ufixed2q(kpt.xR, 8)) << 32) | kpt.angle;
-		memOut[(read_index+1)*7 - 3] = kpt.desc[3];
-		memOut[(read_index+1)*7 - 2] = kpt.desc[2];
-		memOut[(read_index+1)*7 - 1] = kpt.desc[1];
-		memOut[(read_index+1)*7 - 0] = kpt.desc[0];
-		read_index++;
-//		*counts++;
+		// Do not transfer dummy keypoint
+		if(kpt.done == 0 || kpt.r > 0) {
+			memOut[(read_index+1)*7 - 6] = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
+			memOut[(read_index+1)*7 - 5] = ((uint64_t)(ufixed2q(kpt.xU, 8)) << 32) | ufixed2q(kpt.yU, 8);
+			memOut[(read_index+1)*7 - 4] = ((uint64_t)(ufixed2q(kpt.xR, 8)) << 32) | kpt.angle;
+			memOut[(read_index+1)*7 - 3] = kpt.desc[3];
+			memOut[(read_index+1)*7 - 2] = kpt.desc[2];
+			memOut[(read_index+1)*7 - 1] = kpt.desc[1];
+			memOut[(read_index+1)*7 - 0] = kpt.desc[0];
+			read_index++;
+	//		*counts++;
+		}
 	} while(kpt.done != 1);
 	memOut[0] = read_index;
 }

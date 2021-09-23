@@ -135,15 +135,14 @@ Loop_FillColFast:
 		for(ap_uint<4> _col = 0; _col < MAT_SIZE/8; _col++) {
 			#pragma HLS pipeline
 			ap_uint<64> v = cache[((startRow - 8 + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 - 1 + _col)];
-			if(NPPC == XF_NPPC8) {
-				_dstFast.write(_row * MAT_SIZE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+#if 0
+			_dstFast.write(_row * MAT_SIZE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+#else
+			for(ap_uint<4> b = 0; b < 8; b++) {
+				ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; // To keep correct pixel order, have to access bytes in dword from LSB to MSB
+				_dstFast.write(_row * MAT_SIZE + _col*8 + b, _v);
 			}
-			else {
-				for(ap_uint<4> b = 0; b < 8; b++) {
-					ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; // To keep correct pixel order, have to access bytes in dword from LSB to MSB
-					_dstFast.write(_row * MAT_SIZE + _col*8 + b, _v);
-				}		
-			}
+#endif
 		}
 	}
 Loop_FillRowBlur:
@@ -153,15 +152,14 @@ Loop_FillColBlur:
 			#pragma HLS pipeline
 			ap_uint<64> v = cache[((startRow - 16 + _row)%CACHE_LINES)*MAX_W/8 + (startCol/8 - 2 + _col)];
 			_dstAngle.write(v); // Little-endian
-			if(NPPC == XF_NPPC8) {
-				_dstBlur.write(_row * MAT_SIZE_ANGLE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+#if 0 
+			_dstBlur.write(_row * MAT_SIZE_ANGLE/8 + _col, v); // Simple copy as endianness is preserved (xfExtractPixels requires little-endian dwords)
+#else
+			for(ap_uint<4> b = 0; b < 8; b++) {
+				ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; //To keep correct pixel order, have to access bytes in dword from LSB to MSB
+				_dstBlur.write(_row * MAT_SIZE_ANGLE + _col*8 + b, _v);
 			}
-			else {
-				for(ap_uint<4> b = 0; b < 8; b++) {
-					ap_uint<8> _v = (v & (BYTEMASK << 8*b)) >> 8*b; //To keep correct pixel order, have to access bytes in dword from LSB to MSB
-					_dstBlur.write(_row * MAT_SIZE_ANGLE + _col*8 + b, _v);
-				}		
-			}
+#endif
 		}
 	}
 
@@ -183,6 +181,7 @@ Loop_FillColMerged:
 }
 
 void filterFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {//, volatile int* counts) {
+	ap_uint<6> cnt = 0;
 Loop_EvalRow:
 	for(ap_uint<6> _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
 	Loop_EvalCol:
@@ -200,14 +199,17 @@ Loop_evalCalc:
 				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
 				kpt.angle_y = 8 + _mrow;
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
-				if(_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1)
+				if((_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1) || cnt == 32)
 					kpt.done = 1;
 				else
 					kpt.done = 0;
 	
 				// NOTE_J: Only keep points inside 32x32 ROI and dummy keypoint
-				if((_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0) || (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1)) {
+				bool inRoiLargerZero = (_mrow >= ROI_ROW_LO && _mrow <= ROI_ROW_HI && _mcol >= ROI_COL_LO && _mcol <= ROI_COL_HI && resp > 0);
+				bool endOfRoi = (_mrow == ROI_ROW_HI && _mcol == ROI_COL_HI && b == TYPEDIV-1);
+				if((inRoiLargerZero || endOfRoi) && cnt <= 32) {
 //					*counts++;
+					cnt++;
 					_dst.write(kpt);
 				}
 			}
@@ -216,19 +218,6 @@ Loop_evalCalc:
 }
 
 void undistort(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst) {//, volatile int* counts) {
-#if 0
-Loop_UndistortRow:
-	for(uint8_t _mrow = 0; _mrow < WINDOW_SIZE; _mrow++) {
-Loop_UndistortCol:
-		for(uint8_t _mcol = 0; _mcol < WINDOW_SIZE; _mcol++) {
-			#pragma HLS pipeline
-			kpt_t kpt = _src.read();
-			kpt.xU = uint2q<10,18>(kpt.global_x, 6) + undistortLookupX[startRow][startCol];
-			kpt.yU = uint2q<10,18>(kpt.global_y, 6) + undistortLookupY[startRow][startCol];
-			_dst.write(kpt);
-		}
-	}
-#else
 	kpt_t kpt;
 While_undistort:
 	do {
@@ -244,7 +233,6 @@ While_undistort:
 		_dst.write(kpt);
 	}
 	while(kpt.done != 1);
-#endif
 }
 
 void stereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth, ap_uint<18> depthFactor) {//, volatile int* counts) {
@@ -291,41 +279,6 @@ Loop_fillAngleCol:
 		}
 	}
 
-
-#if 0
-Loop_angleRow:
-	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
-Loop_angleCol:
-		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
-			kpt_t kpt = _src.read();
-			ap_uint<10> row = kpt.angle_y;
-			ap_uint<10> col = kpt.angle_x;
-		
-			ap_int<24> m_01, m_10;
-Loop_calcRow:
-			for(ap_uint<5> _row = 0; _row <= 15; _row++) {
-Loop_calcCol:
-				for(ap_int<6> _col = -15; _col <= 15; _col++) {
-					#pragma HLS pipeline
-					if(_col >= -u_max[_row] && _col <= u_max[_row]) {
-						uint8_t val_plus = mAngle[(row + _row) * MAT_SIZE_ANGLE + (col + _col)];
-						uint8_t val_minus = mAngle[(row - _row) * MAT_SIZE_ANGLE + (col + _col)];
-						if(_row == 0) {
-							m_10 += _col * val_minus;
-						}
-						else {
-							m_10 += _col * (val_plus + val_minus);
-							m_01 += _row * (val_plus - val_minus);
-						}
-					}
-				}
-			}
-			kpt.angle = (XF_PI_FIXED + xf::cv::Atan2LookupFP24(m_01, m_10, 24, 0, 24, 0));
-			_dst.write(kpt);
-		}
-	}
-
-#else
 	kpt_t kpt;
 While_calcAngle:
 	do {
@@ -356,7 +309,6 @@ Loop_calcCol:
 //		*counts++;
 		_dst.write(kpt);
 	} while(kpt.done != 1);
-#endif
 }
 
 void calcDescriptor(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, xf::cv::Mat<XF_8UC1, MAT_SIZE_ANGLE, MAT_SIZE_ANGLE, NPPC>& _srcBlur) {//, volatile int* counts) {
@@ -375,24 +327,7 @@ Loop_unpackPixels:
 			}
 		}
 	}
-#if 0
-Loop_descRow:
-	for(uint8_t _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
-Loop_descCol:
-		for(uint8_t _mcol = 0; _mcol < MAT_SIZE; _mcol++) {
-			#pragma HLS pipeline
-			kpt_t kpt = _src.read();
 
-			ap_uint<10> x = kpt.angle_x;
-			ap_uint<10> y = kpt.angle_y;
-			for(ap_uint<9> bit = 0; bit < 256; bit++) {
-				desc_bit_t pair = pattern[bit];
-				kpt.descriptor.range(bit,bit) = mDesc[(y+pair.p1y)*MAT_SIZE_ANGLE + (x+pair.p1x)] < mDesc[(y+pair.p2y)*MAT_SIZE_ANGLE + (x+pair.p2x)] ? 1 : 0;
-			}
-			_dst.write(kpt);
-		}
-	}
-#else
 	kpt_t kpt;
 While_calcDesc:
 	do {
@@ -409,7 +344,6 @@ While_calcDesc:
 //		*counts++;
 		_dst.write(kpt);
 	} while(kpt.done != 1);
-#endif
 }
 
 /**
@@ -452,8 +386,9 @@ void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memO
 	hls::stream<kpt_t> strm_angle2Desc;
 	hls::stream<kpt_t> strm_desc2Mem;
 	hls::stream<ap_uint<64>> mAngle;
-	#pragma HLS stream variable=strm_eval2UndistortStereo depth=32
-	#pragma HLS stream variable=strm_undistortStereo2Angle depth=32
+	#pragma HLS stream variable=strm_eval2Undistort depth=32
+	#pragma HLS stream variable=strm_undistort2Stereo depth=32
+	#pragma HLS stream variable=strm_stereo2Angle depth=32
 	#pragma HLS stream variable=strm_angle2Desc depth=32
 	#pragma HLS stream variable=strm_desc2Mem depth=32
 

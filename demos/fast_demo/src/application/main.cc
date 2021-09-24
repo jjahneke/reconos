@@ -5,6 +5,8 @@
 #include <opencv2/core/core.hpp>
 #include <fstream>
 
+#include <iomanip>
+
 extern "C" {
 	#include "reconos.h"
 	#include "reconos_app.h"
@@ -77,9 +79,6 @@ int main(int argc, char** argv) {
 		print_help();
 	}
 
-	BASETYPE blocks = NROWS * NCOLS;
-	BASETYPE mem_size_kpt = MAXPERBLOCK * blocks * DWORDS_KPT;
-
 	cv::Mat img_i = cv::imread(argv[2]);
 	cv::Mat img_d = cv::imread(argv[3], cv::IMREAD_ANYDEPTH);
 	BASETYPE img_w = img_i.cols;
@@ -90,6 +89,9 @@ int main(int argc, char** argv) {
 	//img_i.push_back(_dummy);
 	uint8_t* ptr_i = (uint8_t*)img_i.data;
 	uint16_t* ptr_d = (uint16_t*)img_d.data;
+
+	BASETYPE blocks = NROWS * NCOLS;
+	BASETYPE mem_size_kpt = MAXPERBLOCK * blocks * DWORDS_KPT;
 	BASETYPE* kpt_ptr = (BASETYPE*)malloc(mem_size_kpt * sizeof(BASETYPE));
 	memset(kpt_ptr, 0, mem_size_kpt * sizeof(BASETYPE));
 
@@ -109,8 +111,7 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)200000);
-		std::cout << "Waiting for answer" << std::endl;
-	
+
 		BASETYPE ret;
 		do {
 			ret = mbox_get(rcsfast_rt2sw);
@@ -134,39 +135,35 @@ int main(int argc, char** argv) {
 	for(size_t b = 0; b < blocks; b++){
 		uint32_t blockoffset = b * MAXPERBLOCK;
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
-		std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
+//		std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(size_t i = 0; i < inBlock; i++){
-			uint16_t x, y, depth, r;
-			float angle, xU, yU, xR;
+			uint16_t x, y, depth, r = 0;
+			float angle, xU, yU, xR = 0;
 
-			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 0)*DWORDS_KPT);
+			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 1);
 			x = ((dword0 & MASK_S0) >> 48);
 			y = ((dword0 & MASK_S1) >> 32);
 			depth = ((dword0 & MASK_S2) >> 16);
 			r = (dword0 & MASK_S3);
 			
-			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 1)*DWORDS_KPT);
+			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 2);
 			xU = ((dword1 & MASK_W0) >> 32) * std::pow(2,-8);
 			yU = (dword1 & MASK_W1) * std::pow(2,-8);
 
-			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 2)*DWORDS_KPT);
+			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 3);
 			xR = ((dword2 & MASK_W0) >> 32) * std::pow(2,-8);
 			angle = (dword2 & MASK_W1) * std::pow(2,-12);
 			
-			uint64_t dword3 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 3)*DWORDS_KPT);
-			uint64_t dword4 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 4)*DWORDS_KPT);
-			uint64_t dword5 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 5)*DWORDS_KPT);
-			uint64_t dword6 = *(kpt_ptr + (blockoffset + (i*DWORDS_KPT) + 6)*DWORDS_KPT);
+			uint64_t dword3 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 4);
+			uint64_t dword4 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 5);
+			uint64_t dword5 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 6);
+			uint64_t dword6 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 7);
 
 			uint32_t id = nfeatures;
 			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
 				continue;
 			}
-			// Exit condition for the block, i.e. not all 100 allowed features were filled
-		//	if (x == 0 ||  y == 0){
-		//		break;
-		//	}
-
+		
 			myFile << x << ", " << y << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << ", " << dword3 << ", " << dword4 << ", " << dword5 << ", " << dword6 << std::endl;
 
 			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,angle,r,0,id));

@@ -239,7 +239,7 @@ While_undistort:
 	while(kpt.done != 1);
 }
 
-void stereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth, ap_uint<18> depthFactor) {
+void stereo(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, ap_uint<64>* cacheDepth) {
 	kpt_t kpt;
 While_stereo:
 	do {
@@ -253,7 +253,7 @@ While_stereo:
 
 		kpt.depth = d; // Filter for kpt.d == 0
 		if(d > 0)
-			kpt.xR = kpt.xU - (ap_ufixed<20,12>)((ap_ufixed<26,18>)depthFactor/d);
+			kpt.xR = kpt.xU - (ap_ufixed<20,12>)(depthFactor/d);
 		else
 			kpt.xR = 0;
 
@@ -396,8 +396,7 @@ While_fillMem:
 	memOut[0] = read_index;
 }
 
-//void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor, volatile int* count0, volatile int* count1, volatile int* count2, volatile int* count3, volatile int* count4, volatile int* count5) {
-void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor, ap_uint<4> level) {
+void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<4> level) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -424,7 +423,7 @@ void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memO
 		xf::cv::GaussianBlur<5,XF_BORDER_CONSTANT,XF_8UC1,MAT_SIZE_ANGLE,MAT_SIZE_ANGLE,NPPC>(mBlur_in, mBlur_out, 2);
 		filterFast(mFast_out, strm_eval2Undistort, startRow, startCol, level);
 		undistort(strm_eval2Undistort, strm_undistort2Stereo);
-		stereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth, depthFactor);
+		stereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth);
 		calcAngle(strm_stereo2Angle, strm_angle2Desc, mAngle);
 		calcDescriptor(strm_angle2Desc, strm_desc2Mem, mBlur_out);
 		fillMem(strm_desc2Mem, memOut);
@@ -451,8 +450,8 @@ THREAD_ENTRY() {
 	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
-	ap_uint<18> depthFactor = (ap_uint<18>)MBOX_GET(rcsfast_sw2rt);
 	ap_uint<4> level = (ap_uint<4>)MBOX_GET(rcsfast_sw2rt);
+
 
 	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
 	ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
@@ -471,7 +470,7 @@ Loop_ColStep:
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor, level);
+				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, level);
 			}
 
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);

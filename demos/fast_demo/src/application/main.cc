@@ -110,7 +110,6 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)200000);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)0);
 
 		BASETYPE ret;
@@ -131,6 +130,7 @@ int main(int argc, char** argv) {
 	myFile << "x, y, xS, yS, xU, yU, xR, depth, Angle, Response, Desc0, Desc1, Desc2, Desc3\n";
 
 	std::vector<descriptor_t> unfltd_desc;
+	float mDepthMapFactor = 0.0002;
 	// Construct result vector from memory
 	uint32_t nfeatures = 0;
 	for(size_t b = 0; b < blocks; b++){
@@ -138,13 +138,13 @@ int main(int argc, char** argv) {
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
 //		std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(size_t i = 0; i < inBlock; i++){
-			uint16_t x, y, depth, r;
-			float angle, xU, yU, xR, xS, yS;
+			uint16_t x, y, r;
+			float depth, angle, xU, yU, xR, xS, yS;
 
 			uint64_t dword0 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1);
 			x = ((dword0 & MASK_S0) >> 48);
 			y = ((dword0 & MASK_S1) >> 32);
-			depth = ((dword0 & MASK_S2) >> 16);
+			depth = ((dword0 & MASK_S2) >> 16) * mDepthMapFactor;
 			r = (dword0 & MASK_S3);
 			
 			uint64_t dword1 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 2);

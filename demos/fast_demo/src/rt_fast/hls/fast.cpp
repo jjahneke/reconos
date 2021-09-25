@@ -444,13 +444,16 @@ THREAD_ENTRY() {
 	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 	#pragma HLS array_partition variable=memOut cyclic factor=7
 
-	BASETYPE ptr_i = MBOX_GET(rcsfast_sw2rt);
-	BASETYPE ptr_d = MBOX_GET(rcsfast_sw2rt);
-	BASETYPE ptr_o = MBOX_GET(rcsfast_sw2rt);
-	BASETYPE img_w = MBOX_GET(rcsfast_sw2rt);
-	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
-	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
-	ap_uint<4> level = (ap_uint<4>)MBOX_GET(rcsfast_sw2rt);
+	BASETYPE data[7];
+	BASETYPE data_ptr = MBOX_GET(rcsfast_sw2rt);
+	MEM_READ(data_ptr, &data[0], 7*BYTES);
+	BASETYPE ptr_i = data[0];
+	BASETYPE ptr_d = data[1];
+	BASETYPE ptr_o = data[2];
+	BASETYPE img_w = data[3];
+	BASETYPE _img_w = data[4];
+	BASETYPE img_h = data[5];
+	ap_uint<4> level = (ap_uint<4>)data[6];
 
 
 	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;

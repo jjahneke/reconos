@@ -100,17 +100,21 @@ int main(int argc, char** argv) {
 	
 	std::cout << "Starting thread work" << std::endl;
 	unsigned int t_start, t_end;
-	
+	int level = 0;
+
+	BASETYPE data[7];
+	data[0] = (BASETYPE)ptr_i;
+	data[1] = (BASETYPE)ptr_d;
+	data[2] = (BASETYPE)kpt_ptr;
+	data[3] = (BASETYPE)img_w;
+	data[4] = (BASETYPE)_img_w;
+	data[5] = (BASETYPE)img_h;
+	data[6] = (BASETYPE)level;
+
 	t_start = timer_get();
 	{
 		// Thread computations
-		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_i);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)ptr_d);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)kpt_ptr);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)img_w);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
-		mbox_put(rcsfast_sw2rt, (BASETYPE)0);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)&data[0]);
 
 		BASETYPE ret;
 		do {

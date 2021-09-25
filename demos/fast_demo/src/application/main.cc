@@ -16,7 +16,7 @@ extern "C" {
 #define BASETYPE uint64_t
 #define BYTES 8
 #define MASK 7
-#define DWORDS_KPT 7
+#define DWORDS_KPT 8
 #define DONEFLAG 0xffffffffffffffff
 	
 // Only used by R64
@@ -111,6 +111,7 @@ int main(int argc, char** argv) {
 		mbox_put(rcsfast_sw2rt, (BASETYPE)_img_w);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)img_h);
 		mbox_put(rcsfast_sw2rt, (BASETYPE)200000);
+		mbox_put(rcsfast_sw2rt, (BASETYPE)0);
 
 		BASETYPE ret;
 		do {
@@ -127,7 +128,7 @@ int main(int argc, char** argv) {
 		myFile.open("res_sw.txt", std::ios_base::trunc);
 	else
 		myFile.open("res_hw.txt", std::ios_base::trunc);
-	myFile << "x, y, xU, yU, xR, depth, Angle, Response, Desc0, Desc1, Desc2, Desc3\n";
+	myFile << "x, y, xS, yS, xU, yU, xR, depth, Angle, Response, Desc0, Desc1, Desc2, Desc3\n";
 
 	std::vector<descriptor_t> unfltd_desc;
 	// Construct result vector from memory
@@ -137,37 +138,41 @@ int main(int argc, char** argv) {
 		BASETYPE inBlock = (BASETYPE)*(kpt_ptr + (blockoffset + 0)*DWORDS_KPT);
 //		std::cout << "Row " << (int)(b/NCOLS) << " Col " << b%NCOLS << ": " << inBlock << std::endl;
 		for(size_t i = 0; i < inBlock; i++){
-			uint16_t x, y, depth, r = 0;
-			float angle, xU, yU, xR = 0;
+			uint16_t x, y, depth, r;
+			float angle, xU, yU, xR, xS, yS;
 
-			uint64_t dword0 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 1);
+			uint64_t dword0 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 1);
 			x = ((dword0 & MASK_S0) >> 48);
 			y = ((dword0 & MASK_S1) >> 32);
 			depth = ((dword0 & MASK_S2) >> 16);
 			r = (dword0 & MASK_S3);
 			
-			uint64_t dword1 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 2);
-			xU = ((dword1 & MASK_W0) >> 32) * std::pow(2,-8);
-			yU = (dword1 & MASK_W1) * std::pow(2,-8);
+			uint64_t dword1 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 2);
+			xS = ((dword1 & MASK_W0) >> 32) * std::pow(2,-8);
+			yS = (dword1 & MASK_W1) * std::pow(2,-8);
 
-			uint64_t dword2 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 3);
-			xR = ((dword2 & MASK_W0) >> 32) * std::pow(2,-8);
-			angle = (dword2 & MASK_W1) * std::pow(2,-12);
+			uint64_t dword2 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 3);
+			xU = ((dword2 & MASK_W0) >> 32) * std::pow(2,-8);
+			yU = (dword2 & MASK_W1) * std::pow(2,-8);
+
+			uint64_t dword3 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 4);
+			xR = ((dword3 & MASK_W0) >> 32) * std::pow(2,-8);
+			angle = (dword3 & MASK_W1) * std::pow(2,-12);
 			
-			uint64_t dword3 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 4);
-			uint64_t dword4 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 5);
-			uint64_t dword5 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 6);
-			uint64_t dword6 = *(kpt_ptr + (blockoffset + (i))*DWORDS_KPT + 7);
+			uint64_t dword4 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 5);
+			uint64_t dword5 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 6);
+			uint64_t dword6 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 7);
+			uint64_t dword7 = *(kpt_ptr + (blockoffset + i)*DWORDS_KPT + 8);
 
 			uint32_t id = nfeatures;
 			if(x >= img_w - BORDER_EDGE || y >= img_h - BORDER_EDGE) {
 				continue;
 			}
 		
-			myFile << x << ", " << y << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << ", " << dword3 << ", " << dword4 << ", " << dword5 << ", " << dword6 << std::endl;
+			myFile << x << ", " << y  << ", " << xS << ", " << yS << ", " << xU << ", " << yU << ", " << xR << ", " << depth << ", " << angle << ", " << r << ", " << dword3 << ", " << dword4 << ", " << dword5 << ", " << dword6 << std::endl;
 
 			vToDistributeKeys.push_back(cv::KeyPoint((float)x,(float)y,7.,angle,r,0,id));
-			descriptor_t tmp = {dword3,dword4,dword5,dword6};
+			descriptor_t tmp = {dword4,dword5,dword6,dword7};
 			unfltd_desc.push_back(tmp);
 			nfeatures++;
 		}

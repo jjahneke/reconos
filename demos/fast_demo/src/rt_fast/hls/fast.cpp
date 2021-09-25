@@ -6,7 +6,7 @@
 #define BASETYPE uint64_t
 #define BYTES 8
 #define MASK 7
-#define DWORDS_KPT 7
+#define DWORDS_KPT 8
 #define DONEFLAG 0xffffffffffffffff
 
 #define MAX_W 640 // In pixel
@@ -120,6 +120,7 @@ typedef struct {
 	ap_uint<10> angle_x, angle_y;
 	uint8_t r;
 	ap_uint<8> angle; // Value in [0,360] 
+	ap_ufixed<20,12> scaled_x, scaled_y;
 	ap_ufixed<20,12> xU, yU;
 	ap_ufixed<20,12> xR;// Values in Q20.12.8
 	uint16_t depth;
@@ -180,7 +181,9 @@ Loop_FillColMerged:
 #endif
 }
 
-void filterFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t>& _dst, ap_uint<10> startRow, ap_uint<10> startCol) {
+void filterFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t>& _dst, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<4> level) {
+//	const ap_fixed<16,2> mvScaleFactor[8] = {1.0, 1.20001220703125, 1.44000244140625, 1.72802734375, 2.0736083984375, 2.48834228515625, 2.9859619140625, 3.58319091796875};
+	const ap_ufixed<10,2> mvScaleFactor[8] = {1.0, 1.19921875, 1.44140625, 1.7265625, 2.07421875, 2.48828125, 2.984375, 3.58203125};
 	ap_uint<6> cnt = 0;
 Loop_EvalRow:
 	for(ap_uint<6> _mrow = 0; _mrow < MAT_SIZE; _mrow++) {
@@ -194,8 +197,11 @@ Loop_evalCalc:
 			for(ap_uint<4> b = 0; b < TYPEDIV; b++) { // 8 Iterations for XF_NPPC8, 1 iteration for XF_NPPC1
 				ap_uint<8> resp = (_r & (BYTEMASK << 8*b) >> 8*b);
 				kpt.r = resp;
-				kpt.global_x = startCol - 8 + _mcol*TYPEDIV + b;
-				kpt.global_y = startRow - 8 + _mrow;
+				 // Remove borderEdge for DistributeOctTree
+				kpt.global_x = startCol - BORDER_EDGE + _mcol*TYPEDIV + b;
+				kpt.global_y = startRow - BORDER_EDGE + _mrow;
+				kpt.scaled_x = (startCol - 8 + _mcol*TYPEDIV + b) * mvScaleFactor[level];
+				kpt.scaled_y = (startRow - 8 + _mrow) * mvScaleFactor[level];
 				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
 				kpt.angle_y = 8 + _mrow;
 				// NOTE_J: Set flag when on pixel in row 39, col 39, i.e, on 31,31 in 32x32 matrix
@@ -223,10 +229,10 @@ While_undistort:
 		kpt = _src.read();
 		// undistortLookup are stored as Q14.6.8 / ap_fixed<14,6>
 		// ap_uint<10> + ap_fixed<14,6> => ap_ufixed<19, 11, 8>
-		uint8_t idx = (kpt.global_x >> 4) - 1;
-		uint8_t idy = (kpt.global_y >> 4) - 1;
-		kpt.xU = kpt.global_x + undistortLookupX[idy][idx];
-		kpt.yU = kpt.global_y + undistortLookupY[idy][idx];
+		uint8_t idx = (uint8_t)((kpt.scaled_x >> 4) - 1);
+		uint8_t idy = (uint8_t)((kpt.scaled_y >> 4) - 1);
+		kpt.xU = kpt.scaled_x + undistortLookupX[idy][idx];
+		kpt.yU = kpt.scaled_y + undistortLookupY[idy][idx];
 		
 		_dst.write(kpt);
 	}
@@ -239,8 +245,8 @@ While_stereo:
 	do {
 		kpt = _src.read();
 		
-		ap_uint<10> x = kpt.global_x;
-		ap_uint<10> y = kpt.global_y;
+		ap_uint<12> x = (ap_uint<12>)kpt.scaled_x;
+		ap_uint<12> y = (ap_uint<12>)kpt.scaled_y;
 		uint16_t _addr = y*CC_W_DEPTH + (x/4); // x/4 to find dword
 		ap_uint<2> _sidw = x % 4;
 		ap_uint<16> d = (ap_uint<16>)(cacheDepth[_addr] & (SHORTMASK << _sidw*16) >> _sidw*16);
@@ -316,7 +322,8 @@ Loop_calcCol:
 
 desc_bit_t rotateByLut(desc_bit_t in, ap_uint<8> idx) {
 	#pragma HLS inline
-	
+
+	desc_bit_t out;
 	out.p1x = (ap_int<5>)(in.p1x*cosLut[idx] - in.p1y*sinLut[idx]);
 	out.p1y = (ap_int<5>)(in.p1x*sinLut[idx] + in.p1y*cosLut[idx]);
 
@@ -375,13 +382,14 @@ While_fillMem:
 		kpt = _src.read();
 		// Do not transfer dummy keypoint
 		if(kpt.done == 0 || kpt.r > 0) {
-			memOut[(read_index+1)*7 - 6] = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
-			memOut[(read_index+1)*7 - 5] = ((uint64_t)(ufixed2q(kpt.xU, 8)) << 32) | ufixed2q(kpt.yU, 8);
-			memOut[(read_index+1)*7 - 4] = ((uint64_t)(ufixed2q(kpt.xR, 8)) << 32) | kpt.angle;
-			memOut[(read_index+1)*7 - 3] = kpt.desc[3];
-			memOut[(read_index+1)*7 - 2] = kpt.desc[2];
-			memOut[(read_index+1)*7 - 1] = kpt.desc[1];
-			memOut[(read_index+1)*7 - 0] = kpt.desc[0];
+			memOut[(read_index+1)*DWORDS_KPT - 7] = ((uint64_t)kpt.global_x << 48) | ((uint64_t)kpt.global_y << 32) | ((uint64_t)kpt.depth << 16) | kpt.r;
+			memOut[(read_index+1)*DWORDS_KPT - 6] = ((uint64_t)(ufixed2q(kpt.scaled_x, 8)) << 32) | ufixed2q(kpt.scaled_y, 8);
+			memOut[(read_index+1)*DWORDS_KPT - 5] = ((uint64_t)(ufixed2q(kpt.xU, 8)) << 32) | ufixed2q(kpt.yU, 8);
+			memOut[(read_index+1)*DWORDS_KPT - 4] = ((uint64_t)(ufixed2q(kpt.xR, 8)) << 32) | kpt.angle;
+			memOut[(read_index+1)*DWORDS_KPT - 3] = kpt.desc[3];
+			memOut[(read_index+1)*DWORDS_KPT - 2] = kpt.desc[2];
+			memOut[(read_index+1)*DWORDS_KPT - 1] = kpt.desc[1];
+			memOut[(read_index+1)*DWORDS_KPT - 0] = kpt.desc[0];
 			read_index++;
 		}
 	} while(kpt.done != 1);
@@ -389,7 +397,7 @@ While_fillMem:
 }
 
 //void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor, volatile int* count0, volatile int* count1, volatile int* count2, volatile int* count3, volatile int* count4, volatile int* count5) {
-void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor) {
+void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memOut, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<18> depthFactor, ap_uint<4> level) {
 	
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_in(MAT_SIZE, MAT_SIZE);
 	xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC> mFast_out(MAT_SIZE, MAT_SIZE);
@@ -414,7 +422,7 @@ void dataflow_region(ap_uint<64>* cache, ap_uint<64>* cacheDepth, BASETYPE* memO
 		populate_xfMat(cache, mFast_in, mAngle, mBlur_in, startRow, startCol);
 		xf::cv::fast<1, XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>(mFast_in, mFast_out, FAST_TH);
 		xf::cv::GaussianBlur<5,XF_BORDER_CONSTANT,XF_8UC1,MAT_SIZE_ANGLE,MAT_SIZE_ANGLE,NPPC>(mBlur_in, mBlur_out, 2);
-		filterFast(mFast_out, strm_eval2Undistort, startRow, startCol);
+		filterFast(mFast_out, strm_eval2Undistort, startRow, startCol, level);
 		undistort(strm_eval2Undistort, strm_undistort2Stereo);
 		stereo(strm_undistort2Stereo, strm_stereo2Angle, cacheDepth, depthFactor);
 		calcAngle(strm_stereo2Angle, strm_angle2Desc, mAngle);
@@ -444,6 +452,7 @@ THREAD_ENTRY() {
 	BASETYPE _img_w = MBOX_GET(rcsfast_sw2rt);
 	BASETYPE img_h = MBOX_GET(rcsfast_sw2rt);
 	ap_uint<18> depthFactor = (ap_uint<18>)MBOX_GET(rcsfast_sw2rt);
+	ap_uint<4> level = (ap_uint<4>)MBOX_GET(rcsfast_sw2rt);
 
 	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
 	ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
@@ -462,7 +471,7 @@ Loop_ColStep:
 			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
 
 			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor);
+				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, depthFactor, level);
 			}
 
 			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);

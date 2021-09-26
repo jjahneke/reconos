@@ -182,7 +182,6 @@ Loop_FillColMerged:
 }
 
 void filterFast(xf::cv::Mat<XF_8UC1, MAT_SIZE, MAT_SIZE, NPPC>& _src, hls::stream<kpt_t>& _dst, ap_uint<10> startRow, ap_uint<10> startCol, ap_uint<4> level) {
-//	const ap_fixed<16,2> mvScaleFactor[8] = {1.0, 1.20001220703125, 1.44000244140625, 1.72802734375, 2.0736083984375, 2.48834228515625, 2.9859619140625, 3.58319091796875};
 	const ap_ufixed<10,2> mvScaleFactor[8] = {1.0, 1.19921875, 1.44140625, 1.7265625, 2.07421875, 2.48828125, 2.984375, 3.58203125};
 	ap_uint<6> cnt = 0;
 Loop_EvalRow:
@@ -198,8 +197,8 @@ Loop_evalCalc:
 				ap_uint<8> resp = (_r & (BYTEMASK << 8*b) >> 8*b);
 				kpt.r = resp;
 				 // Remove borderEdge for DistributeOctTree
-				kpt.global_x = startCol - BORDER_EDGE + _mcol*TYPEDIV + b;
-				kpt.global_y = startRow - BORDER_EDGE + _mrow;
+				kpt.global_x = startCol - 24 + _mcol*TYPEDIV + b;
+				kpt.global_y = startRow - 24 + _mrow;
 				kpt.scaled_x = (startCol - 8 + _mcol*TYPEDIV + b) * mvScaleFactor[level];
 				kpt.scaled_y = (startRow - 8 + _mrow) * mvScaleFactor[level];
 				kpt.angle_x = 8 + _mcol*TYPEDIV + b;
@@ -265,7 +264,6 @@ While_stereo:
 void calcAngle(hls::stream<kpt_t>& _src, hls::stream<kpt_t>& _dst, hls::stream<ap_uint<64>>& _srcAngle) {
 	const uint8_t u_max[16] = {15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
 	#pragma HLS array_partition variable=u_max complete
-	//const ap_uint<4> umax[31] = {3, 6, 8, 9, 10, 11, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3};
 
 	// Equals to 180/pi in Q18.12
 	const ap_uint<18> angle_conv_constant = 234684;
@@ -439,46 +437,48 @@ THREAD_ENTRY() {
 
 	ap_uint<64> cache[MAX_W/8 * CACHE_LINES];
 	//#pragma HLS array_partition variable=cache cyclic factor=640
-	uint16_t row_count = 0;
 	ap_uint<64> cacheDepth[CC_W_DEPTH * CACHE_LINES];
 	BASETYPE memOut[DWORDS_KPT*MAXPERBLOCK];
 	#pragma HLS array_partition variable=memOut cyclic factor=7
 
 	BASETYPE data[7];
-	BASETYPE data_ptr = MBOX_GET(rcsfast_sw2rt);
-	MEM_READ(data_ptr, &data[0], 7*BYTES);
-	BASETYPE ptr_i = data[0];
-	BASETYPE ptr_d = data[1];
-	BASETYPE ptr_o = data[2];
-	BASETYPE img_w = data[3];
-	BASETYPE _img_w = data[4];
-	BASETYPE img_h = data[5];
-	ap_uint<4> level = (ap_uint<4>)data[6];
-
-
-	ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
-	ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
-
-	read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
-Loop_RowStep:
-	for(ap_uint<6> rowStep = 0; rowStep < NROWS; rowStep++) {
+	while(1) {
+		uint16_t row_count = 0;
+		BASETYPE data_ptr = MBOX_GET(rcsfast_sw2rt);
+		MEM_READ(data_ptr, &data[0], 7*BYTES);
+		BASETYPE ptr_i = data[0];
+		BASETYPE ptr_d = data[1];
+		BASETYPE ptr_o = data[2];
+		BASETYPE img_w = data[3];
+		BASETYPE _img_w = data[4];
+		BASETYPE img_h = data[5];
+		ap_uint<4> level = (ap_uint<4>)data[6];
+	
+	
+		ap_uint<6> NROWS = img_h == CC_H ? (img_h - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_h - 2*BORDER_EDGE) / WINDOW_SIZE;
+		ap_uint<6> NCOLS = img_w == MAX_W ? (img_w - 2*BORDER_EDGE) / WINDOW_SIZE : 1 + (img_w - 2*BORDER_EDGE) / WINDOW_SIZE;
+	
 		read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
-
-		ap_uint<10> startRow = BORDER_EDGE + rowStep*WINDOW_SIZE;
-		ap_uint<10> endRow = startRow + WINDOW_SIZE + 6;
-
-Loop_ColStep:
-		for(ap_uint<6> colStep = 0; colStep < NCOLS; colStep++) {
-			ap_uint<10> startCol = BORDER_EDGE + colStep*WINDOW_SIZE;
-			ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
-
-			{ // Region 1
-				dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, level);
+	Loop_RowStep:
+		for(ap_uint<6> rowStep = 0; rowStep < NROWS; rowStep++) {
+			read_next_batch(memif_hwt2mem, memif_mem2hwt, ptr_d, ptr_i, &cacheDepth[0], &cache[0], _img_w, img_h, row_count);
+	
+			ap_uint<10> startRow = BORDER_EDGE + rowStep*WINDOW_SIZE;
+			ap_uint<10> endRow = startRow + WINDOW_SIZE + 6;
+	
+	Loop_ColStep:
+			for(ap_uint<6> colStep = 0; colStep < NCOLS; colStep++) {
+				ap_uint<10> startCol = BORDER_EDGE + colStep*WINDOW_SIZE;
+				ap_uint<10> endCol = startCol + WINDOW_SIZE + 6;
+	
+				{ // Region 1
+					dataflow_region(&cache[0], &cacheDepth[0], &memOut[0], startRow, startCol, level);
+				}
+	
+				BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
+				MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 			}
-
-			BASETYPE _wroffset = MAXPERBLOCK * (rowStep*NCOLS + colStep);
-			MEM_WRITE(&memOut[0], (ptr_o + (_wroffset*DWORDS_KPT*BYTES)), MAXPERBLOCK*DWORDS_KPT*BYTES);
 		}
+		MBOX_PUT(rcsfast_rt2sw, DONEFLAG);
 	}
-	MBOX_PUT(rcsfast_rt2sw, DONEFLAG);
 }
